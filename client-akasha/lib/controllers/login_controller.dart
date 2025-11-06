@@ -1,5 +1,4 @@
 import 'package:akasha/models/services/login_service.dart';
-import 'package:akasha/models/usuario.dart';
 import 'package:flutter/material.dart';
 
 class LoginController {
@@ -28,13 +27,11 @@ class LoginController {
         //Notifica a la vista el exito
         onLoginResult(true, "¡Login exitoso!");
 
-        //Creamos la instancia de usuario
-        final usuarioIngreso = Usuario(username: username, password: password, rol: "Admin");
 
         //Realiza la navegación a dashboard
         Navigator.of(
           context,
-        ).pushReplacementNamed('/dashboard', arguments: usuarioIngreso);
+        ).pushReplacementNamed('/SideMenuShell');
       } else {
         onLoginResult(false, "Alguno de los campos esta incorrecto");
       }

@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'dart:io'; // Necesitado para las excepciones de tipo SocketException
 
 class LoginService {
-  final String _baseUrl = 'http://localhost/PHP/src/controllers/loginController.php';
+  final String _baseUrl = 'http://localhost/server-akasha/src/controllers/loginController.php';
 
   Future<bool> login(String username, String password) async {
     // 1. Poner las credenciales en un JSON
