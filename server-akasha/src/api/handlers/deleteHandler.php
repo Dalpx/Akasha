@@ -5,10 +5,13 @@ $content_type = isset($_SERVER['CONTENT_TYPE']) ? trim($_SERVER['CONTENT_TYPE'])
 
 if ($content_type == 'application/json' && $_SERVER['REQUEST_METHOD'] == 'DELETE') {
 
+    //Del JSON extraemos los datos (que deben ser encriptados, pero no está añadido todavía)
     $body = json_decode(file_get_contents("php://input"), true);
     $id = $body['del_id'];
 
     try{
+        //Creamos una instancia de la conexión a la base de datos y obtenemos el PDO, que nos permite hacer las transacciones
+        //Aquí también manejamos la lógica de la misma
         $con = DBConnection::getInstance();
         $pdo = $con->getPDO();
         $query = "UPDATE producto SET activo=0 WHERE id_producto=:id";

@@ -12,20 +12,21 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method == 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
-
-    $con = DBConnection::getInstance();
-    $pdo = $con->getPDO();
-
+    
+    //Del JSON extraemos los datos (que deben ser encriptados, pero no está añadido todavía)
     $user = $input['user'];
     $pass = $input['pass'];
 
     try {
-
+        //Creamos una instancia de la conexión a la base de datos y obtenemos el PDO, que nos permite hacer las transacciones
+        $con = DBConnection::getInstance();
+        $pdo = $con->getPDO();
+        //Esta es toda la lógica de la transacción SQL, usamos PDO para eliminar o mitigar la cantidad de user input
         $query = 'SELECT nombre_usuario, clave_hash, id_tipo_usuario FROM usuario WHERE nombre_usuario = :user AND cLave_hash= :pass';
         $stmt = $pdo->prepare($query);
         $stmt->execute([':user' => $user, ':pass' => $pass]);
         $result = $stmt->fetch(pdo::FETCH_ASSOC);
-
+        //Mensajes retornados dependiendo del resultado
         if ($result) {
             http_response_code(200);
             echo json_encode(['message' => "Login exitoso"]);

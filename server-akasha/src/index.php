@@ -40,7 +40,7 @@ if (array_key_exists($route_name, $routes)) {
         // Esto permite que archivos como getDataHandler.php accedan al ID si está presente.
         define('ROUTE_PARAMS', $route_params);
 
-        require $target_file;
+        require $target_file; //Busca y ejecuta el archivo en cuestión
 
     } else {
         header('Content-Type: application/json');
