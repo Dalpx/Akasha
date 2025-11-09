@@ -1,5 +1,4 @@
 <?php
-include '../db/db.php';
 //Define el tipo de datos que se enviarán o recibirán
 header("Content-Type: application/json");
 /*Estos headers permiten que tráfico de otros dominios pueda hacer requests a nuestro backend, así evitando las violaciones
@@ -29,6 +28,7 @@ if ($method == 'POST') {
 
         if ($result) {
             http_response_code(200);
+            echo json_encode(['message' => "Login exitoso"]);
         } else {
             http_response_code(401);
             echo 'No encontrado';

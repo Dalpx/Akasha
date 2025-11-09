@@ -29,7 +29,6 @@ class DBConnection {
 
         try {
             $this->pdo = new PDO($dsn, self::DB_USER, self::DB_PASS, $options);
-            echo "Conexión a la base de datos establecida.\n";
         } catch (\PDOException $e) {
             // Detener la ejecución si la conexión falla
             die("Error de Conexión a DB: " . $e->getMessage());

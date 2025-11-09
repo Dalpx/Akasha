@@ -26,13 +26,12 @@ class LoginController {
       if (success) {
         //Notifica a la vista el exito
         onLoginResult(true, "¡Login exitoso!");
-
-
         //Realiza la navegación a dashboard
         Navigator.of(
           context,
         ).pushReplacementNamed('/SideMenuShell');
-      } else {
+      }
+      else {
         onLoginResult(false, "Alguno de los campos esta incorrecto");
       }
     } catch (e) {

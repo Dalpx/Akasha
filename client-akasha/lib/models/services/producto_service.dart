@@ -8,7 +8,7 @@ class ProductoService {
   Future<bool> agregarProducto(Producto nuevoProducto) async {
     if (nuevoProducto.sku.isNotEmpty) {
       //se supone que acá iría el metodo que la agregue a la base de datos
-      lista_productos.add(nuevoProducto);
+       lista_productos.add(nuevoProducto);
       //se supone que acá iría el metodo que la agregue a la base de datos
 
       return true; //Exito

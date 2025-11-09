@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 04-11-2025 a las 19:13:38
+-- Tiempo de generación: 09-11-2025 a las 22:41:00
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -99,11 +99,21 @@ CREATE TABLE `producto` (
   `id_producto` int(11) NOT NULL,
   `nombre` varchar(45) NOT NULL,
   `sku` varchar(45) DEFAULT NULL,
-  `descripcion` varchar(45) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
   `precio_costo` double DEFAULT NULL,
   `precio_venta` double DEFAULT NULL,
-  `id_proveedor` int(11) DEFAULT NULL
+  `id_proveedor` int(11) DEFAULT NULL,
+  `activo` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `producto`
+--
+
+INSERT INTO `producto` (`id_producto`, `nombre`, `sku`, `descripcion`, `precio_costo`, `precio_venta`, `id_proveedor`, `activo`) VALUES
+(2, 'Martillo Martillazo', 'M-2538', 'Martillo de Martillería Martillón potenciado', 50, 500, 1, 0),
+(3, 'Bullshit de Impacto', 'B-1111', 'Bullshit de Impacto de Bullshiteria Bullshiton', 100, 500, 2, 0),
+(4, 'Bullshit de Impacto turbo 2000', 'B-2000', 'Bullshit de Impacto turbo 2000 de Bullshiteria Bullshiton', 100, 600, 2, 0);
 
 -- --------------------------------------------------------
 
@@ -116,9 +126,16 @@ CREATE TABLE `proveedor` (
   `nombre` varchar(45) NOT NULL,
   `contacto_principal` varchar(45) DEFAULT NULL,
   `telefono` varchar(20) DEFAULT NULL,
-  `direccion` tinytext DEFAULT NULL,
-  `RDC` varchar(10) DEFAULT NULL
+  `direccion` tinytext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `proveedor`
+--
+
+INSERT INTO `proveedor` (`id_proveedor`, `nombre`, `contacto_principal`, `telefono`, `direccion`) VALUES
+(1, 'Martilleria Martillon', 'martilleria@martillon.com', '0412-2221111', 'El Quemao'),
+(2, 'Bullshiteria Bullshiton', 'bullshiteria@bullshiton.com', '0412-2223333', 'El Carbonizao');
 
 -- --------------------------------------------------------
 
@@ -226,7 +243,6 @@ ALTER TABLE `permiso_tipo_usuario`
 --
 ALTER TABLE `producto`
   ADD PRIMARY KEY (`id_producto`),
-  ADD UNIQUE KEY `sku` (`sku`),
   ADD KEY `id_proveedor` (`id_proveedor`);
 
 --
@@ -288,13 +304,13 @@ ALTER TABLE `permiso`
 -- AUTO_INCREMENT de la tabla `producto`
 --
 ALTER TABLE `producto`
-  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedor`
 --
 ALTER TABLE `proveedor`
-  MODIFY `id_proveedor` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_proveedor` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `tipo_usuario`
