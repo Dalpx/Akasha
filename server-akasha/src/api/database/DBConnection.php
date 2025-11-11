@@ -1,10 +1,11 @@
 <?php
+
 class DBConnection {
     // Propiedad estática para mantener la única instancia de la clase
     private static ?DBConnection $instance = null;
 
     // Propiedad para almacenar el objeto PDO
-    private ?PDO $pdo = null;
+    private ?\PDO $pdo = null;
 
     // Configuración de la base de datos
     private const DB_HOST = 'localhost';
@@ -20,18 +21,18 @@ class DBConnection {
         $dsn = "mysql:host=" . self::DB_HOST . ";dbname=" . self::DB_NAME . ";charset=" . self::DB_CHARSET;
         $options = [
             // Activar excepciones en caso de error
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             // Devolver resultados como objetos anónimos por defecto
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ, 
+            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_OBJ, 
             // Deshabilitar preparación de sentencias emuladas para mayor seguridad
-            PDO::ATTR_EMULATE_PREPARES => false,
+            \PDO::ATTR_EMULATE_PREPARES => false,
         ];
 
         try {
-            $this->pdo = new PDO($dsn, self::DB_USER, self::DB_PASS, $options);
+            $this->pdo = new \PDO($dsn, self::DB_USER, self::DB_PASS, $options);
         } catch (\PDOException $e) {
             // Detener la ejecución si la conexión falla
-            die("Error de Conexión a DB: " . $e->getMessage());
+            throw new \PDOException("Fallo en la conexión a la base de datos: " . $e->getMessage(), 500);
         }
     }
 
@@ -51,9 +52,9 @@ class DBConnection {
     /**
      * Método público que retorna el objeto PDO.
      *
-     * @return PDO 
+     * @return \PDO 
      */
-    public function getPDO(): PDO {
+    public function getPDO(): \PDO {
         return $this->pdo;
     }
 

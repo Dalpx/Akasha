@@ -1,4 +1,6 @@
 <?php
+require_once '../database/DBconnection.php';
+
 //Define el tipo de datos que se enviarán o recibirán
 header("Content-Type: application/json");
 /*Estos headers permiten que tráfico de otros dominios pueda hacer requests a nuestro backend, así evitando las violaciones
