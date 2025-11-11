@@ -2,48 +2,36 @@
 header('Content-Type: application-json');
 require_once 'database/DBConnection.php';
 require_once 'controllers/productoController.php';
-try {//Con este bloque try podemos capturar todas las excepciones de cada situación, en lugar de tener varios.
+require_once 'middlewares/akashaOrchestrator.php';
+try { //Con este bloque try podemos capturar todas las excepciones de cada situación, en lugar de tener varios.
 
     //Convertimos la URL en un array y la concatenamos de forma que quede en la forma {Header}_{ruta}, para que el switch case pueda obtener la condición.
     $parts = explode('/', trim($uri, '/'));
     $action = $httpMethod . '_' . $parts['3'];
+    $id = (int)end($parts);
 
     switch ($action) {
-        case 'GET_producto': //Para el caso de obtener producto, tenemos 'GET_producto'
-            //Pequeña condición la cual nos deja saber si el programa pidio un id o no, si es un valor numérico presente en la URI, lo guarda
-            //sino, se asigna null, que devuelve todas las entradas.
-            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
-            $con = DBConnection::getInstance()->getPDO(); //Instancia de la DB y obtención del PDO
-            $controller = new productoController($con); //productoController recibe el PDO como parámetro al ser instanciado
-            $result = $controller->getProducto($id); //Método para obtener producto que puede recibir una id numérica o null
-            echo json_encode($result); //Retornar resultado
+        case 'GET_producto':
+            $result = productoOrchestrator::getProducto($id, $parts);
+            http_response_code(200);
+            echo json_encode($result);
             break;
         case 'POST_producto': //Para crear productos nuevos
-            $con = DBConnection::getInstance()->getPDO();
-            $controller = new productoController($con);
-            $result = $controller->addProducto();
-
+            $result = productoOrchestrator::addProducto();
             if ($result) {
                 http_response_code(201);
                 echo json_encode(["message" => "Producto añadido con éxito"]);
             }
             break;
         case 'PUT_producto': //Para editar productos existentes
-            $con = DBConnection::getInstance()->getPDO();
-            $controller = new productoController($con);
-            $result = $controller->updateProducto();
-
-            if($result){
+            $result = productoOrchestrator::editProducto();
+            if ($result) {
                 http_response_code(200);
                 echo json_encode(["message" => "Producto editado con éxito"]);
             }
-
             break;
         case 'DELETE_producto': //Para borrar productos existentes de forma lógica
-            $con = DBConnection::getInstance()->getPDO();
-            $controller = new productoController($con);
-            $result = $controller->deleteProducto();
-
+            $result = productoOrchestrator::deleteProducto();
             if ($result) {
                 http_response_code(200);
                 echo json_encode(["message" => "Producto eliminado con éxito"]);
