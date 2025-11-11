@@ -2,7 +2,9 @@
 header('Content-Type: application-json');
 require_once 'database/DBConnection.php';
 require_once 'controllers/productoController.php';
+require_once 'controllers/loginController.php';
 require_once 'middlewares/akashaOrchestrator.php';
+
 try { //Con este bloque try podemos capturar todas las excepciones de cada situación, en lugar de tener varios.
 
     //Convertimos la URL en un array y la concatenamos de forma que quede en la forma {Header}_{ruta}, para que el switch case pueda obtener la condición.
@@ -37,6 +39,13 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
                 echo json_encode(["message" => "Producto eliminado con éxito"]);
             }
 
+            break;
+        case 'POST_login':
+            $result = loginOrchestrator::loginHandler();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Login exitoso"]);
+            }
             break;
         default: //Excepción default de no ser encontrada la ruta
             throw new Exception("Ruta no encontrada", 404);

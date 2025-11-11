@@ -58,3 +58,13 @@ class productoOrchestrator
         }
     }
 }
+
+class loginOrchestrator{
+        
+        public static function loginHandler(){
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new loginController($con);
+            $result = $controller->loginHandler();
+            return $result;
+        }
+    }
