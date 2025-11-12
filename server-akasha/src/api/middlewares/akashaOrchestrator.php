@@ -59,12 +59,65 @@ class productoOrchestrator
     }
 }
 
-class loginOrchestrator{
-        
-        public static function loginHandler(){
+class loginOrchestrator
+{
+
+    public static function loginHandler()
+    {
+        $con = DBConnection::getInstance()->getPDO();
+        $controller = new loginController($con);
+        $result = $controller->loginHandler();
+        return $result;
+    }
+}
+
+class proveedorOrchestrator
+{
+
+    public static function getProveedor(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
             $con = DBConnection::getInstance()->getPDO();
-            $controller = new loginController($con);
-            $result = $controller->loginHandler();
+            $controller = new proveedorController($con);
+            $result = $controller->getProveedor($id);
             return $result;
+        } catch (Exception $e) {
+            throw $e;
         }
     }
+
+    public static function addProveedor(){
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new proveedorController($con);
+            $result = $controller->addProveedor();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function updateProveedor(){
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new proveedorController($con);
+            $result = $controller->updateProveedor();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function deleteProveedor(){
+
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new proveedorController($con);
+            $result =  $controller->deleteProveedor();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}

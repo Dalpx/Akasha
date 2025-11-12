@@ -4,7 +4,7 @@ class productoController
 {
     protected $DB;
 
-    public function __construct(\PDO $pdo)
+    public function __construct(PDO $pdo)
     {
         $this->DB = $pdo;
     }
@@ -23,7 +23,7 @@ class productoController
                 if ($result) {
                     return $result;
                 } else {
-                    throw new \Exception('Producto no encontrado', 404);
+                    throw new Exception('Producto no encontrado', 404);
                 }
             } else {
                 //De no ser el caso, obtenemos todos los datos de la tabla (como sería en el caso de obtención al iniciar sesión en el programa)    
@@ -36,12 +36,10 @@ class productoController
                 if ($result) {
                     return $result;
                 } else {
-                    throw new \Exception('Producto no encontrado', 404);
+                    throw new Exception('Producto no encontrado', 404);
                 }
             }
-        } catch (\PDOException $e) {
-            throw $e;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw $e;
         }
     }
@@ -76,11 +74,9 @@ class productoController
             if ($result) {
                 return $result;
             } else {
-                throw new \Exception('Ha ocurrido un error', 404);
+                throw new Exception('Ha ocurrido un error', 500);
             }
-        } catch (\PDOException $e) {
-            throw $e;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw $e;
         }
     }
@@ -102,16 +98,21 @@ class productoController
             $query = "UPDATE producto SET nombre=:nomprod, sku=:sku, descripcion=:descr, precio_costo=:pre_c, 
         precio_venta=:pre_v WHERE id_producto = :id_p";
             $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([':nomprod' => $nom, ':sku' => $sku, ':descr' => $desc, ':pre_c' => $pre_c, 'pre_v' => $pre_v, ':id_p' => $id_p]);
+            $result = $stmt->execute([
+                ':nomprod' => $nom,
+                ':sku' => $sku,
+                ':descr' => $desc,
+                ':pre_c' => $pre_c,
+                'pre_v' => $pre_v,
+                ':id_p' => $id_p
+            ]);
             //Mensajes de respuesta
             if ($result) {
                 return $result;
             } else {
-                throw new \Exception('Algo ha sucedido mal', 500);
+                throw new Exception('Algo ha sucedido mal', 500);
             }
-        } catch (\PDOException $e) {
-            throw $e;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw $e;
         }
     }
@@ -119,7 +120,7 @@ class productoController
     public function deleteProducto()
     {
         //Del JSON extraemos los datos
-        $body = json_decode(file_get_contents("php://input"), true);
+        $body = json_decode(file_get_contents('php://input'), true);
         $id = $body['id_prod'];
 
         try {
@@ -135,13 +136,11 @@ class productoController
             if ($rows_af > 0) {
                 return true;
             } else if ($rows_af == 0) {
-                throw new \Exception('El producto ya ha sido eliminado o no fue posible encontrarlo', 404);
+                throw new Exception('El producto ya ha sido eliminado o no fue posible encontrarlo', 404);
             } else {
-                throw new \Exception('Se ha producido un error', 500);
+                throw new Exception('Se ha producido un error', 500);
             }
-        } catch (\PDOException $e) {
-            throw $e;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw $e;
         }
     }
