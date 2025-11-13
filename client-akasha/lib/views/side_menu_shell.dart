@@ -62,33 +62,33 @@ class _SideMenuShellState extends State<SideMenuShell> {
                       NavigationRailDestination(
                         icon: Icon(Icons.business_center_outlined),
                         selectedIcon: Icon(Icons.business_center),
-                        label: Text("Inventario"),
+                        label: Text("Producto"),
                       ),
                       NavigationRailDestination(
                         icon: Icon(Icons.local_shipping_outlined),
                         selectedIcon: Icon(Icons.local_shipping),
                         label: Text("Proveedor"),
                       ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.compare_arrows_outlined),
-                        selectedIcon: Icon(Icons.compare_arrows),
-                        label: Text("Transacción"),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.assignment_outlined),
-                        selectedIcon: Icon(Icons.assignment),
-                        label: Text("Reporte"),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.warning_outlined),
-                        selectedIcon: Icon(Icons.warning),
-                        label: Text("Noficación"),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.person_outlined),
-                        selectedIcon: Icon(Icons.person),
-                        label: Text("Usuario"),
-                      ),
+                      // NavigationRailDestination(
+                      //   icon: Icon(Icons.compare_arrows_outlined),
+                      //   selectedIcon: Icon(Icons.compare_arrows),
+                      //   label: Text("Transacción"),
+                      // ),
+                      // NavigationRailDestination(
+                      //   icon: Icon(Icons.assignment_outlined),
+                      //   selectedIcon: Icon(Icons.assignment),
+                      //   label: Text("Reporte"),
+                      // ),
+                      // NavigationRailDestination(
+                      //   icon: Icon(Icons.warning_outlined),
+                      //   selectedIcon: Icon(Icons.warning),
+                      //   label: Text("Noficación"),
+                      // ),
+                      // NavigationRailDestination(
+                      //   icon: Icon(Icons.person_outlined),
+                      //   selectedIcon: Icon(Icons.person),
+                      //   label: Text("Usuario"),
+                      // ),
                     ],
                   ),
                 //Contenido: IndexedStack conserva estado de cada vista
@@ -122,26 +122,26 @@ class _SideMenuShellState extends State<SideMenuShell> {
                       selectedIcon: Icon(Icons.local_shipping),
                       label: "",
                     ),
-                    NavigationDestination(
-                      icon: Icon(Icons.compare_arrows_outlined),
-                      selectedIcon: Icon(Icons.compare_arrows),
-                      label: "",
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.assignment_outlined),
-                      selectedIcon: Icon(Icons.assignment),
-                      label: "",
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.warning_outlined),
-                      selectedIcon: Icon(Icons.warning),
-                      label: "",
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.person_outlined),
-                      selectedIcon: Icon(Icons.person),
-                      label: "",
-                    ),
+                    // NavigationDestination(
+                    //   icon: Icon(Icons.compare_arrows_outlined),
+                    //   selectedIcon: Icon(Icons.compare_arrows),
+                    //   label: "",
+                    // ),
+                    // NavigationDestination(
+                    //   icon: Icon(Icons.assignment_outlined),
+                    //   selectedIcon: Icon(Icons.assignment),
+                    //   label: "",
+                    // ),
+                    // NavigationDestination(
+                    //   icon: Icon(Icons.warning_outlined),
+                    //   selectedIcon: Icon(Icons.warning),
+                    //   label: "",
+                    // ),
+                    // NavigationDestination(
+                    //   icon: Icon(Icons.person_outlined),
+                    //   selectedIcon: Icon(Icons.person),
+                    //   label: "",
+                    // ),
                   ],
                 ),
         );

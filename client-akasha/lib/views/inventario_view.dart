@@ -13,10 +13,14 @@ class InventarioView extends StatefulWidget {
 }
 
 class _InventarioViewState extends State<InventarioView> {
-  //Servicio
+  // Servicio que se encarga de comunicarse con el backend / API
   final ProductoService _productoService = ProductoService();
 
-  //text controller
+  // Future que usa el FutureBuilder para pintar la lista de productos.
+  // Lo guardamos en estado para poder "recargarlo" después de un CRUD.
+  late Future<List<Producto>> _futureProductos;
+
+  // Controllers para los campos del formulario (modal de crear/editar)
   final TextEditingController nombreController = TextEditingController();
   final TextEditingController skuController = TextEditingController();
   final TextEditingController descripcionController = TextEditingController();
@@ -24,8 +28,39 @@ class _InventarioViewState extends State<InventarioView> {
   final TextEditingController precioVentaController = TextEditingController();
   final TextEditingController nomProveedorController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Cuando se crea la vista, disparamos la primera carga de datos
+    _futureProductos = _productoService.fetchApiData();
+  }
+
+  @override
+  void dispose() {
+    // Liberamos los controllers cuando la vista se destruye
+    nombreController.dispose();
+    skuController.dispose();
+    descripcionController.dispose();
+    precioCostoController.dispose();
+    precioVentaController.dispose();
+    nomProveedorController.dispose();
+    super.dispose();
+  }
+
+  // Esta función vuelve a pedir los productos al servicio y
+  // fuerza el rebuild del FutureBuilder SIN recargar la página.
+  void _recargarProductos() {
+    setState(() {
+      _futureProductos = _productoService.fetchApiData();
+    });
+  }
+
+  // Modal para crear / editar un producto
+  // Si idProducto viene null => modo "Agregar"
+  // Si idProducto trae un valor => modo "Editar"
   void openNoteBox({int? idProducto}) async {
-    // 2. Clear controllers first to ensure a fresh start
+    // 1. Limpiamos los campos para asegurarnos de que el formulario
+    //    siempre empiece vacío
     nombreController.clear();
     skuController.clear();
     descripcionController.clear();
@@ -33,20 +68,23 @@ class _InventarioViewState extends State<InventarioView> {
     precioVentaController.clear();
     nomProveedorController.clear();
 
-    // 3. Check if we are in 'Edit' mode
+    // 2. Si estamos en modo edición, traemos los datos del producto
     if (idProducto != null) {
-      // 4. Fetch the product data
-      Producto? producto = await _productoService.obtenerProductoPorID(idProducto);
+      try {
+        final Producto? producto = await _productoService.obtenerProductoPorID(
+          idProducto,
+        );
 
-      // 5. If data is found, set the text for each controller
-      if (producto != null) {
-        nombreController.text = producto.nombre;
-        skuController.text = producto.sku;
-        descripcionController.text = producto.descripcion;
-        // Convert numbers to String for TextField
-        precioCostoController.text = producto.precioCosto.toString();
-        precioVentaController.text = producto.precioVenta.toString();
-        nomProveedorController.text = producto.idProveedor.toString();
+        if (producto != null) {
+          nombreController.text = producto.nombre;
+          skuController.text = producto.sku;
+          descripcionController.text = producto.descripcion;
+          precioCostoController.text = producto.precioCosto.toString();
+          precioVentaController.text = producto.precioVenta.toString();
+          nomProveedorController.text = producto.idProveedor.toString();
+        }
+      } catch (e) {
+        print('Error al obtener producto por ID: $e');
       }
     }
 
@@ -54,148 +92,187 @@ class _InventarioViewState extends State<InventarioView> {
       context: context,
       builder: (context) => AlertDialog(
         content: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: 380),
+          constraints: const BoxConstraints(maxHeight: 380),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 idProducto == null ? "Agregar" : "Editar",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               TextField(
                 controller: nombreController,
-                decoration: InputDecoration(label: Text("Nombre")),
+                decoration: const InputDecoration(label: Text("Nombre")),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               TextField(
                 controller: skuController,
-                decoration: InputDecoration(label: Text("SKU")),
+                decoration: const InputDecoration(label: Text("SKU")),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               TextField(
                 controller: descripcionController,
-                decoration: InputDecoration(label: Text("descripcion")),
+                decoration: const InputDecoration(label: Text("Descripción")),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               TextField(
                 controller: precioCostoController,
-                decoration: InputDecoration(label: Text("Precio Costo")),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(label: Text("Precio Costo")),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               TextField(
                 controller: precioVentaController,
-                decoration: InputDecoration(label: Text("Precio Venta")),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(label: Text("Precio Venta")),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               TextField(
                 controller: nomProveedorController,
-                decoration: InputDecoration(label: Text("Proveedor")),
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(label: Text("Proveedor")),
               ),
             ],
           ),
         ),
-       actions: [
-        //Boton agregar/editar
-        ElevatedButton(
-          onPressed: () {
-            try {
-              if (idProducto == null) {
-                //Agrega un nuevo producto
-                _productoService.createProducto(
-                  Producto(
-                    idProducto: Random().nextInt(100),
-                    nombre: nombreController.text,
-                    sku: skuController.text,
-                    descripcion: descripcionController.text,
-                    precioCosto: double.parse(precioCostoController.text),
-                    precioVenta: double.parse(precioVentaController.text),
-                    idProveedor: int.parse(nomProveedorController.text),
-                    activo: 1,
-                  ),
-                );
-              } else {
-                //Actualiza un producto
-                print(idProducto);
-                _productoService.updateProducto(
-                  Producto(
-                    idProducto: idProducto,
-                    nombre: nombreController.text,
-                    sku: skuController.text,
-                    descripcion: descripcionController.text,
-                    precioCosto: double.parse(precioCostoController.text),
-                    precioVenta: double.parse(precioVentaController.text),
-                    idProveedor: int.parse(nomProveedorController.text),
-                    activo: 1,
-                  ),
-                );
+        actions: [
+          // Botón Agregar / Guardar
+          ElevatedButton(
+            // Hacemos la función async para poder esperar el llamado al servicio
+            onPressed: () async {
+              try {
+                if (idProducto == null) {
+                  // --- CREATE ---
+                  await _productoService.createProducto(
+                    Producto(
+                      idProducto: Random().nextInt(100),
+                      nombre: nombreController.text,
+                      sku: skuController.text,
+                      descripcion: descripcionController.text,
+                      precioCosto: double.parse(precioCostoController.text),
+                      precioVenta: double.parse(precioVentaController.text),
+                      idProveedor: int.parse(nomProveedorController.text),
+                      activo: 1,
+                    ),
+                  );
+                } else {
+                  // --- UPDATE ---
+                  await _productoService.updateProducto(
+                    Producto(
+                      idProducto: idProducto,
+                      nombre: nombreController.text,
+                      sku: skuController.text,
+                      descripcion: descripcionController.text,
+                      precioCosto: double.parse(precioCostoController.text),
+                      precioVenta: double.parse(precioVentaController.text),
+                      idProveedor: int.parse(nomProveedorController.text),
+                      activo: 1,
+                    ),
+                  );
+                }
+
+                // Si llegamos aquí, la operación se ejecutó sin lanzar excepción
+
+                //  Volvemos a cargar la lista de productos
+                //    Esto es lo que hace que la vista se actualice sin recargar toda la página
+                _recargarProductos();
+
+                // Limpiamos los controladores
+                nombreController.clear();
+                skuController.clear();
+                descripcionController.clear();
+                precioCostoController.clear();
+                precioVentaController.clear();
+                nomProveedorController.clear();
+
+                // Cerramos el modal
+                Navigator.pop(context);
+              } catch (e) {
+                print('Error al guardar producto: $e');
               }
-            } catch (e) {
-              print(e);
-            }
-
-            //Limpia los controladores de texto SOLO DESPUÉS DE LA OPERACIÓN
-            nombreController.clear();
-            skuController.clear();
-            descripcionController.clear();
-            precioCostoController.clear();
-            precioVentaController.clear();
-            nomProveedorController.clear();
-
-            //Cierra la modal
-            Navigator.pop(context);
-          },
-          // Change button text dynamically
-          child: Text(idProducto == null ? "Agregar" : "Guardar"), 
-        ),
-      ],
-    ),
-  );
-}
+            },
+            // Texto dinámico según si estamos agregando o editando
+            child: Text(idProducto == null ? "Agregar" : "Guardar"),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Inventario")),
+      appBar: AppBar(
+        title: const Text("Producto"),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            onPressed: () {
+              print("Redirigir a notificaciones");
+            },
+            icon: Icon(Icons.notifications),
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/');
+              print("Cerrar Sesion");
+            },
+            icon: Icon(Icons.logout),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab-agregar-producto',
         onPressed: () {
+          // Abrimos el formulario en modo "Agregar"
           openNoteBox();
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
       body: FutureBuilder<List<Producto>>(
-        // 1. EL FUTURE: Llama a la función que devuelve Future<List<Producto>>
-        future: _productoService.fetchApiData(),
+        // ✅ Usamos el Future almacenado en el estado
+        future: _futureProductos,
 
-        // 2. EL BUILDER: Define cómo construir la interfaz en cada estado
+        // builder = cómo reaccionar a cada estado del Future
         builder: (context, snapshot) {
-          // --- ESTADO 1: ESPERANDO ---
+          // --- 1) MIENTRAS SE ESPERA RESPUESTA DEL API ---
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // --- ESTADO 2: CON ERROR ---
+          // --- 2) SI HUBO ERROR EN LA PETICIÓN ---
           if (snapshot.hasError) {
             return Center(
               child: Text('Error al cargar los datos: ${snapshot.error}'),
             );
           }
 
-          // --- ESTADO 3: CON DATOS (List<Producto>) ---
+          // --- 3) CUANDO LLEGAN LOS DATOS CORRECTAMENTE ---
           if (snapshot.hasData) {
+            // Tomamos solo productos activos
             final List<Producto> productos = snapshot.data!
                 .where((producto) => producto.activo == 1)
                 .toList();
 
-            // Si la lista está vacía
+            // Si la lista está vacía, mostramos un mensaje
             if (productos.isEmpty) {
               return const Center(child: Text('No se encontraron productos.'));
             }
 
-            // Construcción de la ListView con los datos
+            // ListView.builder para renderizar cada producto
             return ListView.builder(
               itemCount: productos.length,
               itemBuilder: (context, index) {
                 final producto = productos[index];
+
                 return Card(
                   elevation: 2.0,
                   margin: const EdgeInsets.symmetric(
@@ -203,11 +280,21 @@ class _InventarioViewState extends State<InventarioView> {
                     horizontal: 16.0,
                   ),
                   child: ListTile(
+                    // Tap corto -> editar producto
                     onTap: () {
                       openNoteBox(idProducto: producto.idProducto);
                     },
-                    onLongPress: () =>
-                        _productoService.deleteProducto(producto),
+                    // Long press -> eliminar producto
+                    onLongPress: () async {
+                      try {
+                        await _productoService.deleteProducto(producto);
+
+                        // Después de borrar, refrescamos la lista
+                        _recargarProductos();
+                      } catch (e) {
+                        print('Error al eliminar producto: $e');
+                      }
+                    },
                     leading: Text(
                       producto.idProducto.toString(),
                       style: const TextStyle(fontWeight: FontWeight.bold),
@@ -223,7 +310,7 @@ class _InventarioViewState extends State<InventarioView> {
             );
           }
 
-          // Si por alguna razón no hay datos ni error (debería ser capturado arriba)
+          // Si llegamos aquí, no hay datos ni error (caso poco común)
           return const Center(child: Text('Inicie la carga de datos.'));
         },
       ),

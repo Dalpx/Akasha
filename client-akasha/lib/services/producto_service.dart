@@ -140,7 +140,6 @@ class ProductoService {
         if (body is Map<String, dynamic>) {
           // 3. Convertir el Map a un objeto Producto usando el constructor fromJson
           final Producto producto = Producto.fromJson(body);
-          print(producto.toString());
           return producto;
         } else {
           // Manejar casos donde la respuesta 200 no es un producto individual esperado
