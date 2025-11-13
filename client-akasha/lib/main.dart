@@ -2,7 +2,8 @@ import 'package:akasha/views/login_view.dart';
 import 'package:akasha/views/side_menu_shell.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MainApp());
 }
 

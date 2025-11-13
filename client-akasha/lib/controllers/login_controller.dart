@@ -1,4 +1,4 @@
-import 'package:akasha/models/services/login_service.dart';
+import 'package:akasha/services/login_service.dart';
 import 'package:flutter/material.dart';
 
 class LoginController {
