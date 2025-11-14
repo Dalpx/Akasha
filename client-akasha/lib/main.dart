@@ -80,6 +80,18 @@ class MainApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(100.0),
           ),
         ),
+        //Card
+        cardTheme: CardThemeData(
+          
+          color: Colors.blueGrey.shade50,         // Color del fondo de la Card
+          shadowColor: Colors.black54,             // Color de la sombra                 // Elevación (profundidad de la sombra)
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0), // Borde redondeado
+          ),
+          // Puedes configurar el color del texto por defecto dentro de la Card:
+          // textTheme: TextTheme(...), 
+        )
+        
       ),
       routes: {
         '/': (context) => LoginView(),

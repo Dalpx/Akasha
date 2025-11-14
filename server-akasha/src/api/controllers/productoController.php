@@ -14,8 +14,8 @@ class productoController
         try {
             //Lógica de transacción, si tenemos ID, buscamos la entrada que coincida con dicha ID
             if ($id !== null) {
-                $query = "SELECT producto.nombre, producto.sku, producto.descripcion, producto.precio_costo, producto.precio_venta, proveedor.nombre 
-        AS nom_prov FROM producto INNER JOIN proveedor on producto.id_proveedor=proveedor.id_proveedor WHERE producto.id_producto = :id";
+                $query = "SELECT producto.id_producto, producto.nombre, producto.sku, producto.descripcion, producto.precio_costo, producto.precio_venta, producto.activo, proveedor.id_proveedor
+                AS id_prov FROM producto INNER JOIN proveedor on producto.id_proveedor=proveedor.id_proveedor WHERE producto.id_producto = :id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(\pdo::FETCH_ASSOC);
@@ -27,8 +27,8 @@ class productoController
                 }
             } else {
                 //De no ser el caso, obtenemos todos los datos de la tabla (como sería en el caso de obtención al iniciar sesión en el programa)    
-                $query = "SELECT producto.nombre, producto.sku, producto.descripcion, producto.precio_costo, producto.precio_venta, proveedor.nombre 
-        AS nom_prov FROM producto INNER JOIN proveedor on producto.id_proveedor=proveedor.id_proveedor";
+                $query = "SELECT producto.id_producto, producto.nombre, producto.sku, producto.descripcion, producto.precio_costo, producto.precio_venta, proveedor.id_proveedor 
+                AS id_prov, producto.activo FROM producto INNER JOIN proveedor on producto.id_proveedor=proveedor.id_proveedor";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute();
                 $result = $stmt->fetchAll(\pdo::FETCH_ASSOC);

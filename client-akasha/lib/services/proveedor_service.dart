@@ -45,7 +45,7 @@ class ProveedorService {
         throw Exception('Error al obtener proveedor por ID');
       }
     } catch (e) {
-      log('Excepción en obtenerProveedorPorID: $e');
+      log('Excepción en obtenerProveedorPorID: $e.');
       rethrow;
     }
   }
@@ -59,7 +59,6 @@ class ProveedorService {
         body: jsonEncode(proveedor.toJson(1)),
       );
 
-      print(response.body.toString());
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
@@ -79,7 +78,7 @@ class ProveedorService {
       final response = await http.put(
         Uri.parse('$baseUrl/${proveedor.idProveedor}'),
         headers: {'Content-Type': 'application/json'},
-        // body: jsonEncode(proveedor.toJson()),
+        body: jsonEncode(proveedor.toJson(2)),
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
@@ -98,7 +97,9 @@ class ProveedorService {
   Future<bool> deleteProveedor(Proveedor proveedor) async {
     try {
       final response = await http.delete(
-        Uri.parse('$baseUrl/${proveedor.idProveedor}'),
+        Uri.parse(baseUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(proveedor.toJson(3)),
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {

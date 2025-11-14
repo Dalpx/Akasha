@@ -35,9 +35,8 @@ class _LoginViewState extends State<LoginView> {
       body: Padding(
         padding: const EdgeInsets.all(UxPadding.paddingDefault * 1),
         child: Center(
-          child: SizedBox(
-            width: 400,
-            height: 700,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 400, maxHeight: 700),
             child: Form(
               key: _formKey,
               child: Column(
@@ -48,26 +47,21 @@ class _LoginViewState extends State<LoginView> {
                     style: TextStyle(
                       fontSize: 64,
                       fontWeight: FontWeight.bold,
-                      color: UxColor.secondTextColor,
+
                     ),
                   ),
-                  SizedBox(height: UxPadding.paddingDefault / 2),
                   Text(
                     "Ingrese los datos",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.normal,
-                      color: UxColor.secondTextColor,
                     ),
                   ),
                   SizedBox(height: UxPadding.paddingDefault * 1),
                   // INPUT DEL USUARIO
                   TextFormField(
                     controller: _usernameController,
-                    cursorColor: UxColor.secondTextColor,
-                    style: TextStyle(color: UxColor.primaryTextColor),
-
-                    decoration: UxForm(label: "Usuario").textFieldStyle(),
+                    decoration: InputDecoration(label: Text("Usuario")),
                     //Validacion si el usuario esta vacío
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -80,10 +74,8 @@ class _LoginViewState extends State<LoginView> {
                   //INPUT DE LA CLAVE
                   TextFormField(
                     controller: _passwordController,
-                    cursorColor: UxColor.secondTextColor,
                     obscureText: true, // Buena práctica para claves
-                    style: TextStyle(color: UxColor.primaryTextColor),
-                    decoration: UxForm(label: "Clave").textFieldStyle(),
+                    decoration: InputDecoration(label: Text("Contraseña")),
                     //Validacion si el usuario esta vacío
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -99,11 +91,7 @@ class _LoginViewState extends State<LoginView> {
                   SizedBox(height: UxPadding.paddingDefault * 1),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: UxColor.buttonBgColor,
-                      foregroundColor: UxColor.thirdTextColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
+
                       padding: EdgeInsets.symmetric(
                         horizontal: UxPadding.paddingDefault * 5,
                         vertical: 20,

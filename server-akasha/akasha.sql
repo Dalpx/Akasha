@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 09-11-2025 a las 22:41:00
+-- Tiempo de generación: 14-11-2025 a las 03:52:09
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -54,44 +54,6 @@ CREATE TABLE `movimiento_inventario` (
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `permiso`
---
-
-CREATE TABLE `permiso` (
-  `id_permiso` int(11) NOT NULL,
-  `nombre_permiso` varchar(45) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `permiso`
---
-
-INSERT INTO `permiso` (`id_permiso`, `nombre_permiso`) VALUES
-(1, 'admin'),
-(2, 'almacen'),
-(3, 'contador');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `permiso_tipo_usuario`
---
-
-CREATE TABLE `permiso_tipo_usuario` (
-  `id_tipo_usuario` int(11) NOT NULL,
-  `id_permiso` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `permiso_tipo_usuario`
---
-
-INSERT INTO `permiso_tipo_usuario` (`id_tipo_usuario`, `id_permiso`) VALUES
-(1, 1);
-
--- --------------------------------------------------------
-
---
 -- Estructura de tabla para la tabla `producto`
 --
 
@@ -124,18 +86,19 @@ INSERT INTO `producto` (`id_producto`, `nombre`, `sku`, `descripcion`, `precio_c
 CREATE TABLE `proveedor` (
   `id_proveedor` int(11) NOT NULL,
   `nombre` varchar(45) NOT NULL,
-  `contacto_principal` varchar(45) DEFAULT NULL,
-  `telefono` varchar(20) DEFAULT NULL,
-  `direccion` tinytext DEFAULT NULL
+  `canal` tinytext DEFAULT NULL,
+  `contacto` tinytext DEFAULT NULL,
+  `direccion` tinytext DEFAULT NULL,
+  `activo` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `proveedor`
 --
 
-INSERT INTO `proveedor` (`id_proveedor`, `nombre`, `contacto_principal`, `telefono`, `direccion`) VALUES
-(1, 'Martilleria Martillon', 'martilleria@martillon.com', '0412-2221111', 'El Quemao'),
-(2, 'Bullshiteria Bullshiton', 'bullshiteria@bullshiton.com', '0412-2223333', 'El Carbonizao');
+INSERT INTO `proveedor` (`id_proveedor`, `nombre`, `canal`, `contacto`, `direccion`, `activo`) VALUES
+(1, 'Pinga', 'Email', 'pinga@gmail.com', 'La casa de Pinga', 0),
+(2, 'Bullshiteria Bullshiton', 'email', 'bullshiteria@bullshiton.com', 'El Carbonizao', 1);
 
 -- --------------------------------------------------------
 
@@ -165,9 +128,9 @@ CREATE TABLE `tipo_usuario` (
 --
 
 INSERT INTO `tipo_usuario` (`id_tipo_usuario`, `nombre_tipo_usuario`) VALUES
-(1, 'admin'),
-(2, 'almacenista'),
-(3, 'contador');
+(1, 'super'),
+(2, 'admin'),
+(3, 'almacen');
 
 -- --------------------------------------------------------
 
@@ -194,16 +157,18 @@ CREATE TABLE `usuario` (
   `clave_hash` varchar(45) NOT NULL,
   `nombre_completo` varchar(45) DEFAULT NULL,
   `email` varchar(45) DEFAULT NULL,
-  `id_tipo_usuario` int(11) DEFAULT NULL
+  `id_tipo_usuario` int(11) DEFAULT NULL,
+  `activo` tinyint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `usuario`
 --
 
-INSERT INTO `usuario` (`id_usuario`, `nombre_usuario`, `clave_hash`, `nombre_completo`, `email`, `id_tipo_usuario`) VALUES
-(1, 'Nigger', '12345678', 'Aaron Lopez', 'test@gmail.com', 1),
-(2, 'Donnos', '1234567', 'Dennys Lugo', 'test2@gmail.com', 2);
+INSERT INTO `usuario` (`id_usuario`, `nombre_usuario`, `clave_hash`, `nombre_completo`, `email`, `id_tipo_usuario`, `activo`) VALUES
+(1, 'Nigger', '12345678', 'Aaron Lopez', 'test@gmail.com', 1, 1),
+(2, 'Donnos', '1234567', 'Dennys Lugo', 'test2@gmail.com', 2, 1),
+(3, 'Aaronger Loperger', 'amongus', 'Negron Negropez', 'negron@negropez.com', 3, 0);
 
 --
 -- Índices para tablas volcadas
@@ -224,19 +189,6 @@ ALTER TABLE `movimiento_inventario`
   ADD KEY `id_producto` (`id_producto`),
   ADD KEY `id_usuario` (`id_usuario`),
   ADD KEY `id_proveedor` (`id_proveedor`);
-
---
--- Indices de la tabla `permiso`
---
-ALTER TABLE `permiso`
-  ADD PRIMARY KEY (`id_permiso`);
-
---
--- Indices de la tabla `permiso_tipo_usuario`
---
-ALTER TABLE `permiso_tipo_usuario`
-  ADD PRIMARY KEY (`id_tipo_usuario`,`id_permiso`),
-  ADD KEY `id_permiso` (`id_permiso`);
 
 --
 -- Indices de la tabla `producto`
@@ -295,12 +247,6 @@ ALTER TABLE `movimiento_inventario`
   MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT de la tabla `permiso`
---
-ALTER TABLE `permiso`
-  MODIFY `id_permiso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
-
---
 -- AUTO_INCREMENT de la tabla `producto`
 --
 ALTER TABLE `producto`
@@ -328,7 +274,7 @@ ALTER TABLE `ubicacion`
 -- AUTO_INCREMENT de la tabla `usuario`
 --
 ALTER TABLE `usuario`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Restricciones para tablas volcadas
@@ -347,13 +293,6 @@ ALTER TABLE `movimiento_inventario`
   ADD CONSTRAINT `movimiento_inventario_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `producto` (`id_producto`),
   ADD CONSTRAINT `movimiento_inventario_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
   ADD CONSTRAINT `movimiento_inventario_ibfk_3` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedor` (`id_proveedor`);
-
---
--- Filtros para la tabla `permiso_tipo_usuario`
---
-ALTER TABLE `permiso_tipo_usuario`
-  ADD CONSTRAINT `permiso_tipo_usuario_ibfk_1` FOREIGN KEY (`id_tipo_usuario`) REFERENCES `tipo_usuario` (`id_tipo_usuario`),
-  ADD CONSTRAINT `permiso_tipo_usuario_ibfk_2` FOREIGN KEY (`id_permiso`) REFERENCES `permiso` (`id_permiso`);
 
 --
 -- Filtros para la tabla `producto`

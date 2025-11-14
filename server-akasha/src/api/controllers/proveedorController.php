@@ -51,12 +51,12 @@ class proveedorController
         $body = json_decode(file_get_contents('php://input'), true);
 
         $nom = $body['nom_prov'];
-        $canal = $body['canal_cont'];
+        $canal = $body['canal'];
         $cont = $body['cont'];
         $dir = $body['dir'];
 
         try {
-            $query = "INSERT INTO proveedor (nombre, canal_contacto, contacto, direccion, activo) VALUES
+            $query = "INSERT INTO proveedor (nombre, canal, contacto, direccion, activo) VALUES
                     (:nom, :canal, :cont, :dir, 1)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
@@ -81,13 +81,13 @@ class proveedorController
         $body = json_decode(file_get_contents('php://input'), true);
 
         $nom = $body['nom_prov'];
-        $canal = $body['canal_cont'];
+        $canal = $body['canal'];
         $cont = $body['cont'];
         $dir = $body['dir'];
         $id_p = $body['id_prov'];
 
         try {
-            $query = "UPDATE proveedor SET nombre=:nom, canal_contacto=:canal, contacto=:cont
+            $query = "UPDATE proveedor SET nombre=:nom, canal=:canal, contacto=:cont,
             direccion=:dir WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
@@ -116,7 +116,7 @@ class proveedorController
         try {
             $query ="UPDATE proveedor SET activo=false WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([':id_prov'=>$id]);
+            $stmt->execute([':id_prov'=>$id]);
 
             $rows_af = $stmt->rowCount();
 

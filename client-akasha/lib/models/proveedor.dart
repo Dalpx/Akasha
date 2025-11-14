@@ -35,7 +35,7 @@ class Proveedor {
     //LEER
     if (caso == 0) {
       return {
-        'id_proveedor': idProveedor,
+        'id_prov': idProveedor,
         'nombre': nombre,
         'canal': canal,
         'contacto': contacto,
@@ -47,14 +47,24 @@ class Proveedor {
     if (caso == 1) {
       return {
         'nom_prov': nombre,
-        'canal_cont': canal,
+        'canal': canal,
         'cont': contacto,
         'dir': direccion,
-
       };
     }
+    //Editar
+    if (caso == 2) {
+      return {
+        'nom_prov': nombre,
+        'canal': canal,
+        'cont': contacto,
+        'dir': direccion,
+        'id_prov': idProveedor
+      };
+    }
+
     return {
-      'id_proveedor': idProveedor,
+      'id_prov': idProveedor,
       'nombre': nombre,
       'canal': canal,
       'contacto': contacto,

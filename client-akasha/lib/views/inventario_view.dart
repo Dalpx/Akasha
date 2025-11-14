@@ -238,7 +238,7 @@ class _InventarioViewState extends State<InventarioView> {
         child: const Icon(Icons.add),
       ),
       body: FutureBuilder<List<Producto>>(
-        // ✅ Usamos el Future almacenado en el estado
+        // Usamos el Future almacenado en el estado
         future: _futureProductos,
 
         // builder = cómo reaccionar a cada estado del Future

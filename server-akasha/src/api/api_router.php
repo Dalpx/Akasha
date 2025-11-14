@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 require_once 'database/DBConnection.php';
 require_once 'controllers/productoController.php';
-require_once 'controllers/loginController.php';
+require_once 'controllers/usuarioController.php';
 require_once 'controllers/proveedorController.php';
 require_once 'middlewares/akashaOrchestrator.php';
 
@@ -68,8 +68,36 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
                 echo json_encode(["message" => "Proveedor eliminado con éxito"]);
             }
             break;
+        case 'GET_usuario':
+            $result = usuarioOrchestrator::getUsuario($id, $parts);
+            if($result){
+                http_response_code(200);
+                echo json_encode($result);
+            }
+            break;
+        case 'POST_usuario':
+            $result = usuarioOrchestrator::createUsuario();
+            if($result){
+                http_response_code(201);
+                echo json_encode(["message" => "Usuario añadido con éxito"]);
+            }
+            break;
+        case 'PUT_usuario':
+            $result = usuarioOrchestrator::updateUsuario();
+            if($result){
+                http_response_code(200);
+                echo json_encode(["message" => "Usuario editado con éxito"]);
+            }
+            break;
+        case 'DELETE_usuario':
+            $result = usuarioOrchestrator::deleteUsuario();
+            if ($result){
+                http_response_code(200);
+                echo json_encode(["message" => "Usuario eliminado con éxito"]);
+            }
+            break;
         case 'POST_login':
-            $result = loginOrchestrator::loginHandler();
+            $result = usuarioOrchestrator::loginHandler();
             if ($result) {
                 http_response_code(200);
                 echo json_encode(["message" => "Login exitoso", "permisos" => $result]);
@@ -80,6 +108,8 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
             break;
     }
 } catch (Exception $e) { //Manejo de excepciones que retorna un JSON con detalles
+    
+    if(is_numeric($e->getCode())){
     $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
 
     http_response_code($status);
@@ -87,7 +117,9 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
         'error' => true,
         'codigo' => $status,
         'mensaje' => $e->getMessage()
-    ]);
+    ]);}else{
+        echo $e;
+    }
 } catch (PDOException $e) { //Error genérico para excepciones de PDO
     http_response_code(500);
     echo json_encode([

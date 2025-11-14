@@ -21,7 +21,7 @@ class _SideMenuShellState extends State<SideMenuShell> {
     // KeyedSubtree(key: PageStorageKey('inicio'), child: InicioView()),
     KeyedSubtree(key: PageStorageKey('inventario'), child: InventarioView()),
     KeyedSubtree(key: PageStorageKey('proveedor'), child: ProveedorView()),
-    KeyedSubtree(key: PageStorageKey('transaccion'), child: TransaccionView()),
+    KeyedSubtree(key: PageStorageKey('usuario'), child: UsuarioView()),
     KeyedSubtree(key: PageStorageKey('reporte'), child: ReporteView()),
     KeyedSubtree(
       key: PageStorageKey('notificación'),
@@ -84,11 +84,11 @@ class _SideMenuShellState extends State<SideMenuShell> {
                       //   selectedIcon: Icon(Icons.warning),
                       //   label: Text("Noficación"),
                       // ),
-                      // NavigationRailDestination(
-                      //   icon: Icon(Icons.person_outlined),
-                      //   selectedIcon: Icon(Icons.person),
-                      //   label: Text("Usuario"),
-                      // ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.person_outlined),
+                        selectedIcon: Icon(Icons.person),
+                        label: Text("Usuario"),
+                      ),
                     ],
                   ),
                 //Contenido: IndexedStack conserva estado de cada vista
@@ -137,11 +137,11 @@ class _SideMenuShellState extends State<SideMenuShell> {
                     //   selectedIcon: Icon(Icons.warning),
                     //   label: "",
                     // ),
-                    // NavigationDestination(
-                    //   icon: Icon(Icons.person_outlined),
-                    //   selectedIcon: Icon(Icons.person),
-                    //   label: "",
-                    // ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outlined),
+                      selectedIcon: Icon(Icons.person),
+                      label: "",
+                    ),
                   ],
                 ),
         );
