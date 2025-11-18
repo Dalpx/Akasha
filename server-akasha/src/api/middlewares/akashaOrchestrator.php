@@ -99,7 +99,8 @@ class usuarioOrchestrator
         }
     }
 
-    public static function deleteUsuario(){
+    public static function deleteUsuario()
+    {
         try {
             $con = DBConnection::getInstance()->getPDO();
             $controller = new usuarioController($con);
@@ -171,6 +172,59 @@ class proveedorOrchestrator
             $con = DBConnection::getInstance()->getPDO();
             $controller = new proveedorController($con);
             $result =  $controller->deleteProveedor();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}
+
+class compraventaOrchestrator
+{
+
+    public static function getCompra(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new compraController($con);
+            $result = $controller->getCompra($id);
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function getVenta(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new ventaController($con);
+            $result = $controller->getVenta($id);
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function addCompra()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new compraController($con);
+            $result = $controller->addCompra();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function addVenta(){
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new ventaController($con);
+            $result = $controller->addVenta();
             return $result;
         } catch (Exception $e) {
             throw $e;

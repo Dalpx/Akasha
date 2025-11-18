@@ -50,12 +50,12 @@ class productoController
         $body = json_decode(file_get_contents('php://input'), true);
 
         //Del JSON extraemos los datos
-        $nom = $body['nom_prod'];
-        $sku = $body['sku_prod'];
-        $desc = $body['desc_prod'];
-        $pre_c = floatval($body['pre_cost']);
-        $pre_v = floatval($body['pre_vent']);
-        $id_p = $body['id_prov'];
+        $nom = $body['nombre'];
+        $sku = $body['sku'];
+        $desc = $body['descripcion'];
+        $pre_c = floatval($body['precio_costo']);
+        $pre_v = floatval($body['precio_venta']);
+        $id_p = $body['id_proveedor'];
 
         try {
             //Lógica de transacción que nos permite interactuar con la DB
@@ -63,12 +63,12 @@ class productoController
             VALUES (:nomprod, :sku, :descr, :precost, :pre_vent, :id_prov)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':nomprod' => $nom,
-                ':sku' => $sku,
-                ':descr' => $desc,
-                ':precost' => $pre_c,
-                ':pre_vent' => $pre_v,
-                ':id_prov' => $id_p
+                ':nomprod' => $body['nombre'],
+                ':sku' => $body['sku'],
+                ':descr' => $body['descripcion'],
+                ':precost' => floatval($body['precio_costo']),
+                ':pre_vent' => floatval($body['precio_venta']),
+                ':id_prov' => $body['id_proveedor']
             ]);
             //Mensajes de respuesta
             if ($result) {
@@ -86,12 +86,6 @@ class productoController
 
         //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
-        $nom = $body['nom_prod'];
-        $sku = $body['sku_prod'];
-        $desc = $body['desc_prod'];
-        $pre_c = floatval($body['pre_cost']);
-        $pre_v = floatval($body['pre_vent']);
-        $id_p = $body['id_prod'];
 
         try {
             //Lógica de transacción, buscamos el producto con el ID que sea idéntico
@@ -99,12 +93,12 @@ class productoController
         precio_venta=:pre_v WHERE id_producto = :id_p";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':nomprod' => $nom,
-                ':sku' => $sku,
-                ':descr' => $desc,
-                ':pre_c' => $pre_c,
-                'pre_v' => $pre_v,
-                ':id_p' => $id_p
+                ':nomprod' => $body['nombre'],
+                ':sku' => $body['sku'],
+                ':descr' => $body['descripcion'],
+                ':pre_c' => floatval($body['precio_costo']),
+                'pre_v' => floatval($body['precio_venta']),
+                ':id_p' => $body['id_producto']
             ]);
             //Mensajes de respuesta
             if ($result) {
@@ -121,7 +115,7 @@ class productoController
     {
         //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
-        $id = $body['id_prod'];
+        $id = $body['id_producto'];
 
         try {
             //Lógica para eliminación de producto, la cual es una eliminación lógica, no física.

@@ -50,20 +50,20 @@ class proveedorController
 
         $body = json_decode(file_get_contents('php://input'), true);
 
-        $nom = $body['nom_prov'];
-        $canal = $body['canal'];
-        $cont = $body['cont'];
-        $dir = $body['dir'];
+        $nom = $body['nombre'];
+        $canal = $body['telefono'];
+        $cont = $body['correo'];
+        $dir = $body['direccion'];
 
         try {
-            $query = "INSERT INTO proveedor (nombre, canal, contacto, direccion, activo) VALUES
+            $query = "INSERT INTO proveedor (nombre, telefono, correo, direccion, activo) VALUES
                     (:nom, :canal, :cont, :dir, 1)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':nom' => $nom,
-                ':canal' => $canal,
-                ':cont' => $cont,
-                ':dir' => $dir
+                ':nom' => $body['nombre'],
+                ':canal' => $body['telefono'],
+                ':cont' => $body['correo'],
+                ':dir' => $body['direccion']
             ]);
 
             if ($result) {
@@ -79,23 +79,16 @@ class proveedorController
     public function updateProveedor(){
 
         $body = json_decode(file_get_contents('php://input'), true);
-
-        $nom = $body['nom_prov'];
-        $canal = $body['canal'];
-        $cont = $body['cont'];
-        $dir = $body['dir'];
-        $id_p = $body['id_prov'];
-
         try {
             $query = "UPDATE proveedor SET nombre=:nom, canal=:canal, contacto=:cont,
             direccion=:dir WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':nom'=>$nom,
-                ':canal'=>$canal,
-                ':cont' => $cont,
-                ':dir'=>$dir,
-                ':id_prov' => $id_p
+                ':nom'=>$body['nombre'],
+                ':canal'=>$body['telefono'],
+                ':cont' => $body['correo'],
+                ':dir'=>$body['direccion'],
+                ':id_prov' => $body['id_proveedor']
             ]);
 
             if($result){

@@ -16,7 +16,7 @@ class usuarioController
         try {
             if ($id_user !== null) {
                 $query = "SELECT u.id_usuario, u.nombre_usuario, u.nombre_completo, u.email, tu.nombre_tipo_usuario as permiso FROM usuario as u 
-                INNER JOIN tipo_usuario as tu on u.id_usuario=tu.id_tipo_usuario WHERE id_usuario  = :id";
+                INNER JOIN tipo_usuario as tu on u.id_usuario=tu.id_tipo_usuario WHERE id_usuario = :id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id_user]);
                 $result = $stmt->fetch(pdo::FETCH_ASSOC);
@@ -46,13 +46,13 @@ class usuarioController
 
     public function createUsuario()
     {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $body = json_decode(file_get_contents('php://body'), true);
 
-        $user = $input['user'];
-        $pass = $input['pass'];
-        $nom_c = $input['nom_c'];
-        $email = $input['email'];
-        $tu = (int)$input['tu'];
+        $user = $body['usuario'];
+        $pass = $body['clave_hash'];
+        $nom_c = $body['nombre_completo'];
+        $email = $body['email'];
+        $tu = (int)$body['id_tipo_usuario'];
 
         try {
             $query = "INSERT INTO usuario (nombre_usuario, clave_hash, nombre_completo, email, id_tipo_usuario, activo) 
@@ -78,24 +78,20 @@ class usuarioController
 
     public function updateUsuario()
     {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $body = json_decode(file_get_contents('php://body'), true);
 
-        $id_user = $input['id_user'];
-        $user = $input['user'];
-        $pass = $input['pass'];
-        $nom_c = $input['nom_c'];
-        $email = $input['email'];
-        
 
         try {
-            $query = "UPDATE usuario SET nombre_usuario=:user, clave_hash=:pass, nombre_completo=:nom_c, email=:email WHERE id_usuario = :id_user";
+            $query = "UPDATE usuario SET nombre_usuario=:user, clave_hash=:pass, nombre_completo=:nom_c, email=:email, id_tipo_usuario=:id_tu 
+            WHERE id_usuario = :id_user";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':user' => $user,
-                ':pass' => $pass,
-                ':nom_c' => $nom_c,
-                ':email' => $email,
-                ':id_user' => $id_user
+                ':user' => $body['nombre_usuario'],
+                ':pass' => $body['clave_hash'],
+                ':nom_c' => $body['nombre_completo'],
+                ':email' => $body['email'],
+                ':id_user' => $body['id_usuario'],
+                ':id_tu' => $body['id_tipo_usuario']
             ]);
 
             if ($result) {
@@ -110,9 +106,9 @@ class usuarioController
 
     public function deleteUsuario()
     {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $body = json_decode(file_get_contents('php://body'), true);
 
-        $id_user = $input['id_user'];
+        $id_user = $body['id_user'];
 
         try {
             $query = "UPDATE usuario SET activo=0 WHERE id_usuario=:id_user";
@@ -136,12 +132,12 @@ class usuarioController
 
     public function loginHandler()
     {
-        $input = json_decode(file_get_contents('php://input'), true);
+        $body = json_decode(file_get_contents('php://body'), true);
         //Del JSON extraemos los datos
-        $user = $input['user'];
-        $pass = $input['pass'];
+        $user = $body['nombre_usuario'];
+        $pass = $body['clave_hash'];
         try {
-            //Esta es toda la lógica de la transacción SQL, usamos PDO para eliminar o mitigar la cantidad de user input
+            //Esta es toda la lógica de la transacción SQL, usamos PDO para eliminar o mitigar la cantidad de user body
             $query = "SELECT tu.nombre_tipo_usuario FROM tipo_usuario as tu INNER JOIN usuario as u on u.id_usuario = tu.id_tipo_usuario 
             WHERE nombre_usuario=:user AND cLave_hash=:pass";
             $stmt = $this->DB->prepare($query);
