@@ -12,8 +12,10 @@ class ventaController
 
     public function getVenta(?int $id)
     {
+        //Lógica para la obtención detallada de los datos de una compra y venta
         try {
             if ($id !== null) {
+                //Query mastodóntica para el caso en el que se nos envie una ID mediante get
                 $query = "SELECT v.id_venta, v.fecha_hora as 'fecha', v.nro_comprobante as 'numero_comprobante', c.nombre as 'nombre_cliente', v.subtotal, v.impuesto, v.total, 
                     tp.nombre as 'metodo_pago', u.nombre_completo 
                     as 'registrado_por', u.email, tu.nombre_tipo_usuario FROM venta as v 
@@ -24,13 +26,14 @@ class ventaController
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(pdo::FETCH_ASSOC);
-
+                
                 if ($result) {
                     return $result;
                 } else {
                     throw new Exception('Registro de venta no encontrado', 404);
                 }
             } else {
+                //Query mastodóntica para el caso en el que no nos se nos envíe un ID, por lo cual retornamos todo
                 $query = "SELECT v.id_venta, v.fecha_hora as 'fecha', v.nro_comprobante as 'numero_comprobante', c.nombre as 'nombre_cliente', v.subtotal, v.impuesto, v.total, 
                     tp.nombre as 'metodo_pago', u.nombre_completo 
                     as 'registrado_por', u.email, tu.nombre_tipo_usuario FROM venta as v 
@@ -55,7 +58,7 @@ class ventaController
     }
 
     public function addVenta(){
-
+        //Lógica transaccional para la adición de una venta
         $body = json_decode(file_get_contents('php://input'), true);
         try {
             // Debido a que este JSON es algo más complejo y tiene un arreglo de arreglos, debemos extraer los arreglos por partes
@@ -104,10 +107,20 @@ class ventaController
                     // El subtotal se calcula: costo_unitario * cantidad
                     ':sub' => ($detalle_venta['precio_unitario'] * $detalle_venta['cantidad'])
                 ]);
+
+                $query_stock = "UPDATE stock SET cantidad_actual= cantidad_actual - :cantidad WHERE id_producto = :id_p AND id_ubicacion = :id_u";
+                $stmt_stock = $this->DB->prepare($query_stock);
+                $stmt_stock->execute([
+                    ':cantidad' => $detalle_venta['cantidad'],
+                    ':id_p' => $detalle_venta['id_producto'],
+                    ':id_u' => $detalle_venta['id_ubicacion']
+                ]);
+                $rows_af = $stmt_stock->rowCount();
+
             }
 
             // Verifica si las consultas se ejecutaron correctamente
-            if ($stmt_compra && $stmt_detalles) {
+            if ($stmt_compra && $stmt_detalles && $rows_af > 0) {
                 $this->DB->commit();
                 return true;
             } else {

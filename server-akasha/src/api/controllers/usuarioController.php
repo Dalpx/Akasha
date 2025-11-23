@@ -138,7 +138,7 @@ class usuarioController
         $pass = $body['clave_hash'];
         try {
             //Esta es toda la lógica de la transacción SQL, usamos PDO para eliminar o mitigar la cantidad de user body
-            $query = "SELECT tu.nombre_tipo_usuario FROM tipo_usuario as tu INNER JOIN usuario as u on u.id_usuario = tu.id_tipo_usuario 
+            $query = "SELECT tu.nombre_tipo_usuario FROM tipo_usuario as tu INNER JOIN usuario as u ON u.id_usuario = tu.id_tipo_usuario 
             WHERE nombre_usuario=:user AND cLave_hash=:pass";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([':user' => $user, ':pass' => $pass]);

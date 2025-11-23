@@ -14,8 +14,11 @@ class productoController
         try {
             //Lógica de transacción, si tenemos ID, buscamos la entrada que coincida con dicha ID
             if ($id !== null) {
-                $query = "SELECT producto.id_producto, producto.nombre, producto.sku, producto.descripcion, producto.precio_costo, producto.precio_venta, producto.activo, proveedor.id_proveedor
-                AS id_prov FROM producto INNER JOIN proveedor on producto.id_proveedor=proveedor.id_proveedor WHERE producto.id_producto = :id";
+                $query = "SELECT p.id_producto, p.nombre, p.sku, p.descripcion, p.precio_costo, p.precio_venta, pr.nombre as nombre_proveedor, 
+                c.nombre_categoria as categoria, p.activo, s.cantidad_actual as stock FROM producto as p 
+                INNER JOIN proveedor as pr ON p.id_proveedor=pr.id_proveedor 
+                INNER JOIN categoria as c ON p.id_categoria=c.id_categoria 
+                LEFT JOIN stock as s ON p.id_producto=s.id_producto WHERE p.id_producto=:id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(\pdo::FETCH_ASSOC);
@@ -27,8 +30,11 @@ class productoController
                 }
             } else {
                 //De no ser el caso, obtenemos todos los datos de la tabla (como sería en el caso de obtención al iniciar sesión en el programa)    
-                $query = "SELECT producto.id_producto, producto.nombre, producto.sku, producto.descripcion, producto.precio_costo, producto.precio_venta, proveedor.id_proveedor 
-                AS id_prov, producto.activo FROM producto INNER JOIN proveedor on producto.id_proveedor=proveedor.id_proveedor";
+                $query = "SELECT p.id_producto, p.nombre, p.sku, p.descripcion, p.precio_costo, p.precio_venta, pr.nombre as nombre_proveedor, 
+                c.nombre_categoria as categoria, p.activo, s.cantidad_actual as stock FROM producto as p 
+                INNER JOIN proveedor as pr ON p.id_proveedor=pr.id_proveedor 
+                INNER JOIN categoria as c ON p.id_categoria=c.id_categoria 
+                LEFT JOIN stock as s ON p.id_producto=s.id_producto";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute();
                 $result = $stmt->fetchAll(\pdo::FETCH_ASSOC);
@@ -46,37 +52,42 @@ class productoController
 
     public function addProducto()
     {
-
+        //Del JSON extraemos los datos y hacemos un array asociativo
         $body = json_decode(file_get_contents('php://input'), true);
 
-        //Del JSON extraemos los datos
-        $nom = $body['nombre'];
-        $sku = $body['sku'];
-        $desc = $body['descripcion'];
-        $pre_c = floatval($body['precio_costo']);
-        $pre_v = floatval($body['precio_venta']);
-        $id_p = $body['id_proveedor'];
-
         try {
+
             //Lógica de transacción que nos permite interactuar con la DB
-            $query = "INSERT INTO producto (nombre, sku, descripcion, precio_costo, precio_venta, id_proveedor) 
-            VALUES (:nomprod, :sku, :descr, :precost, :pre_vent, :id_prov)";
-            $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([
+            $this->DB->beginTransaction();
+            $query = "INSERT INTO producto (nombre, sku, descripcion, precio_costo, precio_venta, id_proveedor, id_categoria) 
+            VALUES (:nomprod, :sku, :descr, :precost, :pre_vent, :id_prov, :id_cat)";
+            $stmt_producto = $this->DB->prepare($query);
+            $stmt_producto->execute([
                 ':nomprod' => $body['nombre'],
                 ':sku' => $body['sku'],
                 ':descr' => $body['descripcion'],
                 ':precost' => floatval($body['precio_costo']),
                 ':pre_vent' => floatval($body['precio_venta']),
-                ':id_prov' => $body['id_proveedor']
+                ':id_prov' => $body['id_proveedor'],
+                ':id_cat' => $body['id_categoria']
             ]);
+
+            $id_producto = $this->DB->lastInsertId();
+
+            $query2= "INSERT INTO stock (id_producto, id_ubicacion) VALUES (:id_p, :id_u)";
+            $stmt_stock = $this->DB->prepare($query2);
+            $stmt_producto = $stmt_stock->execute([':id_p' => $id_producto,':id_u' => $body['id_ubicacion']]);
+
+
             //Mensajes de respuesta
-            if ($result) {
-                return $result;
+            if ($stmt_producto && $stmt_stock) {
+                $this->DB->commit();
+                return true;
             } else {
                 throw new Exception('Ha ocurrido un error', 500);
             }
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }
@@ -90,7 +101,7 @@ class productoController
         try {
             //Lógica de transacción, buscamos el producto con el ID que sea idéntico
             $query = "UPDATE producto SET nombre=:nomprod, sku=:sku, descripcion=:descr, precio_costo=:pre_c, 
-        precio_venta=:pre_v WHERE id_producto = :id_p";
+        precio_venta=:pre_v, id_proveedor=:id_prov, id_categoria=:id_cat WHERE id_producto = :id_p";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nomprod' => $body['nombre'],
@@ -98,6 +109,8 @@ class productoController
                 ':descr' => $body['descripcion'],
                 ':pre_c' => floatval($body['precio_costo']),
                 'pre_v' => floatval($body['precio_venta']),
+                ':id_prov' => $body['id_proveedor'],
+                ':id_cat' => $body['id_categoria'],
                 ':id_p' => $body['id_producto']
             ]);
             //Mensajes de respuesta

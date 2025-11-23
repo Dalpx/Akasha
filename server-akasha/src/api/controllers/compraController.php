@@ -82,12 +82,11 @@ class compraController
 
             // Obtiene el ID de la compra insertada
             $id_compra = $this->DB->lastInsertId();
-
             // Itera sobre el arreglo de detalles de la compra
             foreach ($detalles as $detalle_compra) {
                 // Query para el detalle de la compra
                 $query_detalles = "INSERT INTO detalle_compra (id_compra, id_producto, cantidad, precio_unitario, subtotal) 
-            VALUES (:id_compra, :id_producto, :cant, :cost_unid, :sub)";
+                VALUES (:id_compra, :id_producto, :cant, :cost_unid, :sub)";
 
                 // Prepara la consulta para el detalle
                 $stmt_detalles = $this->DB->prepare($query_detalles);
@@ -101,10 +100,19 @@ class compraController
                     // El subtotal se calcula: costo_unitario * cantidad
                     ':sub' => ($detalle_compra['precio_unitario'] * $detalle_compra['cantidad'])
                 ]);
+
+                $query_stock = "UPDATE stock SET cantidad_actual= cantidad_actual + :cantidad WHERE id_producto = :id_p AND id_ubicacion = :id_u";
+                $stmt_stock = $this->DB->prepare($query_stock);
+                $stmt_stock->execute([
+                    ':cantidad' => $detalle_compra['cantidad'],
+                    ':id_p' => $detalle_compra['id_producto'],
+                    ':id_u' => $detalle_compra['id_ubicacion']
+                ]);
+                $rows_af = $stmt_stock->rowCount();
             }
 
             // Verifica si las consultas se ejecutaron correctamente
-            if ($stmt_compra && $stmt_detalles) {
+            if ($stmt_compra && $stmt_detalles && $rows_af > 0) {
                 $this->DB->commit();
                 return true;
             } else {
