@@ -10,8 +10,8 @@ class DBConnection {
     // Configuración de la base de datos
     private const DB_HOST = 'localhost';
     private const DB_NAME = 'akasha';
-    private const DB_USER = 'root';
-    private const DB_PASS = '';
+    private const DB_USER = 'root'; //Este usuario debe ser dalpx cuando se lance al servidor
+    private const DB_PASS = ''; //Esta contraseña debe ser dalpx2003 cuando se lance al servidor
     private const DB_CHARSET = 'utf8mb4';
 
     /*  El constructor es privado para evitar crear la clase directamente.

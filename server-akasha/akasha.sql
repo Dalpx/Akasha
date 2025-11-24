@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 18-11-2025 a las 05:54:56
+-- Tiempo de generación: 24-11-2025 a las 17:18:26
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -91,7 +91,7 @@ CREATE TABLE `compra` (
 
 INSERT INTO `compra` (`id_compra`, `fecha_hora`, `nro_comprobante`, `id_tipo_comprobante`, `id_proveedor`, `id_usuario`, `subtotal`, `impuesto`, `total`, `estado`) VALUES
 (1, '2025-11-10 09:30:00', 'FC-PROV-001A', 3, 1, 1, 16050.00, 3370.50, 19420.50, 1),
-(2, '2025-11-18 00:41:54', 'TEST-123455', 2, 2, 2, 500.00, 60.00, 560.00, 1);
+(9, '2025-11-22 22:25:23', 'AMONG-US', 2, 2, 2, 500.00, 60.00, 560.00, 1);
 
 -- --------------------------------------------------------
 
@@ -116,8 +116,8 @@ INSERT INTO `detalle_compra` (`id_detalle_compra`, `id_compra`, `id_producto`, `
 (1, 1, 1, 10, 800.00, 8000.00),
 (2, 1, 2, 100, 15.50, 1550.00),
 (3, 1, 4, 100, 65.00, 6500.00),
-(4, 2, 1, 10, 1299.99, 12999.90),
-(5, 2, 2, 3, 19.99, 59.97);
+(18, 9, 1, 10, 1299.99, 12999.90),
+(19, 9, 2, 3, 19.99, 59.97);
 
 -- --------------------------------------------------------
 
@@ -143,7 +143,9 @@ INSERT INTO `detalle_venta` (`id_detalle_venta`, `id_venta`, `id_producto`, `can
 (1, 1, 1, 1, 1299.99, 0.00, 1299.99),
 (2, 1, 2, 2, 29.99, 10.00, 53.98),
 (3, 7, 1, 10, 1299.99, 0.00, 12999.90),
-(4, 7, 2, 3, 19.99, 0.00, 59.97);
+(4, 7, 2, 3, 19.99, 0.00, 59.97),
+(5, 8, 1, 10, 1299.99, 0.00, 12999.90),
+(6, 8, 2, 3, 19.99, 0.00, 59.97);
 
 -- --------------------------------------------------------
 
@@ -196,7 +198,8 @@ INSERT INTO `producto` (`id_producto`, `nombre`, `sku`, `descripcion`, `precio_c
 (1, 'Bomba de agua', 'BA-001', 'Pequeña bomba de 3HP', 800, 1299.99, 1, 3, 1),
 (2, 'Vigas de acero inoxidable', 'VA-SS-0002', 'Vigas de acero 20x55cm', 15.5, 29.99, 1, 2, 1),
 (3, 'Martillo', 'MT-0001', 'Martillo martillante', 8, 19.99, 2, 1, 1),
-(4, 'Taladro Percutor 18V', 'TLD-18V-P', 'Taladro inalámbrico con batería de litio', 65, 119.5, 3, 1, 1);
+(4, 'Taladro Percutor 18V', 'TLD-18V-P', 'Taladro inalámbrico con batería de litio', 65, 119.5, 3, 1, 1),
+(6, 'Martillo Martillazo', 'AMONGUS', 'Martillo que martillea', 100, 150, 1, 1, 1);
 
 -- --------------------------------------------------------
 
@@ -242,7 +245,8 @@ INSERT INTO `stock` (`id_producto`, `id_ubicacion`, `cantidad_actual`) VALUES
 (1, 1, 20),
 (2, 1, 150),
 (3, 3, 300),
-(4, 2, 50);
+(4, 2, 50),
+(6, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -358,7 +362,8 @@ CREATE TABLE `venta` (
 
 INSERT INTO `venta` (`id_venta`, `fecha_hora`, `nro_comprobante`, `id_tipo_comprobante`, `id_cliente`, `id_usuario`, `subtotal`, `impuesto`, `total`, `estado`) VALUES
 (1, '2025-11-17 14:30:00', 'VTA-0001-00123', 1, 1, 2, 1353.97, 284.33, 1638.30, 1),
-(7, '2025-11-18 00:53:34', 'AMONG-US', 2, 2, 2, 500.00, 60.00, 560.00, 1);
+(7, '2025-11-18 00:53:34', 'AMONG-US', 2, 2, 2, 500.00, 60.00, 560.00, 1),
+(8, '2025-11-22 22:29:25', 'AMONG-US', 2, 2, 2, 500.00, 60.00, 560.00, 1);
 
 --
 -- Índices para tablas volcadas
@@ -486,19 +491,19 @@ ALTER TABLE `cliente`
 -- AUTO_INCREMENT de la tabla `compra`
 --
 ALTER TABLE `compra`
-  MODIFY `id_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_compra`
 --
 ALTER TABLE `detalle_compra`
-  MODIFY `id_detalle_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id_detalle_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_venta`
 --
 ALTER TABLE `detalle_venta`
-  MODIFY `id_detalle_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_detalle_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `movimiento_inventario`
@@ -510,7 +515,7 @@ ALTER TABLE `movimiento_inventario`
 -- AUTO_INCREMENT de la tabla `producto`
 --
 ALTER TABLE `producto`
-  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedor`
@@ -546,7 +551,7 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `venta`
 --
 ALTER TABLE `venta`
-  MODIFY `id_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Restricciones para tablas volcadas

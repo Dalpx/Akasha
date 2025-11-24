@@ -11,7 +11,7 @@ require_once 'middlewares/akashaOrchestrator.php';
 try { //Con este bloque try podemos capturar todas las excepciones de cada situación, en lugar de tener varios.
     //Convertimos la URL en un array y la concatenamos de forma que quede en la forma {Header}_{ruta}, para que el switch case pueda obtener la condición.
     $parts = explode('/', trim($uri, '/'));
-    $action = $httpMethod . '_' . $parts['3'];
+    $action = $httpMethod . '_' . $parts['3']; // En el servidor debe ser 0 en lugar de 3
     $id = (int)end($parts);
 
     switch ($action) {
