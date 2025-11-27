@@ -1,151 +1,103 @@
-// lib/services/usuario_service.dart
-
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:akasha/models/usuario.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/usuario.dart';
+
+/// Servicio simple en memoria para gestionar usuarios.
+/// Similar al InventarioService, pero trabajando con el modelo `Usuario`.
 class UsuarioService {
-  final String _baseUrl = 'http://localhost/akasha/server-akasha/src/usuario';
 
-  // Obtener todos los usuarios
-  Future<List<Usuario>> fetchApiData() async {
-    try {
-      final response = await http.get(Uri.parse(_baseUrl));
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
+  final List<Usuario> _usuariosEnMemoria = <Usuario>[];
 
-        if (body is List) {
-          return body
-              .map((e) => Usuario.fromJson(e as Map<String, dynamic>))
-              .toList();
-        } else if (body is Map<String, dynamic>) {
-          // Por si el backend devuelve un solo registro
-          return [Usuario.fromJson(body)];
-        } else {
-          log('Formato inesperado al obtener usuarios');
-          return [];
-        }
-      } else if (response.statusCode == 404) {
-        // El backend lanza 404 cuando no hay registros
-        log('No hay usuarios registrados');
-        return [];
-      } else {
-        log('Error al cargar usuarios: ${response.statusCode}');
-        return [];
-      }
-    } catch (e) {
-      log('Excepción en fetchApiData (usuarios): $e');
-      return [];
-    }
-  }
+    final String _baseUrl =
+      "http://localhost/akasha/server-akasha/src/usuario";
 
-  // Obtener usuario por ID
-  Future<Usuario?> obtenerUsuarioPorID(int id) async {
-    final url = Uri.parse('$_baseUrl/$id');
-
+  Future<List<Usuario>> obtenerUsuarios({bool soloActivos = true}) async {
+    final url = Uri.parse(_baseUrl);
     try {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
+        final List<dynamic> jsonUsuario = jsonDecode(response.body);
 
-        if (body is Map<String, dynamic>) {
-          return Usuario.fromJson(body);
-        } else {
-          log('Formato inesperado al obtener usuario por ID');
-          return null;
-        }
-      } else if (response.statusCode == 404) {
-        log('Usuario no encontrado (404)');
-        return null;
+        //Convertimos a lista de usuarios
+        final List<Usuario> usuarios = jsonUsuario
+            .map(
+              (usuario) => Usuario.fromJson(usuario as Map<String, dynamic>),
+            )
+            .toList();
+        
+        return usuarios;
       } else {
-        log('Error al obtener usuario por ID: ${response.statusCode}');
-        return null;
+        log("Fallo el codigo: ${response.statusCode}");
+        return [];
       }
     } catch (e) {
-      log('Excepción en obtenerUsuarioPorID: $e');
-      return null;
+      log("El error fue: ${e}");
+      return [];
     }
   }
 
-  // Crear usuario
-  Future<bool> createUsuario(Usuario usuario) async {
+  /// Crea un nuevo usuario y lo agrega a la lista.
+  Future<void> crearUsuario(Usuario usuario) async {
     final url = Uri.parse(_baseUrl);
 
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(usuario.toJson(0)),
+        body: jsonEncode(
+          usuario.toJson(),
+        ), // Usamos toJson() del modelo Producto
       );
 
       if (response.statusCode == 201) {
-        log('Usuario creado con éxito');
-        return true;
+        // 201 Created es la respuesta estándar para una creación exitosa
+        log("Usuario creado con éxito. ID: ${response.body}");
       } else {
         log(
-          'Fallo al crear usuario. Código: ${response.statusCode}. Respuesta: ${response.body}',
+          "Fallo al crear usuario. Código: ${response.statusCode}. Respuesta: ${response.body}",
         );
-        return false;
       }
     } catch (e) {
-      log('Excepción en createUsuario: $e');
-      return false;
+      log("Error al intentar crear usuario: $e");
     }
   }
 
-  // Actualizar usuario
-  Future<bool> updateUsuario(Usuario usuario) async {
-    final url = Uri.parse(_baseUrl);
+  /// Actualiza un usuario existente.
+  Future<void> actualizarUsuario(Usuario usuario) async {
+    await Future.delayed(const Duration(milliseconds: 200));
 
-    try {
-      final response = await http.put(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(usuario.toJson(1)),
-      );
-
-      if (response.statusCode == 200) {
-        log('Usuario actualizado con éxito');
-        return true;
-      } else {
-        log(
-          'Fallo al actualizar usuario. Código: ${response.statusCode}. Respuesta: ${response.body}',
-        );
-        return false;
+    for (int i = 0; i < _usuariosEnMemoria.length; i++) {
+      final Usuario actual = _usuariosEnMemoria[i];
+      if (actual.idUsuario == usuario.idUsuario) {
+        _usuariosEnMemoria[i] = usuario;
+        break;
       }
-    } catch (e) {
-      log('Excepción en updateUsuario: $e');
-      return false;
     }
   }
 
-  // Eliminar (baja lógica) usuario
-  Future<bool> deleteUsuario(Usuario usuario) async {
-    final url = Uri.parse(_baseUrl);
+  /// Eliminación lógica: marca al usuario como inactivo.
+  Future<void> eliminarUsuario(int idUsuario) async {
+    await Future.delayed(const Duration(milliseconds: 200));
 
-    try {
-      final response = await http.delete(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(usuario.toJson(2)),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        log('Usuario eliminado con éxito');
-        return true;
-      } else {
-        log(
-          'Fallo al eliminar usuario. Código: ${response.statusCode}. Respuesta: ${response.body}',
-        );
-        return false;
+    for (final Usuario usuario in _usuariosEnMemoria) {
+      if (usuario.idUsuario == idUsuario) {
+        usuario.activo = false;
       }
-    } catch (e) {
-      log('Excepción en deleteUsuario: $e');
-      return false;
     }
+  }
+
+  /// Búsqueda rápida por id.
+  Usuario? buscarPorId(int idUsuario) {
+    for (final Usuario usuario in _usuariosEnMemoria) {
+      if (usuario.idUsuario == idUsuario) {
+        return usuario;
+      }
+    }
+    return null;
   }
 }

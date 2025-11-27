@@ -1,40 +1,40 @@
-/// Representa un registro de la tabla `proveedor` de la base de datos.
-class Proveedor {
-  int? idProveedor;
+/// Representa un cliente de la empresa.
+class Cliente {
+  int? idCliente;
   String nombre;
   String telefono;
-  String? correo;
+  String? email;
   String? direccion;
   bool activo;
 
-  Proveedor({
-    this.idProveedor,
+  Cliente({
+    this.idCliente,
     required this.nombre,
     required this.telefono,
-    this.correo,
+    this.email,
     this.direccion,
     required this.activo,
   });
 
-  /// Crea una instancia de Proveedor a partir de un mapa JSON.
-  factory Proveedor.fromJson(Map<String, dynamic> json) {
-    return Proveedor(
-      idProveedor: json['id_proveedor'] as int?,
+  /// Crea una instancia de Cliente a partir de un mapa JSON.
+  factory Cliente.fromJson(Map<String, dynamic> json) {
+    return Cliente(
+      idCliente: json['id_cliente'] as int?,
       nombre: json['nombre'] as String,
       telefono: json['telefono'] as String,
-      correo: json['correo'] as String?,
+      email: json['email'] as String?,
       direccion: json['direccion'] as String?,
       activo: (json['activo'] as int) == 1,
     );
   }
 
-  /// Convierte el objeto Proveedor a un mapa JSON.
+  /// Convierte el objeto Cliente a un mapa JSON.
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      'id_proveedor': idProveedor,
+      'id_cliente': idCliente,
       'nombre': nombre,
       'telefono': telefono,
-      'correo': correo,
+      'email': email,
       'direccion': direccion,
       'activo': activo ? 1 : 0,
     };

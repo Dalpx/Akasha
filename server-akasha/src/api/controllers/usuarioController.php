@@ -46,7 +46,7 @@ class usuarioController
 
     public function createUsuario()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
+        $body = json_decode(file_get_contents('php://input'), true);
 
         $user = $body['usuario'];
         $pass = $body['clave_hash'];
@@ -78,7 +78,7 @@ class usuarioController
 
     public function updateUsuario()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
+        $body = json_decode(file_get_contents('php://input'), true);
 
 
         try {
@@ -106,7 +106,7 @@ class usuarioController
 
     public function deleteUsuario()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
+        $body = json_decode(file_get_contents('php://input'), true);
 
         $id_user = $body['id_user'];
 
@@ -132,7 +132,7 @@ class usuarioController
 
     public function loginHandler()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
+        $body = json_decode(file_get_contents('php://input'), true);
         //Del JSON extraemos los datos
         $user = $body['nombre_usuario'];
         $pass = $body['clave_hash'];

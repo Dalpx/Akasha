@@ -1,116 +1,119 @@
-// lib/services/proveedor_service.dart
-
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:akasha/models/proveedor.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/proveedor.dart';
+
+/// Servicio que maneja la obtención y gestión de proveedores.
+/// En esta versión, los datos se mantienen en memoria.
+/// En una app real, aquí irían las llamadas HTTP al backend.
 class ProveedorService {
-  // 🔧 Ajusta esta URL a la de tu backend
-  final String baseUrl = 'http://localhost/akasha/server-akasha/src/proveedor';
+  final List<Proveedor> _proveedores = <Proveedor>[];
 
-  // Trae la lista de proveedores desde la API
-  Future<List<Proveedor>> fetchApiData() async {
+  final String _baseUrl = "http://localhost/akasha/server-akasha/src/proveedor";
+
+  /// Devuelve la lista de proveedores activos.
+  Future<List<Proveedor>> obtenerProveedoresActivos() async {
+    final url = Uri.parse(_baseUrl);
     try {
-      final response = await http.get(Uri.parse(baseUrl));
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((e) => Proveedor.fromJson(e)).toList();
+        final List<dynamic> jsonProveedor = jsonDecode(response.body);
+
+        //Convertimos a lista de productos
+        final List<Proveedor> proovedor = jsonProveedor
+            .map(
+              (proveedor) =>
+                  Proveedor.fromJson(proveedor as Map<String, dynamic>),
+            )
+            .toList();
+
+        return proovedor;
       } else {
-        log('Error al cargar proveedores: ${response.statusCode}');
-        throw Exception('Error al cargar proveedores');
+        log("Fallo el codigo: ${response.statusCode}");
+        return [];
       }
     } catch (e) {
-      log('Excepción en fetchApiData Proveedor: $e');
-      rethrow;
+      log("El error fue: ${e}");
+      return [];
     }
   }
 
-  // Obtiene un proveedor por su ID (para editar)
-  Future<Proveedor?> obtenerProveedorPorID(int idProveedor) async {
-    try {
-      final response =
-          await http.get(Uri.parse('$baseUrl/$idProveedor'));
+  /// Crea un nuevo proveedor y lo agrega a la lista en memoria.
+  Future<void> crearProveedor(Proveedor proveedor) async {
+    final url = Uri.parse(_baseUrl);
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        return Proveedor.fromJson(data);
-      } else if (response.statusCode == 404) {
-        // No encontrado
-        return null;
-      } else {
-        log('Error al obtener proveedor por ID: ${response.statusCode}');
-        throw Exception('Error al obtener proveedor por ID');
-      }
-    } catch (e) {
-      log('Excepción en obtenerProveedorPorID: $e.');
-      rethrow;
-    }
-  }
-
-  // Crea un nuevo proveedor
-  Future<bool> createProveedor(Proveedor proveedor) async {
     try {
       final response = await http.post(
-        Uri.parse(baseUrl),
+        url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(proveedor.toJson(1)),
+        body: jsonEncode(
+          proveedor.toJson(),
+        ), // Usamos toJson() del modelo Producto
       );
 
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return true;
+      if (response.statusCode == 201) {
+        // 201 Created es la respuesta estándar para una creación exitosa
+        log("Producto creado con éxito. ID: ${response.body}");
       } else {
-        log('Error al crear proveedor: ${response.statusCode}');
-        return false;
+        log(
+          "Fallo al crear producto. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
     } catch (e) {
-      log('Excepción en createProveedor: $e');
-      return false;
+      log("Error al intentar crear producto: $e");
     }
   }
 
-  // Actualiza un proveedor existente
-  Future<bool> updateProveedor(Proveedor proveedor) async {
+  /// Actualiza los datos de un proveedor existente.
+  Future<void> actualizarProveedor(Proveedor proveedorActualizado) async {
+    final url = Uri.parse(
+      '$_baseUrl/${proveedorActualizado.idProveedor}',
+    ); // Asegúrate de que Producto tenga un 'id'
+
+
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/${proveedor.idProveedor}'),
+        // Se usa PUT para reemplazar completamente el recurso
+        url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(proveedor.toJson(2)),
+        body: jsonEncode(proveedorActualizado.toJson()),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return true;
+      if (response.statusCode == 200) {
+        log("Producto actualizado con éxito.");
       } else {
-        log('Error al actualizar proveedor: ${response.statusCode}');
-        return false;
+        log(
+          "Fallo al actualizar producto. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
     } catch (e) {
-      log('Excepción en updateProveedor: $e');
-      return false;
+      log("Error al intentar actualizar producto: $e");
     }
   }
 
-  // Elimina un proveedor (puede ser baja lógica según tu API)
-  Future<bool> deleteProveedor(Proveedor proveedor) async {
+  /// Elimina lógicamente un proveedor (lo marca como inactivo).
+  Future<void> eliminarProveedor(int idProveedor) async {
+    final url = Uri.parse("${_baseUrl}/${idProveedor}");
     try {
       final response = await http.delete(
-        Uri.parse(baseUrl),
+        url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(proveedor.toJson(3)),
+        body: jsonEncode(<String, dynamic>{'id_prov': idProveedor}),
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        return true;
+        // 204 No Content es común para un DELETE exitoso
+        log("Producto con ID ${idProveedor} eliminado con éxito.");
       } else {
-        log('Error al eliminar proveedor: ${response.statusCode}');
-        return false;
+        log(
+          "Fallo al eliminar producto. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
     } catch (e) {
-      log('Excepción en deleteProveedor: $e');
-      return false;
+      log("Error al intentar eliminar producto: $e");
     }
   }
 }
