@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../middlewares/akashaValidator.php';
 
 class productoController
 {
@@ -55,12 +56,16 @@ class productoController
         //Del JSON extraemos los datos y hacemos un array asociativo
         $body = json_decode(file_get_contents('php://input'), true);
 
-        try {
+        $validator = new akashaValidator($this->DB, $body);
+        if ($validator->productoAlreadyExists()){
+            throw new Exception('Un producto con este SKU ya existe.', 409);
+        }
 
+        try {
             //Lógica de transacción que nos permite interactuar con la DB
             $this->DB->beginTransaction();
             $query = "INSERT INTO producto (nombre, sku, descripcion, precio_costo, precio_venta, id_proveedor, id_categoria) 
-            VALUES (:nomprod, :sku, :descr, :precost, :pre_vent, :id_prov, :id_cat)";
+                VALUES (:nomprod, :sku, :descr, :precost, :pre_vent, :id_prov, :id_cat)";
             $stmt_producto = $this->DB->prepare($query);
             $stmt_producto->execute([
                 ':nomprod' => $body['nombre'],
@@ -72,15 +77,8 @@ class productoController
                 ':id_cat' => $body['id_categoria']
             ]);
 
-            $id_producto = $this->DB->lastInsertId();
-
-            $query2= "INSERT INTO stock (id_producto, id_ubicacion) VALUES (:id_p, :id_u)";
-            $stmt_stock = $this->DB->prepare($query2);
-            $stmt_producto = $stmt_stock->execute([':id_p' => $id_producto,':id_u' => $body['id_ubicacion']]);
-
-
             //Mensajes de respuesta
-            if ($stmt_producto && $stmt_stock) {
+            if ($stmt_producto) {
                 $this->DB->commit();
                 return true;
             } else {
@@ -91,6 +89,7 @@ class productoController
             throw $e;
         }
     }
+
 
     public function updateProducto()
     {

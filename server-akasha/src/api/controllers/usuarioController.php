@@ -20,7 +20,7 @@ class usuarioController
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id_user]);
                 $result = $stmt->fetch(pdo::FETCH_ASSOC);
-
+                
                 if ($result) {
                     return $result;
                 } else {
@@ -46,24 +46,18 @@ class usuarioController
 
     public function createUsuario()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
-
-        $user = $body['usuario'];
-        $pass = $body['clave_hash'];
-        $nom_c = $body['nombre_completo'];
-        $email = $body['email'];
-        $tu = (int)$body['id_tipo_usuario'];
+        $body = json_decode(file_get_contents('php://input'), true);
 
         try {
             $query = "INSERT INTO usuario (nombre_usuario, clave_hash, nombre_completo, email, id_tipo_usuario, activo) 
             VALUES (:user, :pass, :nom_c, :email, :id_tu, 1)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':user' => $user,
-                ':pass' => $pass,
-                ':nom_c' => $nom_c,
-                ':email' => $email,
-                ':id_tu' => $tu
+                ':user' => $body['usuario'],
+                ':pass' => $body['clave_hash'],
+                ':nom_c' => $body['nombre_completo'],
+                ':email' => $body['email'],
+                ':id_tu' => (int)$body['id_tipo_usuario']
             ]);
 
             if ($result) {
@@ -78,8 +72,7 @@ class usuarioController
 
     public function updateUsuario()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
-
+        $body = json_decode(file_get_contents('php://input'), true);
 
         try {
             $query = "UPDATE usuario SET nombre_usuario=:user, clave_hash=:pass, nombre_completo=:nom_c, email=:email, id_tipo_usuario=:id_tu 
@@ -106,7 +99,7 @@ class usuarioController
 
     public function deleteUsuario()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
+        $body = json_decode(file_get_contents('php://input'), true);
 
         $id_user = $body['id_user'];
 
@@ -132,7 +125,7 @@ class usuarioController
 
     public function loginHandler()
     {
-        $body = json_decode(file_get_contents('php://body'), true);
+        $body = json_decode(file_get_contents('php://input'), true);
         //Del JSON extraemos los datos
         $user = $body['nombre_usuario'];
         $pass = $body['clave_hash'];

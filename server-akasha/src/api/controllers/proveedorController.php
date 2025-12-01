@@ -1,7 +1,5 @@
 <?php
 
-use LDAP\Result;
-
 class proveedorController
 {
 
@@ -50,19 +48,14 @@ class proveedorController
 
         $body = json_decode(file_get_contents('php://input'), true);
 
-        $nom = $body['nombre'];
-        $canal = $body['telefono'];
-        $cont = $body['correo'];
-        $dir = $body['direccion'];
-
         try {
             $query = "INSERT INTO proveedor (nombre, telefono, correo, direccion, activo) VALUES
-                    (:nom, :canal, :cont, :dir, 1)";
+                    (:nom, :telefono, :corr, :dir, 1)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nom' => $body['nombre'],
-                ':canal' => $body['telefono'],
-                ':cont' => $body['correo'],
+                'telefono' => $body['telefono'],
+                ':corr' => $body['correo'],
                 ':dir' => $body['direccion']
             ]);
 
@@ -80,13 +73,13 @@ class proveedorController
 
         $body = json_decode(file_get_contents('php://input'), true);
         try {
-            $query = "UPDATE proveedor SET nombre=:nom, canal=:canal, contacto=:cont,
+            $query = "UPDATE proveedor SET nombre=:nom, telefono=:telefono, correo=:corr,
             direccion=:dir WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nom'=>$body['nombre'],
-                ':canal'=>$body['telefono'],
-                ':cont' => $body['correo'],
+                ':telefono'=>$body['telefono'],
+                ':corr' => $body['correo'],
                 ':dir'=>$body['direccion'],
                 ':id_prov' => $body['id_proveedor']
             ]);

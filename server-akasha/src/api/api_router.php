@@ -6,6 +6,7 @@ require_once 'controllers/usuarioController.php';
 require_once 'controllers/proveedorController.php';
 require_once 'controllers/ventaController.php';
 require_once 'controllers/compraController.php';
+require_once 'controllers/stockController.php';
 require_once 'middlewares/akashaOrchestrator.php';
 
 try { //Con este bloque try podemos capturar todas las excepciones de cada situación, en lugar de tener varios.
@@ -133,7 +134,20 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
                 echo json_encode(["message" => "Registro de compra añadido con éxito"]);
             }
             break;
-
+        case 'GET_stock':
+            $result = stockOrchestrator::getStockProducto($id, $parts);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode($result);
+            }
+            break;
+        case 'POST_stock':
+            $result = stockOrchestrator::addStock();
+            if ($result) {
+                http_response_code(201);
+                echo json_encode(["message" => "Stock añadido con éxito"]);
+            }
+            break;
         default: //Excepción default de no ser encontrada la ruta
             throw new Exception("Ruta no encontrada", 404);
             break;
@@ -157,6 +171,6 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
     echo json_encode([
         'error' => true,
         'codigo' => 500,
-        'mensaje' => 'Error interno en la base de datos'
+        'message' => 'Error interno en la base de datos'
     ]);
 }

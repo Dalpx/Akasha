@@ -179,6 +179,35 @@ class proveedorOrchestrator
     }
 }
 
+class stockOrchestrator
+{
+
+    public static function getStockProducto(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new stockController($con);
+            $result = $controller->getStockProducto($id);
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function addStock()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new stockController($con);
+            $result = $controller->addStock();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}
+
 class compraventaOrchestrator
 {
 
@@ -220,7 +249,8 @@ class compraventaOrchestrator
         }
     }
 
-    public static function addVenta(){
+    public static function addVenta()
+    {
         try {
             $con = DBConnection::getInstance()->getPDO();
             $controller = new ventaController($con);

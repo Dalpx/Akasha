@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 24-11-2025 a las 17:18:26
+-- Tiempo de generación: 30-11-2025 a las 23:27:53
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -420,6 +420,7 @@ ALTER TABLE `movimiento_inventario`
 --
 ALTER TABLE `producto`
   ADD PRIMARY KEY (`id_producto`),
+  ADD UNIQUE KEY `UQ_producto_sku` (`sku`),
   ADD KEY `id_proveedor` (`id_proveedor`),
   ADD KEY `id_categoria` (`id_categoria`);
 
@@ -515,7 +516,7 @@ ALTER TABLE `movimiento_inventario`
 -- AUTO_INCREMENT de la tabla `producto`
 --
 ALTER TABLE `producto`
-  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedor`
