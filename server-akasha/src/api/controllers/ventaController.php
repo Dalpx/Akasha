@@ -12,7 +12,7 @@ class ventaController
 
     public function getVenta(?int $id)
     {
-        //Lógica para la obtención detallada de los datos de una compra y venta
+        //Lógica para la obtención detallada de los datos de una venta
         try {
             if ($id !== null) {
                 //Query mastodóntica para el caso en el que se nos envie una ID mediante get
@@ -67,11 +67,9 @@ class ventaController
 
             $this->DB->beginTransaction();
 
-            // Query para la cabecera de la compra
+            // Query para la cabecera de la venta
             $query_compra = "INSERT INTO venta (nro_comprobante, id_tipo_comprobante, id_cliente, id_usuario, subtotal, impuesto, total, estado) 
         VALUES (:num_comp, :id_tc, :id_prov, :id_usuario, :sub, :imp, :total, :estado)";
-
-            // Prepara la consulta
             $stmt_compra = $this->DB->prepare($query_compra);
 
             // Ejecuta la consulta
@@ -89,9 +87,9 @@ class ventaController
             // Obtiene el ID de la compra insertada
             $id_venta = $this->DB->lastInsertId();
 
-            // Itera sobre el arreglo de detalles de la compra
+            // Itera sobre el arreglo de detalles de la venta
             foreach ($detalles as $detalle_venta) {
-                // Query para el detalle de la compra
+                // Query para el detalle de la venta
                 $query_detalles = "INSERT INTO detalle_venta (id_venta, id_producto, cantidad, precio_unitario, subtotal) 
             VALUES (:id_compra, :id_producto, :cant, :cost_unid, :sub)";
 
@@ -108,6 +106,7 @@ class ventaController
                     ':sub' => ($detalle_venta['precio_unitario'] * $detalle_venta['cantidad'])
                 ]);
 
+                //Maneja la disminución del stock para el producto que se vendió
                 $query_stock = "UPDATE stock SET cantidad_actual= cantidad_actual - :cantidad WHERE id_producto = :id_p AND id_ubicacion = :id_u";
                 $stmt_stock = $this->DB->prepare($query_stock);
                 $stmt_stock->execute([

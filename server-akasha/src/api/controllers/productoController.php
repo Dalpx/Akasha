@@ -56,9 +56,12 @@ class productoController
         //Del JSON extraemos los datos y hacemos un array asociativo
         $body = json_decode(file_get_contents('php://input'), true);
 
+        //Instanciamos akashaValidator y hacemos la validación de si el SKU ya existe, y si el SKU tiene la longitud requerida
         $validator = new akashaValidator($this->DB, $body);
         if ($validator->productoAlreadyExists()){
             throw new Exception('Un producto con este SKU ya existe.', 409);
+        }else if($validator->skuLength()){
+            throw new Exception('La longitud del SKU debe estar entre 8 y 12 caracteres', 400);
         }
 
         try {
@@ -96,6 +99,12 @@ class productoController
 
         //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
+
+        $validator = new akashaValidator($this->DB, $body);
+        //Valida que el SKU tenga la longitud deseada
+        if($validator->skuLength()){
+            throw new Exception('La longitud del SKU debe estar entre 8 y 12 caracteres', 400);
+        }
 
         try {
             //Lógica de transacción, buscamos el producto con el ID que sea idéntico

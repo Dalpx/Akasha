@@ -15,7 +15,7 @@ class stockController
 
         try {
 
-            if ($id !== null) {
+            if ($id !== null) { //Esta función nos permite retornar el stock en caso de que se especifique una ID o no
                 $query = "SELECT p.nombre, u.nombre_almacen, s.cantidad_actual as stock FROM stock as s 
                 LEFT JOIN producto as p ON s.id_producto = p.id_producto 
                 LEFT JOIN ubicacion as u ON u.id_ubicacion=s.id_ubicacion 
@@ -49,7 +49,7 @@ class stockController
     }
 
     public function addStock(){
-        
+        //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
 
         $validator = new akashaValidator($this->DB, $body);

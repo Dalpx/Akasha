@@ -15,7 +15,7 @@ class proveedorController
     {
 
         try {
-            if ($id_prov !== null) {
+            if ($id_prov !== null) {//Esta función nos permite retornar proveedor en caso de que se especifique una ID o no
                 $query = "SELECT * FROM proveedor WHERE id_proveedor  = :id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id_prov]);
@@ -45,7 +45,7 @@ class proveedorController
 
     public function addProveedor()
     {
-
+        //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
 
         try {
@@ -71,6 +71,7 @@ class proveedorController
 
     public function updateProveedor(){
 
+        //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
         try {
             $query = "UPDATE proveedor SET nombre=:nom, telefono=:telefono, correo=:corr,
@@ -95,6 +96,7 @@ class proveedorController
     }
 
     public function deleteProveedor(){
+        //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
 
         $id = $body ['id_prov'];

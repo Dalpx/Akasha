@@ -12,8 +12,10 @@ class compraController
 
     public function getCompra(?int $id)
     {
+        //Lógica para la obtención detallada de los datos de una venta
         try {
             if ($id !== null) {
+                 //Query mastodóntica para el caso en el que se nos envie una ID mediante get
                 $query = "SELECT c.id_compra, c.fecha_hora, c.nro_comprobante, c.subtotal, c.impuesto, c.total, tp.nombre, pr.nombre, u.nombre_completo AS 'hecho_por', 
                 u.email, tu.nombre_tipo_usuario FROM compra AS c 
                 INNER JOIN tipo_pago AS tp ON c.id_tipo_comprobante=tp.id_tipo_comprobante 
@@ -30,6 +32,7 @@ class compraController
                     throw new Exception('Registro de compra no encontrado', 404);
                 }
             } else {
+                //Query mastodóntica para el caso en el que no nos se nos envíe un ID, por lo cual retornamos todo
                 $query = "SELECT c.id_compra, c.fecha_hora, c.nro_comprobante, c.subtotal, c.impuesto, c.total, tp.nombre, pr.nombre, u.nombre_completo AS 
                 'hecho_por', u.email, tu.nombre_tipo_usuario FROM compra AS c 
                 INNER JOIN tipo_pago AS tp ON c.id_tipo_comprobante=tp.id_tipo_comprobante 
@@ -53,6 +56,7 @@ class compraController
 
     public function addCompra()
     {
+        //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
         try {
             // Debido a que este JSON es algo más complejo y tiene un arreglo de arreglos, debemos extraer los arreglos por partes
@@ -64,8 +68,6 @@ class compraController
             // Query para la cabecera de la compra
             $query_compra = "INSERT INTO compra (nro_comprobante, id_tipo_comprobante, id_proveedor, id_usuario, subtotal, impuesto, total, estado) 
         VALUES (:num_comp, :id_tc, :id_prov, :id_usuario, :sub, :imp, :total, :estado)";
-
-            // Prepara la consulta
             $stmt_compra = $this->DB->prepare($query_compra);
 
             // Ejecuta la consulta
@@ -101,6 +103,7 @@ class compraController
                     ':sub' => ($detalle_compra['precio_unitario'] * $detalle_compra['cantidad'])
                 ]);
 
+                //Maneja el aumento de stock tras la compra
                 $query_stock = "UPDATE stock SET cantidad_actual= cantidad_actual + :cantidad WHERE id_producto = :id_p AND id_ubicacion = :id_u";
                 $stmt_stock = $this->DB->prepare($query_stock);
                 $stmt_stock->execute([
