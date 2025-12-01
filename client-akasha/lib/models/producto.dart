@@ -1,76 +1,62 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
+/// Representa un registro de la tabla `producto` de la base de datos.
+/// En este ejemplo incluimos un campo `stock` para manejar las existencias
+/// directamente desde el modelo.
 class Producto {
-  int idProducto;
+  int? idProducto;
   String nombre;
   String sku;
   String descripcion;
   double precioCosto;
   double precioVenta;
-  int idProveedor;
-  int activo;
+  int? idUbicacion;
+  int? idProveedor;
+  int? idCategoria;
+  bool activo;
 
   Producto({
-    required this.idProducto,
+    this.idProducto,
     required this.nombre,
     required this.sku,
     required this.descripcion,
     required this.precioCosto,
     required this.precioVenta,
-    required this.idProveedor,
+    this.idUbicacion,
+    this.idProveedor,
+    this.idCategoria,
     required this.activo,
   });
 
-  //Metodos
-  // Factory constructor para crear un objeto Producto a partir de un Map (JSON)
+  /// Crea una instancia de Producto desde un mapa JSON.
+  /// En un sistema real, `stock` podría venir de otra tabla (stock),
+  /// pero aquí lo simplificamos como un campo más.
   factory Producto.fromJson(Map<String, dynamic> json) {
     return Producto(
-      idProducto: json['id_producto'],
-      nombre: json['nombre'],
+      idProducto: json['id_producto'] as int?,
+      nombre: json['nombre'] as String,
       sku: json['sku'] as String,
       descripcion: json['descripcion'] as String,
-      precioCosto: json['precio_costo'] as double,
-      precioVenta: json['precio_venta'] as double,
-      idProveedor: json['id_prov'],
-      activo: json['activo']
+      precioCosto: (json['precio_costo'] as num).toDouble(),
+      precioVenta: (json['precio_venta'] as num).toDouble(),
+      idUbicacion: json['id_ubicacion'] as int?,
+      idProveedor: json['id_proveedor'] as int?,
+      idCategoria: json['id_categoria'] as int?,
+      activo: (json['activo'] as int) == 1,
     );
   }
 
-  // **MÉTODO toJson()**
-  Map<String, dynamic> toJson(int caso) {
-    //AGREGAR
-    if (caso == 0) {
-      return {
-        'nom_prod': nombre,
-        'sku_prod': sku,
-        'desc_prod': descripcion,
-        // Asegúrate de que las claves coincidan exactamente con lo que espera tu API
-        'pre_cost': precioCosto,
-        'pre_vent': precioVenta,
-        'id_prov': idProveedor,
-      };
-    }
-    //EDITAR
-    if (caso == 1) {
-      return {
-        'nom_prod': nombre,
-        'sku_prod': sku,
-        'desc_prod': descripcion,
-        // Asegúrate de que las claves coincidan exactamente con lo que espera tu API
-        'pre_cost': precioCosto,
-        'pre_vent': precioVenta,
-        'id_prod': idProducto,
-      };
-    } else {
-      return {
-        'id_prod': idProducto,
-      };
-    }
-  }
-
-
-
-  @override
-  String toString() {
-    return 'Producto(idProducto: $idProducto, nombre: $nombre, sku: $sku, descripcion: $descripcion, precioCosto: $precioCosto, precioVenta: $precioVenta, idProveedor: $idProveedor, activo: $activo)';
+  /// Convierte el objeto Producto a mapa JSON.
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'id_producto': idProducto,
+      'nombre': nombre,
+      'sku': sku,
+      'descripcion': descripcion,
+      'precio_costo': precioCosto,
+      'precio_venta': precioVenta,
+      'id_ubicacion': idUbicacion,
+      'id_proveedor': idProveedor,
+      'id_categoria': idCategoria,
+      'activo': activo ? 1 : 0,
+    };
   }
 }

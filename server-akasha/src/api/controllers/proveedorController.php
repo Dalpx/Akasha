@@ -1,5 +1,8 @@
 <?php
+<<<<<<< HEAD
 
+=======
+>>>>>>> c87906d8e11f06011aa573cda8df0f5fb2e1e0b7
 class proveedorController
 {
 

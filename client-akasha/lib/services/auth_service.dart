@@ -1,18 +1,18 @@
-// Esta clase representa tu capa de Modelo (lógica de negocio).
-// En una app real, aquí harías la llamada HTTP a tu backend.
 
+
+import 'package:akasha/models/usuario.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io'; // Necesitado para las excepciones de tipo SocketException
 
-class LoginService {
+class AuthService {
   final String _baseUrl = 'http://localhost/akasha/server-akasha/src/login';
 
-  Future<bool> login(String username, String password) async {
+  Future<Usuario?> login(String username, String password) async {
     // 1. Poner las credenciales en un JSON
     final String jsonBody = jsonEncode({
-      'user': username,
-      'pass': password,
+      'nombre_usuario': username,
+      'clave_hash': password,
     });
 
     try {
@@ -27,41 +27,28 @@ class LoginService {
 
       // 3. Procesar la respuesta
       if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonAuth = jsonDecode(response.body);
+        
+        String? tipoUsuario = jsonAuth["permisos"]?["nombre_tipo_usuario"];
         // Login exitoso
-        return true;
+        return Usuario(nombreUsuario: username, claveHash: password, tipoUsuario: tipoUsuario);
       } else if (response.statusCode == 401) {
         // No autorizado, credenciales invalidas
         print('Credenciales inválidas.');
-        return false;
+        return null;
       } else {
         // Errores miscelaneos
         print('Server error: ${response.statusCode}');
-        return false;
+        return null;
       }
     } on SocketException {
       // Por si no hay internet
       print('Error de red, asegúrate de tener conexión');
-      return false;
+      return null;
     } catch (e) {
       // Manejo de error genérico
       print('An unexpected error occurred: $e');
-      return false;
+      return null;
     }
   }
 }
-
-//old code
-
-/* class LoginService {
-  Future<bool> login(String username, String password) async {
-    // 1. Simula un retraso de red
-    await Future.delayed(Duration(seconds: 2));
-
-    // 2. Lógica de autenticación de ejemplo
-    if (username == 'Lagos' && password == 'Crotolamo') {
-      return true; // Éxito
-    } else {
-      return false; // Falla
-    }
-  }
-} */
