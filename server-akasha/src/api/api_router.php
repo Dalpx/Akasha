@@ -7,10 +7,12 @@ require_once 'controllers/proveedorController.php';
 require_once 'controllers/ventaController.php';
 require_once 'controllers/compraController.php';
 require_once 'controllers/stockController.php';
+require_once 'controllers/clienteController.php'; // NUEVO
+require_once 'controllers/ubicacionController.php'; // NUEVO
+require_once 'controllers/categoriaController.php'; // NUEVO
 require_once 'middlewares/akashaOrchestrator.php';
 
-try { //Con este bloque try podemos capturar todas las excepciones de cada situación, en lugar de tener varios.
-    //Convertimos la URL en un array y la concatenamos de forma que quede en la forma {Header}_{ruta}, para que el switch case pueda obtener la condición.
+try {
     $parts = explode('/', trim($uri, '/'));
     $action = $httpMethod . '_' . $parts['3']; // En el servidor debe ser 0 en lugar de 3
     $id = (int)end($parts);
@@ -28,27 +30,26 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
             http_response_code(200);
             echo json_encode($result);
             break;
-        case 'POST_producto': //Para crear productos nuevos
+        case 'POST_producto':
             $result = productoOrchestrator::addProducto();
             if ($result) {
                 http_response_code(201);
                 echo json_encode(["message" => "Producto añadido con éxito"]);
             }
             break;
-        case 'PUT_producto': //Para editar productos existentes
+        case 'PUT_producto':
             $result = productoOrchestrator::editProducto();
             if ($result) {
                 http_response_code(200);
                 echo json_encode(["message" => "Producto editado con éxito"]);
             }
             break;
-        case 'DELETE_producto': //Para borrar productos existentes de forma lógica
+        case 'DELETE_producto':
             $result = productoOrchestrator::deleteProducto();
             if ($result) {
                 http_response_code(200);
                 echo json_encode(["message" => "Producto eliminado con éxito"]);
             }
-
             break;
         case 'GET_proveedor':
             $result = proveedorOrchestrator::getProveedor($id, $parts);
@@ -148,12 +149,98 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
                 echo json_encode(["message" => "Stock añadido con éxito"]);
             }
             break;
-        default: //Excepción default de no ser encontrada la ruta
-            throw new Exception("Ruta no encontrada", 404);
+        // NUEVAS RUTAS PARA CLIENTE
+        case 'GET_cliente':
+            $result = clienteOrchestrator::getCliente($id, $parts);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode($result);
+            }
             break;
-    }
-} catch (Exception $e) { //Manejo de excepciones que retorna un JSON con detalles
-
+        case 'POST_cliente':
+            $result = clienteOrchestrator::addCliente();
+            if ($result) {
+                http_response_code(201);
+                echo json_encode(["message" => "Cliente añadido con éxito"]);
+            }
+            break;
+        case 'PUT_cliente':
+            $result = clienteOrchestrator::updateCliente();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Cliente editado con éxito"]);
+            }
+            break;
+        case 'DELETE_cliente':
+            $result = clienteOrchestrator::deleteCliente();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Cliente eliminado con éxito"]);
+            }
+            break;
+        // NUEVAS RUTAS PARA UBICACIÓN
+        case 'GET_ubicacion':
+            $result = ubicacionOrchestrator::getUbicacion($id, $parts);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode($result);
+            }
+            break;
+        case 'POST_ubicacion':
+            $result = ubicacionOrchestrator::addUbicacion();
+            if ($result) {
+                http_response_code(201);
+                echo json_encode(["message" => "Ubicación añadida con éxito"]);
+            }
+            break;
+        case 'PUT_ubicacion':
+            $result = ubicacionOrchestrator::updateUbicacion();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Ubicación editada con éxito"]);
+            }
+            break;
+        case 'DELETE_ubicacion':
+            $result = ubicacionOrchestrator::deleteUbicacion();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Ubicación eliminada con éxito"]);
+            }
+            break;
+        // NUEVAS RUTAS PARA CATEGORÍA
+        case 'GET_categoria':
+            $result = categoriaOrchestrator::getCategoria($id, $parts);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode($result);
+            }
+            break;
+        case 'POST_categoria':
+            $result = categoriaOrchestrator::addCategoria();
+            if ($result) {
+                http_response_code(201);
+                echo json_encode(["message" => "Categoría añadida con éxito"]);
+            }
+            break;
+        case 'PUT_categoria':
+            $result = categoriaOrchestrator::updateCategoria();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Categoría editada con éxito"]);
+            }
+            break;
+        case 'DELETE_categoria':
+            $result = categoriaOrchestrator::deleteCategoria();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Categoría eliminada con éxito"]);
+            }
+            break;
+        default:
+            throw new Exception("Ruta no encontrada", 404);
+    
+        }
+} catch (Exception $e) {
     if (is_numeric($e->getCode())) {
         $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
 
@@ -166,7 +253,7 @@ try { //Con este bloque try podemos capturar todas las excepciones de cada situa
     } else {
         echo $e;
     }
-} catch (PDOException $e) { //Error genérico para excepciones de PDO
+} catch (PDOException $e) {
     http_response_code(500);
     echo json_encode([
         'error' => true,

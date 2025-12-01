@@ -261,3 +261,159 @@ class compraventaOrchestrator
         }
     }
 }
+
+class clienteOrchestrator
+{
+    public static function getCliente(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new clienteController($con);
+            $result = $controller->getCliente($id);
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function addCliente()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new clienteController($con);
+            $result = $controller->addCliente();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function updateCliente()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new clienteController($con);
+            $result = $controller->updateCliente();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function deleteCliente()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new clienteController($con);
+            $result = $controller->deleteCliente();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}
+
+class ubicacionOrchestrator
+{
+    public static function getUbicacion(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new ubicacionController($con);
+            $result = $controller->getUbicacion($id);
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function addUbicacion()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new ubicacionController($con);
+            $result = $controller->addUbicacion();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function updateUbicacion()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new ubicacionController($con);
+            $result = $controller->updateUbicacion();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function deleteUbicacion()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new ubicacionController($con);
+            $result = $controller->deleteUbicacion();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}
+
+class categoriaOrchestrator
+{
+    public static function getCategoria(?int $id, array $parts)
+    {
+        try {
+            $id = is_numeric(end($parts)) ? (int)end($parts) : null;
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new categoriaController($con);
+            $result = $controller->getCategoria($id);
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function addCategoria()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new categoriaController($con);
+            $result = $controller->addCategoria();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function updateCategoria()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new categoriaController($con);
+            $result = $controller->updateCategoria();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public static function deleteCategoria()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new categoriaController($con);
+            $result = $controller->deleteCategoria();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}
