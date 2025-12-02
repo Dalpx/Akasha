@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../middlewares/akashaValidator.php';
 class clienteController
 {
     protected $DB;
@@ -13,7 +14,9 @@ class clienteController
     {
         try {
             if ($id !== null) {
-                $query = "SELECT * FROM cliente WHERE id_cliente = :id AND activo = 1";
+                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo
+                FROM cliente as c LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento
+                WHERE id_cliente = :id";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -24,7 +27,8 @@ class clienteController
                     throw new Exception('Cliente no encontrado', 404);
                 }
             } else {
-                $query = "SELECT * FROM cliente WHERE activo = 1";
+                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo
+                FROM cliente as c LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute();
                 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -44,17 +48,26 @@ class clienteController
     {
         $body = json_decode(file_get_contents('php://input'), true);
 
-        // Validaciones básicas
-        if (empty($body['nombre']) || empty($body['tipo_documento']) || empty($body['nro_documento'])) {
-            throw new Exception('Nombre, tipo de documento y número de documento son obligatorios', 400);
+        $validator = new akashaValidator($this->DB, $body);
+        $error = $validator->clienteIsValid();
+
+        // Validaciones si los datos están presentes, si los datos como la cedula y pasaporte siguen un patron válido y si un usuario con
+        //un mismo documento ya existe
+        if ($validator->clienteAlreadyExists()) {
+            throw new Exception('Un cliente con este documento ya existe', 409);
+
+        } else if ($error !== false) {
+            throw new Exception($error, 400);
+
         }
 
         try {
-            $query = "INSERT INTO cliente (nombre, tipo_documento, nro_documento, telefono, email, direccion, activo) 
-                      VALUES (:nombre, :tipo_doc, :nro_doc, :telefono, :email, :direccion, 1)";
+            $query = "INSERT INTO cliente (nombre, apellido, tipo_documento, nro_documento, telefono, email, direccion, activo) 
+                      VALUES (:nombre, :apellido, :tipo_doc, :nro_doc, :telefono, :email, :direccion, 1)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nombre' => $body['nombre'],
+                ':apellido' =>$body['apellido'],
                 ':tipo_doc' => $body['tipo_documento'],
                 ':nro_doc' => $body['nro_documento'],
                 ':telefono' => $body['telefono'] ?? null,
@@ -75,24 +88,31 @@ class clienteController
     public function updateCliente()
     {
         $body = json_decode(file_get_contents('php://input'), true);
+        $validator = new akashaValidator($this->DB, $body);
+        $error = $validator->clienteIsValid();
 
-        if (empty($body['id_cliente'])) {
-            throw new Exception('ID de cliente es obligatorio', 400);
+         if ($validator->clienteAlreadyExists()) {
+            throw new Exception('Un cliente con este documento ya existe', 409);
+        } else if ($error !== false) {
+            throw new Exception($error, 400);
+
         }
 
         try {
             $query = "UPDATE cliente SET 
-                      nombre = :nombre, 
+                      nombre = :nombre,
+                      apellido = :apellido, 
                       tipo_documento = :tipo_doc, 
                       nro_documento = :nro_doc, 
                       telefono = :telefono, 
                       email = :email, 
                       direccion = :direccion 
                       WHERE id_cliente = :id AND activo = 1";
-            
+
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nombre' => $body['nombre'],
+                ':apellido' =>$body['apellido'],
                 ':tipo_doc' => $body['tipo_documento'],
                 ':nro_doc' => $body['nro_documento'],
                 ':telefono' => $body['telefono'] ?? null,
@@ -126,7 +146,7 @@ class clienteController
             $query = "UPDATE cliente SET activo = 0 WHERE id_cliente = :id";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([':id' => $id]);
-            
+
             $rowsAffected = $stmt->rowCount();
 
             if ($rowsAffected > 0) {

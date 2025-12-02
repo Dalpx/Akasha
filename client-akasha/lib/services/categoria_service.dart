@@ -34,7 +34,7 @@ class CategoriaService {
         return [];
       }
     } catch (e) {
-      log("El error fue: ${e}");
+      log("El error fue en ObtenerCategorias: ${e}");
       return [];
     }
   }

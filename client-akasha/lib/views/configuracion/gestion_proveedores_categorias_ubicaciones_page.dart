@@ -1,3 +1,5 @@
+import 'package:akasha/models/ubicacion.dart';
+import 'package:akasha/services/ubicacion_service.dart';
 import 'package:flutter/material.dart';
 import '../../models/proveedor.dart';
 import '../../models/categoria.dart';
@@ -19,15 +21,18 @@ class _GestionProveedoresCategoriasPageState
     extends State<GestionProveedoresCategoriasPage> {
   final ProveedorService _proveedorService = ProveedorService();
   final CategoriaService _categoriaService = CategoriaService();
+  final UbicacionService _ubicacionService = UbicacionService();
 
   late Future<List<Proveedor>> _futureProveedores;
   late Future<List<Categoria>> _futureCategorias;
+  late Future<List<Ubicacion>> _futureUbicaciones;
 
   @override
   void initState() {
     super.initState();
     _futureProveedores = _proveedorService.obtenerProveedoresActivos();
     _futureCategorias = _categoriaService.obtenerCategorias();
+    _futureUbicaciones = _ubicacionService.obtenerUbicacionesActivas();
   }
 
   /// Recarga la lista de proveedores.
@@ -41,6 +46,13 @@ class _GestionProveedoresCategoriasPageState
   void _recargarCategorias() {
     setState(() {
       _futureCategorias = _categoriaService.obtenerCategorias();
+    });
+  }
+
+  /// Recarga la lista de categorías.
+  void _recargarUbicaciones() {
+    setState(() {
+      _futureUbicaciones = _ubicacionService.obtenerUbicacionesActivas();
     });
   }
 
@@ -364,10 +376,222 @@ class _GestionProveedoresCategoriasPageState
     );
   }
 
+  /// Muestra un diálogo para crear una nueva ubicación.
+  void _abrirDialogoNuevaUbicacion() {
+    TextEditingController nombreController = TextEditingController();
+    TextEditingController descripcionController = TextEditingController();
+
+    bool activa = true;
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder:
+              (
+                BuildContext context,
+                void Function(void Function()) setStateDialog,
+              ) {
+                return AlertDialog(
+                  title: const Text('Nueva ubicación'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      children: <Widget>[
+                        TextField(
+                          controller: nombreController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nombre',
+                          ),
+                        ),
+                        TextField(
+                          controller: descripcionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Descripción (opcional)',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        // Cierra el diálogo sin crear ubicación.
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (nombreController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'El nombre de la ubicación es obligatorio.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        Ubicacion nueva = Ubicacion(
+                          nombreAlmacen: nombreController.text.trim(),
+                          descripcion: descripcionController.text.trim().isEmpty
+                              ? null
+                              : descripcionController.text.trim(),
+                          activa: activa,
+                        );
+
+                        await _ubicacionService.crearUbicacion(nueva);
+
+                        if (!mounted) {
+                          return;
+                        }
+
+                        Navigator.of(context).pop();
+                        _recargarUbicaciones();
+                      },
+                      child: const Text('Guardar'),
+                    ),
+                  ],
+                );
+              },
+        );
+      },
+    );
+  }
+
+  /// Muestra un diálogo para editar una ubicación existente.
+  void _abrirDialogoEditarUbicacion(Ubicacion ubicacion) {
+    TextEditingController nombreController = TextEditingController(
+      text: ubicacion.nombreAlmacen,
+    );
+    TextEditingController descripcionController = TextEditingController(
+      text: ubicacion.descripcion ?? '',
+    );
+
+    bool activa = ubicacion.activa;
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder:
+              (
+                BuildContext context,
+                void Function(void Function()) setStateDialog,
+              ) {
+                return AlertDialog(
+                  title: const Text('Editar ubicación'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      children: <Widget>[
+                        TextField(
+                          controller: nombreController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nombre',
+                          ),
+                        ),
+                        TextField(
+                          controller: descripcionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Descripción (opcional)',
+                          ),
+                        ),
+                        
+                      ],
+                    ),
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        // Cierra el diálogo sin aplicar cambios.
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (nombreController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'El nombre de la ubicación es obligatorio.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        ubicacion.nombreAlmacen = nombreController.text.trim();
+                        ubicacion.descripcion =
+                            descripcionController.text.trim().isEmpty
+                            ? null
+                            : descripcionController.text.trim();
+                        ubicacion.activa = activa;
+
+                        await _ubicacionService.actualizarUbicacion(ubicacion);
+
+                        if (!mounted) {
+                          return;
+                        }
+
+                        Navigator.of(context).pop();
+                        _recargarUbicaciones();
+                      },
+                      child: const Text('Guardar cambios'),
+                    ),
+                  ],
+                );
+              },
+        );
+      },
+    );
+  }
+
+  /// Muestra un diálogo de confirmación antes de eliminar lógicamente una ubicación.
+  void _confirmarEliminarUbicacion(Ubicacion ubicacion) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar eliminación'),
+          content: Text(
+            '¿Seguro que deseas eliminar la ubicación "${ubicacion.nombreAlmacen}"?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (ubicacion.idUbicacion != null) {
+                  await _ubicacionService.eliminarUbicacion(
+                    ubicacion.idUbicacion!,
+                  );
+                }
+
+                if (!mounted) {
+                  return;
+                }
+
+                Navigator.of(context).pop();
+                _recargarUbicaciones();
+              },
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         // 🔙 AppBar con botón para regresar a la pantalla anterior (ProductosPage)
         appBar: AppBar(
@@ -388,6 +612,7 @@ class _GestionProveedoresCategoriasPageState
                 tabs: <Tab>[
                   Tab(text: 'Proveedores'),
                   Tab(text: 'Categorías'),
+                  Tab(text: "Ubicaciones"),
                 ],
               ),
               const SizedBox(height: 8.0),
@@ -396,6 +621,7 @@ class _GestionProveedoresCategoriasPageState
                   children: <Widget>[
                     _buildTabProveedores(),
                     _buildTabCategorias(),
+                    _buildTabUbicaciones(),
                   ],
                 ),
               ),
@@ -566,6 +792,96 @@ class _GestionProveedoresCategoriasPageState
                                 tooltip: 'Eliminar',
                                 onPressed: () {
                                   _confirmarEliminarCategoria(categoria);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Construye el contenido de la pestaña de categorías.
+  Widget _buildTabUbicaciones() {
+    return Column(
+      children: <Widget>[
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              _abrirDialogoNuevaUbicacion();
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Nueva Ubicacion'),
+          ),
+        ),
+        const SizedBox(height: 8.0),
+        Expanded(
+          child: FutureBuilder<List<Ubicacion>>(
+            future: _futureUbicaciones,
+            builder:
+                (
+                  BuildContext context,
+                  AsyncSnapshot<List<Ubicacion>> snapshot,
+                ) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error al cargar categorías: ${snapshot.error}',
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text('No hay categorías registradas.'),
+                    );
+                  }
+
+                  List<Ubicacion> ubicaciones = snapshot.data!
+                      .where((ubicacion) => ubicacion.activa)
+                      .toList();
+
+                  return ListView.builder(
+                    itemCount: ubicaciones.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      Ubicacion ubicacion = ubicaciones[index];
+
+                      return Card(
+                        child: ListTile(
+                          onTap: () {
+                            _abrirDialogoEditarUbicacion(ubicacion);
+                          },
+                          title: Text(ubicacion.nombreAlmacen),
+                          subtitle: Text(
+                            'Descripción: ${ubicacion.descripcion ?? '-'}\n'
+                            'Estado: ${ubicacion.activa ? 'Activa' : 'Inactiva'}',
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                tooltip: 'Editar',
+                                onPressed: () {
+                                  _abrirDialogoEditarUbicacion(ubicacion);
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                tooltip: 'Eliminar',
+                                onPressed: () {
+                                  _confirmarEliminarUbicacion(ubicacion);
                                 },
                               ),
                             ],

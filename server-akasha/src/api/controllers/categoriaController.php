@@ -76,7 +76,7 @@ class categoriaController
 
         try {
             $query = "UPDATE categoria SET nombre_categoria = :nombre_categoria WHERE id_categoria = :id";
-            
+
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nombre_categoria' => $body['nombre_categoria'],
@@ -99,26 +99,23 @@ class categoriaController
     {
         $body = json_decode(file_get_contents('php://input'), true);
         $id = $body['id_categoria'] ?? null;
+        $validator = new akashaValidator($this->DB, $body);
 
         if (!$id) {
             throw new Exception('ID de categoría es obligatorio', 400);
         }
+        
+        if ($validator->isAssigned(2)) {
+            throw new Exception('No se puede eliminar la categoría porque está siendo utilizada por productos', 400);
+        }
 
         try {
-            // Primero verificar si la categoría está siendo usada en productos
-            $checkQuery = "SELECT COUNT(*) FROM producto WHERE id_categoria = :id";
-            $checkStmt = $this->DB->prepare($checkQuery);
-            $checkStmt->execute([':id' => $id]);
-            $count = $checkStmt->fetchColumn();
 
-            if ($count > 0) {
-                throw new Exception('No se puede eliminar la categoría porque está siendo utilizada por productos', 400);
-            }
 
             $query = "UPDATE categoria SET activo = 0 WHERE id_categoria = :id";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([':id' => $id]);
-            
+
             $rowsAffected = $stmt->rowCount();
 
             if ($rowsAffected > 0) {

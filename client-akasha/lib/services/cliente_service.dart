@@ -35,7 +35,7 @@ class ClienteService {
         return [];
       }
     } catch (e) {
-      log("El error fue: ${e}");
+      log("El error fue al obtenerClientes: ${e}");
       return [];
     }
   }
@@ -55,16 +55,16 @@ class ClienteService {
 
       if (response.statusCode == 201) {
         // 201 Created es la respuesta estándar para una creación exitosa
-        log("Categoria creado con éxito. ID: ${response.body}");
+        log("Cliente creado con éxito. ID: ${response.body}");
         
       } else {
         log(
-          "Fallo al crear categoria. Código: ${response.statusCode}. Respuesta: ${response.body}",
+          "Fallo al crear cliente. Código: ${response.statusCode}. Respuesta: ${response.body}",
         );
         throw Exception();
       }
     } catch (e) {
-      log("Error al intentar crear categoria: $e");
+      log("Error al intentar crear cliente: $e");
     }
     return cliente;
   }

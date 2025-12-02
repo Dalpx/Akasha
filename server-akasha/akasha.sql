@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 30-11-2025 a las 23:27:53
+-- Tiempo de generación: 02-12-2025 a las 20:31:45
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -29,17 +29,18 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `categoria` (
   `id_categoria` int(11) NOT NULL,
-  `nombre_categoria` varchar(45) NOT NULL
+  `nombre_categoria` varchar(45) NOT NULL,
+  `activo` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `categoria`
 --
 
-INSERT INTO `categoria` (`id_categoria`, `nombre_categoria`) VALUES
-(1, 'Herramientas'),
-(2, 'Materiales'),
-(3, 'Bombas de agua');
+INSERT INTO `categoria` (`id_categoria`, `nombre_categoria`, `activo`) VALUES
+(1, 'Herramientas', 1),
+(2, 'Materiales', 1),
+(3, 'Bombas de agua', 1);
 
 -- --------------------------------------------------------
 
@@ -333,9 +334,9 @@ CREATE TABLE `usuario` (
 --
 
 INSERT INTO `usuario` (`id_usuario`, `nombre_usuario`, `clave_hash`, `nombre_completo`, `email`, `id_tipo_usuario`, `activo`) VALUES
-(1, 'admin', '123456789', 'Administrador del Sistema', 'admin@akasha.com', 1, 1),
-(2, 'vendedor', '12345678', 'Carlos Ruiz', 'c.ruiz@akasha.com', 2, 1),
-(3, 'deposito', '1234567', 'Laura Pausini', 'l.pausini@akasha.com', 2, 1);
+(1, 'admin', 'admin', 'Administrador del Sistema', 'admin@akasha.com', 1, 1),
+(2, 'vendedor', '12345678', 'Carlos Ruiz', 'c.ruiz@akasha.com', 2, 0),
+(3, 'deposito', '1234567', 'Laura Pausini', 'l.pausini@akasha.com', 2, 0);
 
 -- --------------------------------------------------------
 

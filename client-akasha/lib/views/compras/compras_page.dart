@@ -275,7 +275,7 @@ class _ComprasPageState extends State<ComprasPage> {
                         d.idUbicacion!,
                       );
                       String nombreUbicacion = ubicacion != null
-                          ? ubicacion.nombre
+                          ? ubicacion.nombreAlmacen
                           : 'Ubicación ${d.idUbicacion}';
                       textoUbicacion = '\nUbicación: $nombreUbicacion';
                     }
@@ -560,7 +560,7 @@ class _ComprasPageState extends State<ComprasPage> {
                             items: _ubicaciones.map((Ubicacion u) {
                               return DropdownMenuItem<Ubicacion>(
                                 value: u,
-                                child: Text(u.nombre),
+                                child: Text(u.nombreAlmacen),
                               );
                             }).toList(),
                             onChanged: (Ubicacion? nueva) {
@@ -646,7 +646,7 @@ class _ComprasPageState extends State<ComprasPage> {
                                           detalle.idUbicacion!,
                                         );
                                     String nombreUbicacion = ubicacion != null
-                                        ? ubicacion.nombre
+                                        ? ubicacion.nombreAlmacen
                                         : 'Ubicación ${detalle.idUbicacion}';
                                     textoUbicacion =
                                         '\nUbicación: $nombreUbicacion';

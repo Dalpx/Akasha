@@ -5,7 +5,7 @@ import '../../services/ubicacion_service.dart';
 /// Pantalla general de gestión de ubicaciones del almacén.
 /// Desde aquí se pueden crear, editar y eliminar ubicaciones.
 class GestionUbicacionesPage extends StatefulWidget {
-  const GestionUbicacionesPage({Key? key}) : super(key: key);
+  const GestionUbicacionesPage({super.key});
 
   @override
   State<GestionUbicacionesPage> createState() {
@@ -75,22 +75,7 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
                         labelText: 'Descripción (opcional)',
                       ),
                     ),
-                    const SizedBox(height: 8.0),
-                    Row(
-                      children: <Widget>[
-                        const Text('Activa'),
-                        Switch(
-                          value: activa,
-                          onChanged: (bool valor) {
-                            setStateDialog(
-                              () {
-                                activa = valor;
-                              },
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                   
                   ],
                 ),
               ),
@@ -116,7 +101,7 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
                     }
 
                     Ubicacion nueva = Ubicacion(
-                      nombre: nombreController.text.trim(),
+                      nombreAlmacen: nombreController.text.trim(),
                       descripcion: descripcionController.text.trim().isEmpty
                           ? null
                           : descripcionController.text.trim(),
@@ -145,7 +130,7 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
   /// Muestra un diálogo para editar una ubicación existente.
   void _abrirDialogoEditarUbicacion(Ubicacion ubicacion) {
     TextEditingController nombreController = TextEditingController(
-      text: ubicacion.nombre,
+      text: ubicacion.nombreAlmacen,
     );
     TextEditingController descripcionController = TextEditingController(
       text: ubicacion.descripcion ?? '',
@@ -178,22 +163,6 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
                         labelText: 'Descripción (opcional)',
                       ),
                     ),
-                    const SizedBox(height: 8.0),
-                    Row(
-                      children: <Widget>[
-                        const Text('Activa'),
-                        Switch(
-                          value: activa,
-                          onChanged: (bool valor) {
-                            setStateDialog(
-                              () {
-                                activa = valor;
-                              },
-                            );
-                          },
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -217,8 +186,7 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
                       );
                       return;
                     }
-
-                    ubicacion.nombre = nombreController.text.trim();
+                    ubicacion.nombreAlmacen = nombreController.text.trim();
                     ubicacion.descripcion =
                         descripcionController.text.trim().isEmpty
                             ? null
@@ -252,7 +220,7 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
         return AlertDialog(
           title: const Text('Confirmar eliminación'),
           content: Text(
-            '¿Seguro que deseas eliminar la ubicación "${ubicacion.nombre}"?',
+            '¿Seguro que deseas eliminar la ubicación "${ubicacion.nombreAlmacen}"?',
           ),
           actions: <Widget>[
             TextButton(
@@ -268,11 +236,9 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
                     ubicacion.idUbicacion!,
                   );
                 }
-
                 if (!mounted) {
                   return;
                 }
-
                 Navigator.of(context).pop();
                 _recargarUbicaciones();
               },
@@ -345,10 +311,9 @@ class _GestionUbicacionesPageState extends State<GestionUbicacionesPage> {
                             onTap: () {
                               _abrirDialogoEditarUbicacion(ubicacion);
                             },
-                            title: Text(ubicacion.nombre),
+                            title: Text(ubicacion.nombreAlmacen),
                             subtitle: Text(
-                              'Descripción: ${ubicacion.descripcion ?? '-'}\n'
-                              'Estado: ${ubicacion.activa ? 'Activa' : 'Inactiva'}',
+                              'Descripción: ${ubicacion.descripcion ?? '-'}'
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,

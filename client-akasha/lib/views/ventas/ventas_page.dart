@@ -250,7 +250,7 @@ class _VentasPageState extends State<VentasPage> {
                         d.idUbicacion!,
                       );
                       String nombreUbicacion = ubicacion != null
-                          ? ubicacion.nombre
+                          ? ubicacion.nombreAlmacen
                           : 'Ubicación ${d.idUbicacion}';
                       textoUbicacion = '\nUbicación: $nombreUbicacion';
                     }
@@ -340,6 +340,7 @@ class _VentasPageState extends State<VentasPage> {
   /// Diálogo para registrar un nuevo cliente (igual que antes).
   Future<void> _abrirDialogoNuevoCliente() async {
     TextEditingController nombreController = TextEditingController();
+    TextEditingController apellidoController = TextEditingController();
     TextEditingController telefonoController = TextEditingController();
     TextEditingController emailController = TextEditingController();
     TextEditingController direccionController = TextEditingController();
@@ -350,7 +351,6 @@ class _VentasPageState extends State<VentasPage> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        
         return AlertDialog(
           title: const Text('Nuevo cliente'),
           content: SingleChildScrollView(
@@ -359,6 +359,10 @@ class _VentasPageState extends State<VentasPage> {
                 TextField(
                   controller: nombreController,
                   decoration: const InputDecoration(labelText: 'Nombre'),
+                ),
+                TextField(
+                  controller: apellidoController,
+                  decoration: const InputDecoration(labelText: 'Apellido'),
                 ),
                 TextField(
                   controller: _cedulaController,
@@ -392,9 +396,10 @@ class _VentasPageState extends State<VentasPage> {
                   _mostrarMensaje('El nombre del cliente es obligatorio.');
                   return;
                 }
-
+                
                 Cliente nuevo = Cliente(
                   nombre: nombreController.text.trim(),
+                  apellido: apellidoController.text.trim(),
                   telefono: telefonoController.text.trim(),
                   email: emailController.text.trim().isEmpty
                       ? null
@@ -403,6 +408,8 @@ class _VentasPageState extends State<VentasPage> {
                       ? null
                       : direccionController.text.trim(),
                   activo: true,
+                  tipoDocumento: "1",
+                  nroDocumento: "V-${_cedulaController.text.trim()}",
                 );
 
                 clienteCreado = await _clienteService.crearCliente(nuevo);
@@ -541,7 +548,7 @@ class _VentasPageState extends State<VentasPage> {
                             items: _ubicaciones.map((Ubicacion u) {
                               return DropdownMenuItem<Ubicacion>(
                                 value: u,
-                                child: Text(u.nombre),
+                                child: Text(u.nombreAlmacen),
                               );
                             }).toList(),
                             onChanged: (Ubicacion? nueva) {
@@ -616,7 +623,7 @@ class _VentasPageState extends State<VentasPage> {
                                           detalle.idUbicacion!,
                                         );
                                     String nombreUbicacion = ubicacion != null
-                                        ? ubicacion.nombre
+                                        ? ubicacion.nombreAlmacen
                                         : 'Ubicación ${detalle.idUbicacion}';
                                     textoUbicacion =
                                         '\nUbicación: $nombreUbicacion';

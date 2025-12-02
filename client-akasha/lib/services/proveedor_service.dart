@@ -35,7 +35,7 @@ class ProveedorService {
         return [];
       }
     } catch (e) {
-      log("El error fue: ${e}");
+      log("El error fue al obtener Proveedores: ${e}");
       return [];
     }
   }

@@ -1,6 +1,6 @@
 import 'package:akasha/views/auth/login_page.dart';
 import 'package:akasha/views/compras/compras_page.dart';
-import 'package:akasha/views/configuracion/gestion_proveedores_categorias_page.dart';
+import 'package:akasha/views/configuracion/gestion_proveedores_categorias_ubicaciones_page.dart';
 import 'package:akasha/views/configuracion/gestion_ubicaciones_page.dart';
 import 'package:akasha/views/inventario/movimientos_inventario_page.dart';
 import 'package:akasha/views/inventario/productos_page.dart';

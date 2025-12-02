@@ -102,17 +102,12 @@ class proveedorController
         $body = json_decode(file_get_contents('php://input'), true);
 
         $id = $body['id_prov'];
+        $validator = new akashaValidator($this->DB, $body);
+        if ($validator->isAssigned(1)) {
+            throw new Exception('No se puede eliminar el proveedor porque está siendo utilizada por productos', 400);
+        }
 
         try {
-            // Primero verificar si la categoría está siendo usada en productos
-            $checkQuery = "SELECT COUNT(*) FROM producto WHERE id_proveedor = :id";
-            $checkStmt = $this->DB->prepare($checkQuery);
-            $checkStmt->execute([':id' => $id]);
-            $count = $checkStmt->fetchColumn();
-
-            if ($count > 0) {
-                throw new Exception('No se puede eliminar el proveedor porque está siendo utilizada por productos', 400);
-            }
             $query = "UPDATE proveedor SET activo=0 WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([':id_prov' => $id]);

@@ -235,7 +235,7 @@ class _MovimientosInventarioPageState extends State<MovimientosInventarioPage> {
                       items: _ubicaciones.map((Ubicacion u) {
                         return DropdownMenuItem<Ubicacion>(
                           value: u,
-                          child: Text(u.nombre),
+                          child: Text(u.nombreAlmacen),
                         );
                       }).toList(),
                       onChanged: (Ubicacion? nueva) {
@@ -345,7 +345,7 @@ class _MovimientosInventarioPageState extends State<MovimientosInventarioPage> {
                                     Ubicacion? ubicacion =
                                         _buscarUbicacionPorId(mov.idUbicacion!);
                                     if (ubicacion != null) {
-                                      nombreUbicacion = ubicacion.nombre;
+                                      nombreUbicacion = ubicacion.nombreAlmacen;
                                     } else {
                                       nombreUbicacion =
                                           'Ubicación ${mov.idUbicacion}';

@@ -36,7 +36,7 @@ class UsuarioService {
         return [];
       }
     } catch (e) {
-      log("El error fue: ${e}");
+      log("El error fue al ObtenerUsuarios: ${e}");
       return [];
     }
   }

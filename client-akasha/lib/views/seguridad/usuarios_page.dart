@@ -198,7 +198,7 @@ class _UsuariosPageState extends State<UsuariosPage> {
       text: usuario.tipoUsuario,
     );
 
-    bool activo = usuario.activo == null || usuario.activo == true;
+    bool activo =  usuario.activo == true;
 
     await showDialog<void>(
       context: context,
@@ -402,29 +402,17 @@ class _UsuariosPageState extends State<UsuariosPage> {
                         itemBuilder: (BuildContext context, int index) {
                           final Usuario usuario = usuarios[index];
 
-                          final bool estaActivo =
-                              usuario.activo == null || usuario.activo == true;
-
                           return Card(
                             child: ListTile(
                               title: Text(usuario.nombreUsuario),
                               subtitle: Text(
                                 'Nombre completo: ${usuario.nombreCompleto ?? '-'}\n'
                                 'Email: ${usuario.email ?? '-'}\n'
-                                'Tipo: ${usuario.tipoUsuario}\n'
-                                'Estado: ${_textoEstado(usuario)}',
+                                'Tipo: ${usuario.tipoUsuario}'
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  Icon(
-                                    estaActivo
-                                        ? Icons.check_circle
-                                        : Icons.cancel,
-                                    color: estaActivo
-                                        ? Colors.green
-                                        : Colors.redAccent,
-                                  ),
                                   IconButton(
                                     icon: const Icon(Icons.edit),
                                     tooltip: 'Editar',

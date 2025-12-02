@@ -37,7 +37,7 @@ class InventarioService {
         return [];
       }
     } catch (e) {
-      log("El error fue: ${e}");
+      log("El error fue en ObtenerProductos: ${e}");
       return [];
     }
   }

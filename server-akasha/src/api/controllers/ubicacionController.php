@@ -45,17 +45,16 @@ class ubicacionController
         $body = json_decode(file_get_contents('php://input'), true);
 
         // Validaciones básicas
-        if (empty($body['nombre_almacen']) || empty($body['nombre_estante'])) {
-            throw new Exception('Nombre de almacén y nombre de estante son obligatorios', 400);
+        if (empty($body['nombre_almacen'])) {
+            throw new Exception('Nombre de almacén es obligatorio', 400);
         }
 
         try {
-            $query = "INSERT INTO ubicacion (nombre_almacen, nombre_estante, descripcion) 
-                      VALUES (:nombre_almacen, :nombre_estante, :descripcion)";
+            $query = "INSERT INTO ubicacion (nombre_almacen, descripcion) 
+                      VALUES (:nombre_almacen, :descripcion)";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nombre_almacen' => $body['nombre_almacen'],
-                ':nombre_estante' => $body['nombre_estante'],
                 ':descripcion' => $body['descripcion'] ?? null
             ]);
 
@@ -79,15 +78,13 @@ class ubicacionController
 
         try {
             $query = "UPDATE ubicacion SET 
-                      nombre_almacen = :nombre_almacen, 
-                      nombre_estante = :nombre_estante, 
+                      nombre_almacen = :nombre_almacen,
                       descripcion = :descripcion 
                       WHERE id_ubicacion = :id";
-            
+
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
                 ':nombre_almacen' => $body['nombre_almacen'],
-                ':nombre_estante' => $body['nombre_estante'],
                 ':descripcion' => $body['descripcion'] ?? null,
                 ':id' => $body['id_ubicacion']
             ]);
@@ -108,26 +105,19 @@ class ubicacionController
     {
         $body = json_decode(file_get_contents('php://input'), true);
         $id = $body['id_ubicacion'] ?? null;
+        $validator = new akashaValidator($this->DB, $body);
 
         if (!$id) {
             throw new Exception('ID de ubicación es obligatorio', 400);
+        } else if ($validator->isAssigned(3)) {
+            throw new Exception('No se puede eliminar la ubicación porque está siendo utilizada en el inventario', 400);
         }
 
         try {
-            // Primero verificar si la ubicación está siendo usada en stock
-            $checkQuery = "SELECT COUNT(*) FROM stock WHERE id_ubicacion = :id";
-            $checkStmt = $this->DB->prepare($checkQuery);
-            $checkStmt->execute([':id' => $id]);
-            $count = $checkStmt->fetchColumn();
-
-            if ($count > 0) {
-                throw new Exception('No se puede eliminar la ubicación porque está siendo utilizada en el inventario', 400);
-            }
-
             $query = "UPDATE ubicacion SET activo = 0 WHERE id_ubicacion = :id";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([':id' => $id]);
-            
+
             $rowsAffected = $stmt->rowCount();
 
             if ($rowsAffected > 0) {

@@ -499,16 +499,6 @@ class _ProductosPageState extends State<ProductosPage> {
                   label: const Text('Configuración'),
                 ),
                 const SizedBox(width: 8.0),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pushNamed(AppRoutes.rutaGestionUbicaciones);
-                  },
-                  icon: const Icon(Icons.location_on),
-                  label: const Text('Gestionar ubicaciones'),
-                ),
-
                 const SizedBox(width: 8.0),
                 // Botón para crear un nuevo producto
                 ElevatedButton.icon(

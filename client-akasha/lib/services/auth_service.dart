@@ -31,13 +31,14 @@ class AuthService {
         
         String? tipoUsuario = jsonAuth["permisos"]?["nombre_tipo_usuario"];
 
-        bool activoUsuario = false;
+        bool? activoUsuario = false;
 
         if (jsonAuth['permisos']?['activo'] == 1) {
+          print(jsonAuth['permisos']?['activo']);
           activoUsuario = true;
         }
 
-        print(activoUsuario);
+        
         // Login exitoso
         return Usuario(nombreUsuario: username, claveHash: password, tipoUsuario: tipoUsuario, activo: activoUsuario);
       } else if (response.statusCode == 401) {

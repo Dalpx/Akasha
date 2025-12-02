@@ -183,79 +183,6 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
             ),
             const SizedBox(height: 16.0),
 
-            // Formulario para asignar stock a una ubicación
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: <Widget>[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Asignar / actualizar stock en ubicación',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: DropdownButtonFormField<Ubicacion>(
-                            value: _ubicacionSeleccionada,
-                            decoration: const InputDecoration(
-                              labelText: 'Ubicación',
-                            ),
-                            items: _ubicaciones.map(
-                              (Ubicacion u) {
-                                return DropdownMenuItem<Ubicacion>(
-                                  value: u,
-                                  child: Text(u.nombre),
-                                );
-                              },
-                            ).toList(),
-                            onChanged: (Ubicacion? nueva) {
-                              setState(() {
-                                _ubicacionSeleccionada = nueva;
-                                if (nueva != null) {
-                                  int actual =
-                                      _obtenerCantidadEnUbicacion(
-                                    nueva.idUbicacion!,
-                                  );
-                                  _cantidadController.text =
-                                      actual.toString();
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8.0),
-                        SizedBox(
-                          width: 100.0,
-                          child: TextField(
-                            controller: _cantidadController,
-                            decoration: const InputDecoration(
-                              labelText: 'Cantidad',
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        const SizedBox(width: 8.0),
-                        ElevatedButton(
-                          onPressed: () {
-                            _guardarStockEnUbicacion();
-                          },
-                          child: const Text('Guardar'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16.0),
-
             // Lista de ubicaciones con su stock
             Expanded(
               child: Card(
@@ -289,7 +216,7 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                                   );
 
                                   return ListTile(
-                                    title: Text(u.nombre),
+                                    title: Text(u.nombreAlmacen),
                                     subtitle: Text(
                                       'Stock en esta ubicación: $cantidad',
                                     ),
