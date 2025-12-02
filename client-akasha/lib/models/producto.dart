@@ -8,7 +8,7 @@ class Producto {
   String descripcion;
   double precioCosto;
   double precioVenta;
-  int? idUbicacion;
+
   int? idProveedor;
   int? idCategoria;
   bool activo;
@@ -20,7 +20,7 @@ class Producto {
     required this.descripcion,
     required this.precioCosto,
     required this.precioVenta,
-    this.idUbicacion,
+
     this.idProveedor,
     this.idCategoria,
     required this.activo,
@@ -37,7 +37,6 @@ class Producto {
       descripcion: json['descripcion'] as String,
       precioCosto: (json['precio_costo'] as num).toDouble(),
       precioVenta: (json['precio_venta'] as num).toDouble(),
-      idUbicacion: json['id_ubicacion'] as int?,
       idProveedor: json['id_proveedor'] as int?,
       idCategoria: json['id_categoria'] as int?,
       activo: (json['activo'] as int) == 1,
@@ -53,7 +52,6 @@ class Producto {
       'descripcion': descripcion,
       'precio_costo': precioCosto,
       'precio_venta': precioVenta,
-      'id_ubicacion': idUbicacion,
       'id_proveedor': idProveedor,
       'id_categoria': idCategoria,
       'activo': activo ? 1 : 0,

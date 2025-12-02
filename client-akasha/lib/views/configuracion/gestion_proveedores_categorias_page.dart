@@ -260,6 +260,7 @@ class _GestionProveedoresCategoriasPageState
               onPressed: () async {
                 Categoria nueva = Categoria(
                   nombreCategoria: nombreController.text.trim(),
+                  activo: true,
                 );
 
                 await _categoriaService.crearCategoria(nueva);
@@ -535,7 +536,9 @@ class _GestionProveedoresCategoriasPageState
                     );
                   }
 
-                  List<Categoria> categorias = snapshot.data!;
+                  List<Categoria> categorias = snapshot.data!
+                      .where((categoria) => categoria.activo)
+                      .toList();
 
                   return ListView.builder(
                     itemCount: categorias.length,

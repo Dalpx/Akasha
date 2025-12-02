@@ -36,7 +36,6 @@ class _ProductosPageState extends State<ProductosPage> {
   // Listas para los select boxes.
   List<Proveedor> _proveedores = <Proveedor>[];
   List<Categoria> _categorias = <Categoria>[];
-  List<Ubicacion> _ubicaciones = <Ubicacion>[];
 
   // Indica si todavía se están cargando proveedores y categorías.
   bool _cargandoCombos = true;
@@ -53,13 +52,10 @@ class _ProductosPageState extends State<ProductosPage> {
     List<Proveedor> proveedores = await _proveedorService
         .obtenerProveedoresActivos();
     List<Categoria> categorias = await _categoriaService.obtenerCategorias();
-    List<Ubicacion> ubicaciones = await _ubicacionService
-        .obtenerUbicacionesActivas();
 
     setState(() {
       _proveedores = proveedores;
       _categorias = categorias;
-      _ubicaciones = ubicaciones;
       _cargandoCombos = false;
     });
   }
@@ -89,7 +85,6 @@ class _ProductosPageState extends State<ProductosPage> {
     // Variables locales para el select box.
     Proveedor? proveedorSeleccionado;
     Categoria? categoriaSeleccionada;
-    Ubicacion? ubicacionSeleccionada;
 
     showDialog<void>(
       context: context,
@@ -174,24 +169,7 @@ class _ProductosPageState extends State<ProductosPage> {
                             });
                           },
                         ),
-                        // Select box para ubicacion
-                        DropdownButtonFormField<Ubicacion>(
-                          value: ubicacionSeleccionada,
-                          decoration: const InputDecoration(
-                            labelText: 'Ubicacion',
-                          ),
-                          items: _ubicaciones.map((Ubicacion ubicacion) {
-                            return DropdownMenuItem<Ubicacion>(
-                              value: ubicacion,
-                              child: Text(ubicacion.nombre),
-                            );
-                          }).toList(),
-                          onChanged: (Ubicacion? nuevo) {
-                            setStateDialog(() {
-                              ubicacionSeleccionada = nuevo;
-                            });
-                          },
-                        ),
+                      
                       ],
                     ),
                   ),
@@ -207,7 +185,6 @@ class _ProductosPageState extends State<ProductosPage> {
                       onPressed: () async {
                         int? idProveedorSeleccionado;
                         int? idCategoriaSeleccionada;
-                        int? idUbicacionSeleccionada;
 
                         if (proveedorSeleccionado != null) {
                           idProveedorSeleccionado =
@@ -218,10 +195,7 @@ class _ProductosPageState extends State<ProductosPage> {
                           idCategoriaSeleccionada =
                               categoriaSeleccionada!.idCategoria;
                         }
-                        if (ubicacionSeleccionada != null) {
-                          idUbicacionSeleccionada =
-                              ubicacionSeleccionada!.idUbicacion;
-                        }
+
 
                         // Construye el nuevo producto con los valores del formulario.
                         Producto nuevo = Producto(
@@ -232,7 +206,6 @@ class _ProductosPageState extends State<ProductosPage> {
                               double.tryParse(costoController.text) ?? 0.0,
                           precioVenta:
                               double.tryParse(ventaController.text) ?? 0.0,
-                          idUbicacion: idUbicacionSeleccionada,
                           idProveedor: idProveedorSeleccionado,
                           idCategoria: idCategoriaSeleccionada,
 

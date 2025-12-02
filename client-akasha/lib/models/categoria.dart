@@ -2,10 +2,12 @@
 class Categoria {
   int? idCategoria;
   String nombreCategoria;
+  bool activo;
 
   Categoria({
     this.idCategoria,
     required this.nombreCategoria,
+    required this.activo,
   });
 
   /// Crea una instancia de Categoria a partir de un mapa JSON.
@@ -13,6 +15,7 @@ class Categoria {
     return Categoria(
       idCategoria: json['id_categoria'] as int?,
       nombreCategoria: json['nombre_categoria'] as String,
+      activo: (json['activo'] as int) == 1
     );
   }
 
@@ -21,6 +24,7 @@ class Categoria {
     return <String, dynamic>{
       'id_categoria': idCategoria,
       'nombre_categoria': nombreCategoria,
+      'activo': activo ? 1 : 0
     };
   }
 }

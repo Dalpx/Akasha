@@ -6,7 +6,7 @@ class Usuario {
   String? nombreCompleto;
   String? email;
   String? tipoUsuario;
-  bool? activo;
+  bool activo;
 
   Usuario({
     this.idUsuario,
@@ -15,7 +15,7 @@ class Usuario {
     this.nombreCompleto,
     this.email,
     this.tipoUsuario,
-    this.activo,
+    required this.activo,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -25,6 +25,7 @@ class Usuario {
       nombreCompleto: json['nombre_completo'] as String?,
       email: json['email'] as String?,
       tipoUsuario: json['permiso'] as String?,
+      activo: (json['activo'] as int) == 1
     );
   }
 
@@ -36,7 +37,7 @@ class Usuario {
       'nombre_completo': nombreCompleto,
       'email': email,
       'id_tipo_usuario': tipoUsuario,
-      'activo': activo == null ? null : (activo! ? 1 : 0),
+      'activo': activo ? 1 : 0,
     };
   }
 }

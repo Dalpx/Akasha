@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:developer';
+
+import 'package:http/http.dart' as http;
+
 import '../models/cliente.dart';
 
 /// Servicio que maneja la lógica de negocio relacionada con los clientes.
@@ -5,43 +10,62 @@ import '../models/cliente.dart';
 class ClienteService {
   final List<Cliente> _clientes = <Cliente>[];
 
-  ClienteService() {
-    // Datos de ejemplo.
-    _clientes.add(
-      Cliente(
-        idCliente: 1,
-        nombre: 'Cliente Genérico',
-        telefono: '555-0000',
-        email: 'cliente@example.com',
-        direccion: 'Calle Principal 123',
-        activo: true,
-      ),
-    );
-  }
+  final String _clienteUrl =
+      "http://localhost/akasha/server-akasha/src/cliente";
 
   /// Obtiene todos los clientes activos.
   Future<List<Cliente>> obtenerClientesActivos() async {
-    await Future.delayed(const Duration(milliseconds: 200));
+     final url = Uri.parse(_clienteUrl);
+    try {
+      final response = await http.get(url);
 
-    List<Cliente> activos = <Cliente>[];
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonCliente = jsonDecode(response.body);
 
-    for (int i = 0; i < _clientes.length; i++) {
-      Cliente cliente = _clientes[i];
-      if (cliente.activo) {
-        activos.add(cliente);
+        //Convertimos a lista de cateogrias
+        final List<Cliente> clientes = jsonCliente
+            .map(
+              (cliente) => Cliente.fromJson(cliente as Map<String, dynamic>),
+            )
+            .toList();
+
+        return clientes;
+      } else {
+        log("Fallo el codigo: ${response.statusCode}");
+        return [];
       }
+    } catch (e) {
+      log("El error fue: ${e}");
+      return [];
     }
-
-    return activos;
   }
 
   /// Crea un nuevo cliente y lo agrega a la lista en memoria.
   Future<Cliente> crearCliente(Cliente cliente) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    final url = Uri.parse(_clienteUrl);
 
-    int nuevoId = _clientes.length + 1;
-    cliente.idCliente = nuevoId;
-    _clientes.add(cliente);
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(
+          cliente.toJson(),
+        ), // Usamos toJson() del modelo Cateogria
+      );
+
+      if (response.statusCode == 201) {
+        // 201 Created es la respuesta estándar para una creación exitosa
+        log("Categoria creado con éxito. ID: ${response.body}");
+        
+      } else {
+        log(
+          "Fallo al crear categoria. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
+        throw Exception();
+      }
+    } catch (e) {
+      log("Error al intentar crear categoria: $e");
+    }
     return cliente;
   }
 

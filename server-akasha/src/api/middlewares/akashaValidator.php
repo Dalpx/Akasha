@@ -25,12 +25,12 @@ class akashaValidator
         else return false;
     }
 
-    public function usuarioAlreadyExists()
+public function usuarioAlreadyExists()
     {
 
-        $query = "SELECT nombre_completo FROM usuario WHERE nombre_completo = :nom_c";
+        $query = "SELECT nombre_usuario FROM usuario WHERE nombre_usuario = :nom_u";
         $stmt = $this->DB->prepare($query);
-        $stmt->execute([':nom_c' => $this->data['nombre_completo']]);
+        $stmt->execute([':nom_u' => $this->data['usuario']]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) return true;

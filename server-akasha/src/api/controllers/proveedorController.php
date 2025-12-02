@@ -15,7 +15,7 @@ class proveedorController
     {
 
         try {
-            if ($id_prov !== null) {//Esta función nos permite retornar proveedor en caso de que se especifique una ID o no
+            if ($id_prov !== null) { //Esta función nos permite retornar proveedor en caso de que se especifique una ID o no
                 $query = "SELECT * FROM proveedor WHERE id_proveedor  = :id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id_prov]);
@@ -69,7 +69,8 @@ class proveedorController
         }
     }
 
-    public function updateProveedor(){
+    public function updateProveedor()
+    {
 
         //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
@@ -78,16 +79,16 @@ class proveedorController
             direccion=:dir WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':nom'=>$body['nombre'],
-                ':telefono'=>$body['telefono'],
+                ':nom' => $body['nombre'],
+                ':telefono' => $body['telefono'],
                 ':corr' => $body['correo'],
-                ':dir'=>$body['direccion'],
+                ':dir' => $body['direccion'],
                 ':id_prov' => $body['id_proveedor']
             ]);
 
-            if($result){
+            if ($result) {
                 return $result;
-            }else{
+            } else {
                 throw new Exception('Producto no encontrado', 404);
             }
         } catch (Exception $e) {
@@ -95,29 +96,38 @@ class proveedorController
         }
     }
 
-    public function deleteProveedor(){
+    public function deleteProveedor()
+    {
         //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
 
-        $id = $body ['id_prov'];
+        $id = $body['id_prov'];
 
         try {
-            $query ="UPDATE proveedor SET activo=false WHERE id_proveedor = :id_prov";
+            // Primero verificar si la categoría está siendo usada en productos
+            $checkQuery = "SELECT COUNT(*) FROM producto WHERE id_proveedor = :id";
+            $checkStmt = $this->DB->prepare($checkQuery);
+            $checkStmt->execute([':id' => $id]);
+            $count = $checkStmt->fetchColumn();
+
+            if ($count > 0) {
+                throw new Exception('No se puede eliminar el proveedor porque está siendo utilizada por productos', 400);
+            }
+            $query = "UPDATE proveedor SET activo=0 WHERE id_proveedor = :id_prov";
             $stmt = $this->DB->prepare($query);
-            $stmt->execute([':id_prov'=>$id]);
+            $stmt->execute([':id_prov' => $id]);
 
             $rows_af = $stmt->rowCount();
 
-            if($rows_af > 0){
+            if ($rows_af > 0) {
                 return true;
-            }else if ($rows_af == 0){
+            } else if ($rows_af == 0) {
                 throw new Exception('El proveedor ya ha sido eliminado o no fue posible encontrarlo', 404);
-            }else{
+            } else {
                 throw new Exception('Se ha producido un error', 500);
             }
         } catch (Exception $e) {
             throw $e;
         }
-
     }
 }

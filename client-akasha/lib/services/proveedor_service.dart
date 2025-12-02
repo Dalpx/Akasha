@@ -9,7 +9,6 @@ import '../models/proveedor.dart';
 /// En esta versión, los datos se mantienen en memoria.
 /// En una app real, aquí irían las llamadas HTTP al backend.
 class ProveedorService {
-  final List<Proveedor> _proveedores = <Proveedor>[];
 
   final String _baseUrl = "http://localhost/akasha/server-akasha/src/proveedor";
 

@@ -370,74 +370,82 @@ class _UsuariosPageState extends State<UsuariosPage> {
             Expanded(
               child: FutureBuilder<List<Usuario>>(
                 future: _futureUsuarios,
-                builder: (BuildContext context, AsyncSnapshot<List<Usuario>> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<List<Usuario>> snapshot,
+                    ) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error al cargar usuarios: ${snapshot.error}',
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text('No se encontraron usuarios.'),
-                    );
-                  }
-
-                  final List<Usuario> usuarios = snapshot.data!;
-
-                  return ListView.builder(
-                    itemCount: usuarios.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final Usuario usuario = usuarios[index];
-
-                      final bool estaActivo =
-                          usuario.activo == null || usuario.activo == true;
-
-                      return Card(
-                        child: ListTile(
-                          title: Text(usuario.nombreUsuario),
-                          subtitle: Text(
-                            'Nombre completo: ${usuario.nombreCompleto ?? '-'}\n'
-                            'Email: ${usuario.email ?? '-'}\n'
-                            'Tipo: ${usuario.tipoUsuario}\n'
-                            'Estado: ${_textoEstado(usuario)}',
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar usuarios: ${snapshot.error}',
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Icon(
-                                estaActivo ? Icons.check_circle : Icons.cancel,
-                                color: estaActivo
-                                    ? Colors.green
-                                    : Colors.redAccent,
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text('No se encontraron usuarios.'),
+                        );
+                      }
+
+                      final List<Usuario> usuarios = snapshot.data!
+                          .where((usuario) => usuario.activo)
+                          .toList();
+
+                      return ListView.builder(
+                        itemCount: usuarios.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final Usuario usuario = usuarios[index];
+
+                          final bool estaActivo =
+                              usuario.activo == null || usuario.activo == true;
+
+                          return Card(
+                            child: ListTile(
+                              title: Text(usuario.nombreUsuario),
+                              subtitle: Text(
+                                'Nombre completo: ${usuario.nombreCompleto ?? '-'}\n'
+                                'Email: ${usuario.email ?? '-'}\n'
+                                'Tipo: ${usuario.tipoUsuario}\n'
+                                'Estado: ${_textoEstado(usuario)}',
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Editar',
-                                onPressed: () {
-                                  _abrirDialogoEditarUsuario(usuario);
-                                },
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    estaActivo
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    color: estaActivo
+                                        ? Colors.green
+                                        : Colors.redAccent,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    tooltip: 'Editar',
+                                    onPressed: () {
+                                      _abrirDialogoEditarUsuario(usuario);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    tooltip: 'Desactivar',
+                                    onPressed: () {
+                                      _confirmarEliminarUsuario(usuario);
+                                    },
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: 'Desactivar',
-                                onPressed: () {
-                                  _confirmarEliminarUsuario(usuario);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
               ),
             ),
           ],

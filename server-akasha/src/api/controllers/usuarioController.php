@@ -17,8 +17,9 @@ class usuarioController
     {
         try {
             if ($id_user !== null) {   //Si se cumple esta condición nos permite retornar usuarios en caso de que se especifique una ID
-                $query = "SELECT u.id_usuario, u.nombre_usuario, u.nombre_completo, u.email, tu.nombre_tipo_usuario as permiso FROM usuario as u 
-                INNER JOIN tipo_usuario as tu on u.id_usuario=tu.id_tipo_usuario WHERE id_usuario = :id";
+                $query = "SELECT u.id_usuario, u.nombre_usuario, u.nombre_completo, u.email, u.activo, tu.nombre_tipo_usuario 
+                as permiso FROM usuario as u INNER JOIN tipo_usuario as tu on u.id_usuario=tu.id_tipo_usuario 
+                WHERE id_usuario = :id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id_user]);
                 $result = $stmt->fetch(pdo::FETCH_ASSOC);
@@ -29,8 +30,8 @@ class usuarioController
                     throw new Exception('Usuario no encontrado', 404);
                 }
             } else { //Si se cumple esta condición nos permite retornar usuarios en caso de que NO se especifique una ID
-                $query = "SELECT u.id_usuario, u.nombre_usuario, u.nombre_completo, u.email, tu.nombre_tipo_usuario as permiso FROM usuario as u 
-                INNER JOIN tipo_usuario as tu on u.id_tipo_usuario = tu.id_tipo_usuario";
+                $query = "SELECT u.id_usuario, u.nombre_usuario, u.nombre_completo, u.email, u.activo, tu.nombre_tipo_usuario 
+                as permiso FROM usuario as u INNER JOIN tipo_usuario as tu on u.id_usuario=tu.id_tipo_usuario";
                 $stmt =  $this->DB->prepare($query);
                 $result = $stmt->execute();
                 $result = $stmt->fetchAll(pdo::FETCH_ASSOC);
@@ -102,7 +103,7 @@ class usuarioController
             WHERE id_usuario = :id_user";
             $stmt = $this->DB->prepare($query);
             $result = $stmt->execute([
-                ':user' => $body['nombre_usuario'],
+                ':user' => $body['usuario'],
                 ':pass' => $body['clave_hash'],
                 ':nom_c' => $body['nombre_completo'],
                 ':email' => $body['email'],
@@ -129,14 +130,14 @@ class usuarioController
             $query = "UPDATE usuario SET activo=0 WHERE id_usuario=:id_user";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([
-                ':id_user' => $body['id_user']
+                ':id_user' => $body['id_usuario']
             ]);
             $rows_af = $stmt->rowCount();
 
             if ($rows_af > 0) {
                 return true;
             } else if ($rows_af == 0) {
-                throw new Exception('El proveedor ya ha sido eliminado o no fue posible encontrarlo', 404);
+                throw new Exception('El usuario ya ha sido eliminado o no fue posible encontrarlo', 404);
             } else {
                 throw new Exception('Se ha producido un error', 500);
             }
@@ -151,7 +152,7 @@ class usuarioController
         //Del JSON extraemos los datos
         try {
             //Esta es toda la lógica de la transacción SQL, usamos PDO para eliminar o mitigar la cantidad de user body
-            $query = "SELECT tu.nombre_tipo_usuario FROM tipo_usuario as tu INNER JOIN usuario as u ON u.id_usuario = tu.id_tipo_usuario 
+            $query = "SELECT u.activo, tu.nombre_tipo_usuario FROM tipo_usuario as tu INNER JOIN usuario as u ON u.id_usuario = tu.id_tipo_usuario 
             WHERE nombre_usuario=:user AND cLave_hash=:pass";
             $stmt = $this->DB->prepare($query);
             $stmt->execute([

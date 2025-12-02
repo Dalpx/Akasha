@@ -11,7 +11,7 @@ class AuthService {
   Future<Usuario?> login(String username, String password) async {
     // 1. Poner las credenciales en un JSON
     final String jsonBody = jsonEncode({
-      'nombre_usuario': username,
+      'user': username,
       'clave_hash': password,
     });
 
@@ -30,8 +30,16 @@ class AuthService {
         final Map<String, dynamic> jsonAuth = jsonDecode(response.body);
         
         String? tipoUsuario = jsonAuth["permisos"]?["nombre_tipo_usuario"];
+
+        bool activoUsuario = false;
+
+        if (jsonAuth['permisos']?['activo'] == 1) {
+          activoUsuario = true;
+        }
+
+        print(activoUsuario);
         // Login exitoso
-        return Usuario(nombreUsuario: username, claveHash: password, tipoUsuario: tipoUsuario);
+        return Usuario(nombreUsuario: username, claveHash: password, tipoUsuario: tipoUsuario, activo: activoUsuario);
       } else if (response.statusCode == 401) {
         // No autorizado, credenciales invalidas
         print('Credenciales inválidas.');
