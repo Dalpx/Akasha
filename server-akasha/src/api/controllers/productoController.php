@@ -58,7 +58,7 @@ class productoController
 
         //Instanciamos akashaValidator y hacemos la validación de si el SKU ya existe, y si el SKU tiene la longitud requerida
         $validator = new akashaValidator($this->DB, $body);
-        if ($validator->productoAlreadyExists()){
+        if ($validator->entityAlreadyExists('producto')){
             throw new Exception('Un producto con este SKU ya existe.', 409);
         }else if($validator->skuLength()){
             throw new Exception('La longitud del SKU debe estar entre 8 y 12 caracteres', 400);

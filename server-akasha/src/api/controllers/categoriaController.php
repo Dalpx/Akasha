@@ -103,10 +103,8 @@ class categoriaController
 
         if (!$id) {
             throw new Exception('ID de categoría es obligatorio', 400);
-        }
-        
-        if ($validator->isAssigned(2)) {
-            throw new Exception('No se puede eliminar la categoría porque está siendo utilizada por productos', 400);
+        } else if ($validator->isAssigned('categoria')) {
+            throw new Exception('No se puede eliminar la categoría porque está siendo utilizada por al menos un producto', 400);
         }
 
         try {

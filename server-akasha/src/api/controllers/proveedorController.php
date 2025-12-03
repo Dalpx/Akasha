@@ -47,6 +47,11 @@ class proveedorController
     {
         //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
+        $validator = new akashaValidator($this->DB, $body);
+
+        if($validator->entityAlreadyExists('proveedor')){
+            throw new Exception('Un proveedor con este nombre ya existe', 409);
+        }
 
         try {
             $query = "INSERT INTO proveedor (nombre, telefono, correo, direccion, activo) VALUES
@@ -103,8 +108,8 @@ class proveedorController
 
         $id = $body['id_prov'];
         $validator = new akashaValidator($this->DB, $body);
-        if ($validator->isAssigned(1)) {
-            throw new Exception('No se puede eliminar el proveedor porque está siendo utilizada por productos', 400);
+        if ($validator->isAssigned('proveedor')) {
+            throw new Exception('No se puede eliminar el proveedor porque está siendo utilizada al menos un producto', 400);
         }
 
         try {

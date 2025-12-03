@@ -53,7 +53,7 @@ class clienteController
 
         // Validaciones si los datos están presentes, si los datos como la cedula y pasaporte siguen un patron válido y si un usuario con
         //un mismo documento ya existe
-        if ($validator->clienteAlreadyExists()) {
+        if ($validator->entityAlreadyExists('cliente')) {
             throw new Exception('Un cliente con este documento ya existe', 409);
 
         } else if ($error !== false) {
@@ -91,7 +91,7 @@ class clienteController
         $validator = new akashaValidator($this->DB, $body);
         $error = $validator->clienteIsValid();
 
-         if ($validator->clienteAlreadyExists()) {
+         if ($validator->entityAlreadyExists('cliente')) {
             throw new Exception('Un cliente con este documento ya existe', 409);
         } else if ($error !== false) {
             throw new Exception($error, 400);

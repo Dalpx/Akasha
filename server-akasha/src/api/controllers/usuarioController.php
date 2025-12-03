@@ -55,7 +55,7 @@ class usuarioController
         //Instanciamos akashaValidator y hacemos las validaciones, de otra forma, se retorna un error 400 Bad Request
         $validator = new akashaValidator($this->DB, $body);
         $error = $validator->usuarioIsValid();
-        if ($validator->usuarioAlreadyExists()) {
+        if ($validator->entityAlreadyExists('usuario')) {
             throw new Exception('Este usuario ya se encuentra registrado', 409);
         } else if ($error !== false) {
             throw new Exception($error, 400);
@@ -92,7 +92,7 @@ class usuarioController
         //Instanciamos akashaValidator y hacemos las validaciones, de otra forma, se retorna un error 400 Bad Request
         $validator = new akashaValidator($this->DB, $body);
         $error = $validator->usuarioIsValid();
-        if ($validator->usuarioAlreadyExists()) {
+        if ($validator->entityAlreadyExists('usuario')) {
             throw new Exception('Este usuario ya se encuentra registrado', 409);
         } else if ($error !== false) {
             throw new Exception($error, 400);

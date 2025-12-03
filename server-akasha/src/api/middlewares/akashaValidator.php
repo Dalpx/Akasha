@@ -13,49 +13,58 @@ class akashaValidator
     }
 
     //Función que chquea si el producto ya existe mediante el SKU que tiene la restricción UNIQUE
-    public function productoAlreadyExists(): bool
-    {
-
-        $query = "SELECT sku FROM producto WHERE sku = :sku";
-        $stmt = $this->DB->prepare($query);
-        $stmt->execute([':sku' => $this->data['sku']]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($result) return true;
-        else return false;
-    }
-
-    public function usuarioAlreadyExists(): bool
-    {
-
-        $query = "SELECT nombre_usuario FROM usuario WHERE nombre_usuario = :nom_u";
-        $stmt = $this->DB->prepare($query);
-        $stmt->execute([':nom_u' => $this->data['usuario']]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($result) return true;
-        else return false;
-    }
-
-    public function clienteAlreadyExists()
-    {
-        $query = "SELECT nro_documento FROM cliente WHERE nro_documento = :nro_d";
-        $stmt = $this->DB->prepare($query);
-        $stmt->execute([':nro_d' => $this->data['nro_documento']]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($result) return true;
-        else return false;
-    }
-
-    public function isAssigned(int $tipo)
+    //También chequea si un usuario ya existe mediante el nombre de usuario y si un cliente existe mediante el número de documento
+    public function entityAlreadyExists(string $tipo): bool
     {
         switch ($tipo) {
-            case 1: // Validación de Proveedor
+            case 'producto':
+                $query = "SELECT sku FROM producto WHERE sku = :sku";
+                $stmt = $this->DB->prepare($query);
+                $stmt->execute([':sku' => $this->data['sku']]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($result) return true;
+                else return false;
+                break;
+            case 'usuario':
+                $query = "SELECT nombre_usuario FROM usuario WHERE nombre_usuario = :nom_u";
+                $stmt = $this->DB->prepare($query);
+                $stmt->execute([':nom_u' => $this->data['usuario']]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($result) return true;
+                else return false;
+                break;
+            case 'cliente':
+                $query = "SELECT nro_documento FROM cliente WHERE nro_documento = :nro_d";
+                $stmt = $this->DB->prepare($query);
+                $stmt->execute([':nro_d' => $this->data['nro_documento']]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($result) return true;
+                else return false;
+                break;
+            case 'proveedor':
+                $query = "SELECT nombre FROM proveedor WHERE nombre = :nom";
+                $stmt = $this->DB->prepare($query);
+                $stmt->execute([':nro_d' => $this->data['nombre']]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($result) return true;
+                else return false;
+                break;
+            default:
+                return false;
+                break;
+        }
+    }
+
+    public function isAssigned(string $tipo)
+    {
+        switch ($tipo) {
+            case 'proveedor': // Validación de Proveedor
                 $query = "SELECT COUNT(*) FROM producto WHERE id_proveedor = :id";
                 $stmt = $this->DB->prepare($query);
-
-                // Nota: Se asume que $this->data['id_prov'] es la clave correcta.
                 $stmt->execute([':id' => $this->data['id_prov']]);
                 $count = $stmt->fetchColumn();
 
@@ -64,7 +73,7 @@ class akashaValidator
                 }
                 break;
 
-            case 2: // Validación de Categoría
+            case 'categoria': // Validación de Categoría
                 $query = "SELECT COUNT(*) FROM producto WHERE id_categoria = :id";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id' => $this->data['id_categoria']]);
@@ -75,7 +84,7 @@ class akashaValidator
                 }
                 break;
 
-            case 3: // Validación de Ubicación
+            case 'ubicacion': // Validación de Ubicación
                 $query = "SELECT COUNT(*) FROM stock WHERE id_ubicacion = :id";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id' => $this->data['id_ubicacion']]);
@@ -87,12 +96,8 @@ class akashaValidator
                 break;
 
             default:
-                // Opcional: manejar un tipo no reconocido
-                // throw new Exception("Tipo de validación no reconocido: $tipo", 500);
                 return false;
         }
-
-        // Si la ejecución llega aquí sin retornar true (o lanzar excepción), retorna false.
         return false;
     }
 
@@ -126,8 +131,8 @@ class akashaValidator
     private function esNombreCompletoValido(string $nombre): bool
     {
         // Patrón Regex: requiere que el nombre tenga al menos un espacio 
-        // entre palabras y solo contenga letras, acentos y la ñ.
-        // El modificador 'u' es crucial para Unicode (acentos/ñ).
+        // entre palabras y solo contenga letras, acentos y la ñ
+        // El modificador u permite acentos/ñ
         $patron_nombre = "/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+(?:[\s][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+)+$/u";
 
         // Devuelve true si el nombre cumple el patrón
