@@ -109,7 +109,7 @@ class ubicacionController
 
         if (!$id) {
             throw new Exception('ID de ubicación es obligatorio', 400);
-        } else if ($validator->isAssigned(3)) {
+        } else if ($validator->isAssigned('ubicacion')) {
             throw new Exception('No se puede eliminar la ubicación porque está siendo utilizada en el inventario', 400);
         }
 
