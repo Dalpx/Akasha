@@ -111,14 +111,14 @@ try {
             $result = compraventaOrchestrator::getVenta($id, $parts);
             if ($result) {
                 http_response_code(200);
-                echo json_encode(["message" => "Datos recuperados con éxito", "data" => $result]);
+                echo json_encode($result);
             }
             break;
         case 'GET_compra':
             $result = compraventaOrchestrator::getCompra($id, $parts);
             if ($result) {
                 http_response_code(200);
-                echo json_encode(["message" => "Datos recuperados con éxito", "data" => $result]);
+                echo json_encode($result);
             }
             break;
         case 'POST_venta':

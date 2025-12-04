@@ -52,7 +52,7 @@ class _VentasPageState extends State<VentasPage> {
   void initState() {
     super.initState();
 
-    _ventaService = VentaService(inventarioService: _inventarioService);
+    _ventaService = VentaService();
 
     _cargarDatosIniciales();
   }
@@ -92,7 +92,7 @@ class _VentasPageState extends State<VentasPage> {
     double total = 0.0;
 
     for (int i = 0; i < _lineasPedido.length; i++) {
-      total = total + _lineasPedido[i].subtotal;
+      total = total + double.parse(_lineasPedido[i].subtotal) ;
     }
 
     return total;
@@ -135,10 +135,13 @@ class _VentasPageState extends State<VentasPage> {
 
     DetalleVenta detalle = DetalleVenta(
       idProducto: _productoSeleccionado!.idProducto!,
+
       cantidad: cantidad,
-      precioUnitario: precioUnitario,
-      subtotal: subtotal,
-      idUbicacion: idUbicacion,
+      precioUnitario: precioUnitario.toString(),
+      subtotal: subtotal.toString(),
+      idDetalleVenta: null,
+      nombreProducto: 'a',
+      // idUbicacion: idUbicacion.toString(),
     );
 
     setState(() {
@@ -195,23 +198,34 @@ class _VentasPageState extends State<VentasPage> {
     double total = _calcularTotalPedido();
     String numeroFactura = _generarNumeroFactura();
 
+    for (int i = 0; i < _lineasPedido.length; i++) {
+      total = total + double.parse(_lineasPedido[i].subtotal);
+    }
+
     Venta venta = Venta(
-      idCliente: _clienteSeleccionado!.idCliente!,
-      fecha: DateTime.now(),
       total: total,
-      numeroFactura: numeroFactura,
+      nroComprobante: numeroFactura,
+      idTipoComprobante: '1',
+      subtotal: total,
+      impuesto: 21,
+      idVenta: null,
+      fecha: DateTime.now(),
+      nombreCliente: 'hardcode',
+      metodoPago: '1',
+      registradoPor: 'pruebadeUsuario',
+      email: 'usuarioharcodeado@gmail.com',
+      nombreTipoUsuario: 'hardcoded',
     );
 
     Venta ventaRegistrada = await _ventaService.registrarVenta(
       venta,
-      _lineasPedido,
+      _lineasPedido
     );
 
     List<DetalleVenta> lineasFactura = List<DetalleVenta>.from(_lineasPedido);
 
     setState(() {
       _lineasPedido.clear();
-      _ventas.add(ventaRegistrada);
     });
 
     _mostrarDialogoFacturaEmitida(ventaRegistrada, lineasFactura);
@@ -223,14 +237,13 @@ class _VentasPageState extends State<VentasPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Factura emitida: ${venta.numeroFactura}'),
+          title: Text('Factura emitida: ${venta.nroComprobante}'),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('ID Venta: ${venta.idVenta ?? '-'}'),
-                Text('Cliente ID: ${venta.idCliente}'),
-                Text('Fecha: ${_formatearFecha(venta.fecha)}'),
+                Text('ID Venta: ${venta.nroComprobante}'),
+                Text('Cliente ID: ${venta.nombreCliente}'),
                 const SizedBox(height: 8.0),
                 const Text(
                   'Detalle:',
@@ -245,15 +258,15 @@ class _VentasPageState extends State<VentasPage> {
                         : 'Producto ${d.idProducto}';
 
                     String textoUbicacion = '';
-                    if (d.idUbicacion != null) {
-                      Ubicacion? ubicacion = _buscarUbicacionPorId(
-                        d.idUbicacion!,
-                      );
-                      String nombreUbicacion = ubicacion != null
-                          ? ubicacion.nombreAlmacen
-                          : 'Ubicación ${d.idUbicacion}';
-                      textoUbicacion = '\nUbicación: $nombreUbicacion';
-                    }
+                    // if (d.idUbicacion.isNotEmpty) {
+                    //   Ubicacion? ubicacion = _buscarUbicacionPorId(
+                    //     int.parse(d.idUbicacion),
+                    //   );
+                    //   String nombreUbicacion = ubicacion != null
+                    //       ? ubicacion.nombreAlmacen
+                    //       : 'Ubicación ${d.idUbicacion}';
+                    //   textoUbicacion = '\nUbicación: $nombreUbicacion';
+                    // }
 
                     return ListTile(
                       dense: true,
@@ -287,34 +300,11 @@ class _VentasPageState extends State<VentasPage> {
 
   /// Permite ver el detalle de una venta seleccionada desde el historial.
   Future<void> _verDetalleVentaDesdeHistorial(Venta venta) async {
-    if (venta.idVenta == null) {
-      _mostrarMensaje('La venta no tiene id asignado.');
-      return;
-    }
-
     List<DetalleVenta> detalles = await _ventaService.obtenerDetallesPorVenta(
       venta.idVenta!,
     );
 
     _mostrarDialogoFacturaEmitida(venta, detalles);
-  }
-
-  /// Formatea una fecha simple.
-  String _formatearFecha(DateTime fecha) {
-    String dosDigitos(int n) {
-      if (n >= 10) {
-        return n.toString();
-      }
-      return '0${n.toString()}';
-    }
-
-    String y = fecha.year.toString();
-    String m = dosDigitos(fecha.month);
-    String d = dosDigitos(fecha.day);
-    String hh = dosDigitos(fecha.hour);
-    String mm = dosDigitos(fecha.minute);
-
-    return '$y-$m-$d $hh:$mm';
   }
 
   /// Busca un producto por id.
@@ -396,7 +386,7 @@ class _VentasPageState extends State<VentasPage> {
                   _mostrarMensaje('El nombre del cliente es obligatorio.');
                   return;
                 }
-                
+
                 Cliente nuevo = Cliente(
                   nombre: nombreController.text.trim(),
                   apellido: apellidoController.text.trim(),
@@ -617,17 +607,17 @@ class _VentasPageState extends State<VentasPage> {
                                       : 'Producto ${detalle.idProducto}';
 
                                   String textoUbicacion = '';
-                                  if (detalle.idUbicacion != null) {
-                                    Ubicacion? ubicacion =
-                                        _buscarUbicacionPorId(
-                                          detalle.idUbicacion!,
-                                        );
-                                    String nombreUbicacion = ubicacion != null
-                                        ? ubicacion.nombreAlmacen
-                                        : 'Ubicación ${detalle.idUbicacion}';
-                                    textoUbicacion =
-                                        '\nUbicación: $nombreUbicacion';
-                                  }
+                                  // if (detalle.idUbicacion != null) {
+                                  //   Ubicacion? ubicacion =
+                                  //       _buscarUbicacionPorId(
+                                  //         int.parse(detalle.idUbicacion),
+                                  //       );
+                                  //   String nombreUbicacion = ubicacion != null
+                                  //       ? ubicacion.nombreAlmacen
+                                  //       : 'Ubicación ${detalle.idUbicacion}';
+                                  //   textoUbicacion =
+                                  //       '\nUbicación: $nombreUbicacion';
+                                  // }
 
                                   return ListTile(
                                     title: Text(nombreProducto),
@@ -692,10 +682,8 @@ class _VentasPageState extends State<VentasPage> {
                                   Venta venta = _ventas[index];
 
                                   return ListTile(
-                                    title: Text(venta.numeroFactura),
-                                    subtitle: Text(
-                                      'Fecha: ${_formatearFecha(venta.fecha)}\nTotal: ${venta.total}',
-                                    ),
+                                    title: Text(venta.nroComprobante),
+                                    subtitle: Text('Total: ${venta.total}'),
                                     trailing: IconButton(
                                       icon: const Icon(Icons.visibility),
                                       tooltip: 'Ver detalle',

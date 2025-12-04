@@ -15,7 +15,7 @@ class ClienteService {
 
   /// Obtiene todos los clientes activos.
   Future<List<Cliente>> obtenerClientesActivos() async {
-     final url = Uri.parse(_clienteUrl);
+    final url = Uri.parse(_clienteUrl);
     try {
       final response = await http.get(url);
 
@@ -24,9 +24,7 @@ class ClienteService {
 
         //Convertimos a lista de cateogrias
         final List<Cliente> clientes = jsonCliente
-            .map(
-              (cliente) => Cliente.fromJson(cliente as Map<String, dynamic>),
-            )
+            .map((cliente) => Cliente.fromJson(cliente as Map<String, dynamic>))
             .toList();
 
         return clientes;
@@ -56,7 +54,6 @@ class ClienteService {
       if (response.statusCode == 201) {
         // 201 Created es la respuesta estándar para una creación exitosa
         log("Cliente creado con éxito. ID: ${response.body}");
-        
       } else {
         log(
           "Fallo al crear cliente. Código: ${response.statusCode}. Respuesta: ${response.body}",
@@ -71,25 +68,50 @@ class ClienteService {
 
   /// Actualiza un cliente existente.
   Future<void> actualizarCliente(Cliente clienteActualizado) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    final url = Uri.parse(
+      '$_clienteUrl/${clienteActualizado.idCliente}',
+    ); // Asegúrate de que categoria tenga un 'id'
 
-    for (int i = 0; i < _clientes.length; i++) {
-      Cliente cliente = _clientes[i];
-      if (cliente.idCliente == clienteActualizado.idCliente) {
-        _clientes[i] = clienteActualizado;
+    try {
+      final response = await http.put(
+        // Se usa PUT para reemplazar completamente el recurso
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(clienteActualizado.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        log("categoria actualizado con éxito.");
+      } else {
+        log(
+          "Fallo al actualizar categoria. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
+    } catch (e) {
+      log("Error al intentar actualizar categoria: $e");
     }
   }
 
   /// Elimina lógicamente un cliente (lo marca como inactivo).
   Future<void> eliminarCliente(int idCliente) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    final url = Uri.parse("${_clienteUrl}/${idCliente}");
+    try {
+      final response = await http.delete(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(<String, dynamic>{'id_cliente': idCliente}),
+      );
 
-    for (int i = 0; i < _clientes.length; i++) {
-      Cliente cliente = _clientes[i];
-      if (cliente.idCliente == idCliente) {
-        cliente.activo = false;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // 204 No Content es común para un DELETE exitoso
+        log("Cliente con ID ${idCliente} eliminado con éxito.");
+      } else {
+        log(
+          "Fallo al eliminar Cliente. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
+    } catch (e) {
+      log("Error al intentar eliminar Cliente: $e");
     }
   }
 }

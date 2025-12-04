@@ -1,57 +1,57 @@
+import 'dart:convert';
+import 'dart:developer';
+
+import 'package:http/http.dart' as http;
+
 import '../models/venta.dart';
 import '../models/detalle_venta.dart';
-import 'inventario_service.dart';
 
-/// Servicio que encapsula la lógica de negocio de las ventas.
-/// Aquí se registran las facturas y sus detalles, y se actualiza el stock.
 class VentaService {
-  final List<Venta> _ventas = <Venta>[];
-  final List<DetalleVenta> _detalles = <DetalleVenta>[];
+  final String _ventaUrl = "http://localhost/akasha/server-akasha/src/venta";
 
-  // Referencia al servicio de inventario para poder actualizar stock.
-  final InventarioService _inventarioService;
+  /// Registra una venta con sus detalles en el backend vía HTTP.
+  Future<Venta> registrarVenta(Venta venta, List<DetalleVenta> detalles) async {
+    final uri = Uri.parse(_ventaUrl);
+    // Armamos el body como lo espera ventaController::addVenta()
+    final Map<String, dynamic> body = {
+      'venta': {
+        'nro_comprobante': venta.nroComprobante,
+        'id_tipo_comprobante': venta.idTipoComprobante,
+        'id_ubicacion': 1,
+        'id_cliente': 1,
+        'id_usuario': 1,
+        'subtotal': venta.subtotal,
+        'impuesto': venta.impuesto,
+        'total': venta.total,
+        'estado': 1,
+      },
+      'detalle_venta': detalles.map((d) => d.toJson()).toList(),
+    };
 
-  /// El constructor requiere una instancia de InventarioService.
-  /// Esto permite que las ventas impacten el stock de productos.
-  VentaService({
-    required InventarioService inventarioService,
-  }) : _inventarioService = inventarioService;
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      body: jsonEncode(body),
+    );
 
-  /// Registra una venta con sus detalles.
-  /// Además de guardar la venta, descuenta del stock las cantidades vendidas.
-  /// Si el detalle tiene ubicación, descuenta de esa ubicación.
-  Future<Venta> registrarVenta(
-    Venta venta,
-    List<DetalleVenta> detalles,
-  ) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    int nuevoIdVenta = _ventas.length + 1;
-    venta.idVenta = nuevoIdVenta;
-    _ventas.add(venta);
-
-    for (int i = 0; i < detalles.length; i++) {
-      DetalleVenta detalle = detalles[i];
-      detalle.idVenta = nuevoIdVenta;
-      detalle.idDetalleVenta = _detalles.length + 1;
-      _detalles.add(detalle);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+        'Error al registrar venta: ${response.statusCode} - ${response.body}',
+      );
     }
 
-    // Actualizar stock en inventario según los detalles de la venta.
-    for (int i = 0; i < detalles.length; i++) {
-      DetalleVenta detalle = detalles[i];
+    if (response.body.isNotEmpty) {
+      final decoded = jsonDecode(response.body);
 
-      if (detalle.idUbicacion != null) {
-        await _inventarioService.disminuirStockEnUbicacion(
-          detalle.idProducto,
-          detalle.idUbicacion!,
-          detalle.cantidad,
-        );
-      } else {
-        await _inventarioService.disminuirStock(
-          detalle.idProducto,
-          detalle.cantidad,
-        );
+      // Ajusta esto a cómo esté devolviendo realmente tu API
+      final data = decoded['data'] ?? decoded['venta'] ?? decoded;
+
+      try {
+        final ventaCreada = Venta.fromJson(data as Map<String, dynamic>);
+
+        return ventaCreada;
+      } catch (_) {
+        return venta;
       }
     }
 
@@ -60,23 +60,65 @@ class VentaService {
 
   /// Devuelve todas las ventas registradas.
   Future<List<Venta>> obtenerVentas() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return _ventas;
-  }
+    final uri = Uri.parse(_ventaUrl);
 
-  /// Devuelve todos los detalles de una venta específica.
-  Future<List<DetalleVenta>> obtenerDetallesPorVenta(int idVenta) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    final response = await http.get(uri);
 
-    List<DetalleVenta> resultado = <DetalleVenta>[];
-
-    for (int i = 0; i < _detalles.length; i++) {
-      DetalleVenta detalle = _detalles[i];
-      if (detalle.idVenta == idVenta) {
-        resultado.add(detalle);
-      }
+    if (response.statusCode != 200) {
+      throw Exception('Error al obtener ventas: ${response.statusCode}');
     }
 
-    return resultado;
+    final decoded = jsonDecode(response.body);
+
+    // Soporta varios formatos de respuesta posibles
+    if (decoded is Map<String, dynamic>) {
+      // Ejemplo: { "message": "...", "data": [ { venta1 }, { venta2 } ] }
+      if (decoded['data'] is List) {
+        final List data = decoded['data'];
+        return data
+            .map(
+              (ventaJson) => Venta.fromJson(ventaJson as Map<String, dynamic>),
+            )
+            .toList();
+      }
+
+      // Ejemplo: { "id_venta": 1, ... } (una sola venta)
+      return [Venta.fromJson(decoded)];
+    } else if (decoded is List) {
+      // Ejemplo: [ { venta1 }, { venta2 } ]
+      return decoded
+          .map((ventaJson) => Venta.fromJson(ventaJson as Map<String, dynamic>))
+          .toList();
+    }
+
+    throw Exception('Formato de respuesta inesperado al obtener ventas');
+  }
+
+  /// Devuelve todos los detalles de una venta específica,
+  Future<List<DetalleVenta>> obtenerDetallesPorVenta(int idVenta) async {
+    final uri = Uri.parse("$_ventaUrl/$idVenta");
+
+    final response = await http.get(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Error al obtener detalles de la venta: ${response.statusCode}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+    // Tomamos la lista cruda del JSON
+    final List<dynamic> detallesJson = decoded["detalle_venta"] ?? [];
+
+    // La convertimos a List<DetalleVenta>
+    final List<DetalleVenta> detalles = detallesJson
+        .map(
+          (element) => DetalleVenta.fromJson(element as Map<String, dynamic>),
+        )
+        .toList();
+
+    // Y la devolvemos
+    return detalles;
   }
 }

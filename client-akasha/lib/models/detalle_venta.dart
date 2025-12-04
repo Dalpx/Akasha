@@ -1,46 +1,45 @@
 /// Representa una línea (detalle) dentro de una venta o factura.
 class DetalleVenta {
   int? idDetalleVenta;
-  int? idVenta;
   int idProducto;
+  String nombreProducto;
   int cantidad;
-  double precioUnitario;
-  double subtotal;
-  int? idUbicacion; // ubicación desde donde sale el producto
+  String precioUnitario;
+  String subtotal;
+  String? idUbicacion; // ubicación desde donde sale el producto
 
   DetalleVenta({
-    this.idDetalleVenta,
-    this.idVenta,
+    required this.idDetalleVenta,
     required this.idProducto,
+    required this.nombreProducto,
     required this.cantidad,
     required this.precioUnitario,
     required this.subtotal,
-    this.idUbicacion,
+    // required this.idUbicacion,
   });
 
   /// Crea una instancia de DetalleVenta desde un mapa JSON.
   factory DetalleVenta.fromJson(Map<String, dynamic> json) {
     return DetalleVenta(
-      idDetalleVenta: json['id_detalle_venta'] as int?,
-      idVenta: json['id_venta'] as int?,
+      idDetalleVenta:  json['id_detalle_venta'] as int,
       idProducto: json['id_producto'] as int,
+      nombreProducto: json['nombre_producto'] as String,
       cantidad: json['cantidad'] as int,
-      precioUnitario: (json['precio_unitario'] as num).toDouble(),
-      subtotal: (json['subtotal'] as num).toDouble(),
-      idUbicacion: json['id_ubicacion'] as int?,
+      precioUnitario: (json['precio_unitario'] as String),
+      subtotal: (json['subtotal'] as String),
+      // idUbicacion: json['id_ubicacion'] as String,
     );
   }
 
   /// Convierte el objeto DetalleVenta a un mapa JSON.
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      'id_detalle_venta': idDetalleVenta,
-      'id_venta': idVenta,
       'id_producto': idProducto,
       'cantidad': cantidad,
       'precio_unitario': precioUnitario,
       'subtotal': subtotal,
-      'id_ubicacion': idUbicacion,
+      // 'id_ubicacion': idUbicacion,
+      'id_ubicacion': 1,
     };
   }
 }

@@ -1,83 +1,104 @@
+import 'dart:convert';
+import 'dart:developer';
+
+import 'package:http/http.dart' as http;
+
 import '../models/compra.dart';
 import '../models/detalle_compra.dart';
-import 'inventario_service.dart';
 
 /// Servicio que encapsula la lógica de negocio de las compras.
-/// Aquí se registran las compras a proveedores y se actualiza el stock.
+/// Ahora trabaja contra la API (igual que VentaService), no con listas en memoria.
 class CompraService {
-  final List<Compra> _compras = <Compra>[];
-  final List<DetalleCompra> _detalles = <DetalleCompra>[];
+  // Ajusta la URL si tu endpoint es distinto
+  final String _compraUrl = "http://localhost/akasha/server-akasha/src/compra";
 
-  final InventarioService _inventarioService;
-
-  /// El constructor requiere una instancia de InventarioService.
-  /// De esta forma, cada compra puede impactar el stock compartido.
-  CompraService({
-    required InventarioService inventarioService,
-  }) : _inventarioService = inventarioService;
-
-  /// Registra una compra con sus detalles.
-  /// Además de guardar la compra, aumenta el stock según las cantidades compradas.
-  /// Si el detalle tiene ubicación, aumenta en esa ubicación.
   Future<Compra> registrarCompra(
     Compra compra,
     List<DetalleCompra> detalles,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    final uri = Uri.parse(_compraUrl);
 
-    int nuevoIdCompra = _compras.length + 1;
-    compra.idCompra = nuevoIdCompra;
-    _compras.add(compra);
+    final Map<String, dynamic> body = {
+      'compra': compra.toJsonRegistro(),
+      'detalle_compra': detalles
+          .map((d) => d.toJsonRegistro())
+          .toList(), // <--- IMPORTANTE
+    };
 
-    for (int i = 0; i < detalles.length; i++) {
-      DetalleCompra detalle = detalles[i];
-      detalle.idCompra = nuevoIdCompra;
-      detalle.idDetalleCompra = _detalles.length + 1;
-      _detalles.add(detalle);
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+        'Error al registrar compra: ${response.statusCode} - ${response.body}',
+      );
     }
 
-    // Actualizar stock en inventario según los detalles de la compra.
-    for (int i = 0; i < detalles.length; i++) {
-      DetalleCompra detalle = detalles[i];
-
-      if (detalle.idUbicacion != null) {
-        await _inventarioService.aumentarStockEnUbicacion(
-          detalle.idProducto,
-          detalle.idUbicacion!,
-          detalle.cantidad,
-        );
-      } else {
-        await _inventarioService.aumentarStock(
-          detalle.idProducto,
-          detalle.cantidad,
-        );
-      }
-    }
-
+    // Parseo de respuesta o return compra, como prefieras
     return compra;
   }
 
-  /// Devuelve todas las compras registradas.
+  /// Devuelve todas las compras registradas (GET /compra).
   Future<List<Compra>> obtenerCompras() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return _compras;
-  }
+    final uri = Uri.parse(_compraUrl);
 
-  /// Devuelve los detalles de una compra específica.
-  Future<List<DetalleCompra>> obtenerDetallesPorCompra(
-    int idCompra,
-  ) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    final response = await http.get(uri);
 
-    List<DetalleCompra> resultado = <DetalleCompra>[];
-
-    for (int i = 0; i < _detalles.length; i++) {
-      DetalleCompra detalle = _detalles[i];
-      if (detalle.idCompra == idCompra) {
-        resultado.add(detalle);
-      }
+    if (response.statusCode != 200) {
+      log(
+        'Error al obtener compras: ${response.statusCode} - ${response.body}',
+        name: 'CompraService',
+      );
+      throw Exception('Error al obtener compras: ${response.statusCode}');
     }
 
-    return resultado;
+    final decoded = jsonDecode(response.body);
+
+    // Si tu API responde { "message": "...", "data": [ ... ] }
+    // usamos decoded['data']; si no, asumimos que decoded ya es la lista.
+    final List<dynamic> jsonCompras = decoded is Map<String, dynamic>
+        ? (decoded['data'] ?? [])
+        : decoded;
+
+    final compras = jsonCompras
+        .map((compra) => Compra.fromJson(compra as Map<String, dynamic>))
+        .toList();
+
+    return compras;
+  }
+
+  /// Devuelve los detalles de una compra específica (GET /compra/{id}).
+  Future<List<DetalleCompra>> obtenerDetallesPorCompra(int idCompra) async {
+    final uri = Uri.parse("$_compraUrl/$idCompra");
+
+    final response = await http.get(uri);
+
+    if (response.statusCode != 200) {
+      log(
+        'Error al obtener detalles de la compra: '
+        '${response.statusCode} - ${response.body}',
+        name: 'CompraService',
+      );
+      throw Exception(
+        'Error al obtener detalles de la compra: ${response.statusCode}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    // Esperamos algo tipo:
+    // { "message": "...", "detalle_compra": [ {...}, {...} ] }
+    final List<dynamic> detallesJson = decoded is Map<String, dynamic>
+        ? (decoded['detalle_compra'] ?? [])
+        : [];
+
+    final detalles = detallesJson
+        .map((e) => DetalleCompra.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    return detalles;
   }
 }

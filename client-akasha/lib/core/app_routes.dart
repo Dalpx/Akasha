@@ -1,4 +1,7 @@
+import 'package:akasha/services/compra_service.dart';
+import 'package:akasha/services/venta_service.dart';
 import 'package:akasha/views/auth/login_page.dart';
+import 'package:akasha/views/clientes/clientes_page.dart';
 import 'package:akasha/views/compras/compras_page.dart';
 import 'package:akasha/views/configuracion/gestion_proveedores_categorias_ubicaciones_page.dart';
 import 'package:akasha/views/configuracion/gestion_ubicaciones_page.dart';
@@ -9,7 +12,6 @@ import 'package:akasha/views/seguridad/usuarios_page.dart';
 import 'package:akasha/views/shell/app_shell.dart';
 import 'package:akasha/views/ventas/ventas_page.dart';
 import 'package:flutter/material.dart';
-
 
 import 'session_manager.dart';
 
@@ -25,6 +27,7 @@ class AppRoutes {
   static const String rutaGestionUbicaciones = '/gestion-ubicaciones';
   static const String rutaMovimientosInventario = '/movimientos-inventario';
   static const String rutaGestionUsuarios = '/usuarios';
+  static const String rutaGestionCliente = '/clientes';
 
   /// Construye el mapa de rutas que usará MaterialApp.
   static Map<String, WidgetBuilder> buildRoutes(SessionManager sessionManager) {
@@ -45,7 +48,7 @@ class AppRoutes {
         return ComprasPage();
       },
       rutaReportes: (BuildContext context) {
-        return ReportesPage();
+        return ReportesPage(ventaService: VentaService(), compraService: CompraService(),);
       },
       rutaGestionMaestros: (BuildContext context) {
         return GestionProveedoresCategoriasPage();
@@ -58,6 +61,9 @@ class AppRoutes {
       },
       rutaGestionUsuarios: (BuildContext context) {
         return UsuariosPage();
+      },
+      rutaGestionCliente: (BuildContext context) {
+        return ClientesPage();
       },
     };
   }

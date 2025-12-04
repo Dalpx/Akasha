@@ -36,7 +36,7 @@ class MovimientoInventarioService {
       if (movimiento.idUbicacion != null) {
         await _inventarioService.aumentarStockEnUbicacion(
           movimiento.idProducto,
-          movimiento.idUbicacion!,
+          movimiento.idUbicacion!.toString(),
           movimiento.cantidad,
         );
       } else {
@@ -49,7 +49,7 @@ class MovimientoInventarioService {
       if (movimiento.idUbicacion != null) {
         await _inventarioService.disminuirStockEnUbicacion(
           movimiento.idProducto,
-          movimiento.idUbicacion!,
+          movimiento.idUbicacion!.toString(),
           movimiento.cantidad,
         );
       } else {

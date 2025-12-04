@@ -2,6 +2,8 @@ import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/services/ubicacion_service.dart';
 import 'package:akasha/views/inventario/ubicaciones_productos_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // NECESARIO para FilteringTextInputFormatter
+
 import '../../models/producto.dart';
 import '../../models/proveedor.dart';
 import '../../models/categoria.dart';
@@ -30,6 +32,10 @@ class _ProductosPageState extends State<ProductosPage> {
   final CategoriaService _categoriaService = CategoriaService();
   final UbicacionService _ubicacionService = UbicacionService();
 
+  // Constantes de validación para el SKU
+  static const int _minSKULength = 8;
+  static const int _maxSKULength = 12;
+
   // Future que se usa para construir la lista de productos con FutureBuilder.
   late Future<List<Producto>> _futureProductos;
 
@@ -49,8 +55,8 @@ class _ProductosPageState extends State<ProductosPage> {
 
   /// Carga las listas de proveedores y categorías desde sus servicios.
   Future<void> _cargarProveedoresYCategorias() async {
-    List<Proveedor> proveedores = await _proveedorService
-        .obtenerProveedoresActivos();
+    List<Proveedor> proveedores =
+        await _proveedorService.obtenerProveedoresActivos();
     List<Categoria> categorias = await _categoriaService.obtenerCategorias();
 
     setState(() {
@@ -75,170 +81,268 @@ class _ProductosPageState extends State<ProductosPage> {
       await _cargarProveedoresYCategorias();
     }
 
+    // 1. CLAVE DEL FORMULARIO
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
     TextEditingController nombreController = TextEditingController();
     TextEditingController skuController = TextEditingController();
     TextEditingController descripcionController = TextEditingController();
     TextEditingController costoController = TextEditingController();
     TextEditingController ventaController = TextEditingController();
-    // TextEditingController stockController = TextEditingController();
 
     // Variables locales para el select box.
     Proveedor? proveedorSeleccionado;
     Categoria? categoriaSeleccionada;
 
-    showDialog<void>(
+    // Obtener la lista de productos actuales para validar unicidad (ej. SKU)
+    final List<Producto> productosExistentes =
+        await _inventarioService.obtenerProductos();
+
+    await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         // StatefulBuilder permite manejar estado local dentro del diálogo.
         return StatefulBuilder(
-          builder:
-              (
-                BuildContext context,
-                void Function(void Function()) setStateDialog,
-              ) {
-                return AlertDialog(
-                  title: const Text('Nuevo producto'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      children: <Widget>[
-                        TextField(
-                          controller: nombreController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre',
+          builder: (
+            BuildContext context,
+            void Function(void Function()) setStateDialog,
+          ) {
+            return AlertDialog(
+              title: const Text('Nuevo producto'),
+              // 2. ENVOLVER EN SINGLECHILDSCROLLVIEW Y FORM
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey, // Asignar la clave
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // 1. Nombre (Obligatorio)
+                      TextFormField(
+                        controller: nombreController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre *',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El nombre del producto es obligatorio.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 2. SKU (Obligatorio + Unicidad + Longitud)
+                      TextFormField(
+                        controller: skuController,
+                        decoration:
+                            const InputDecoration(labelText: 'SKU *'),
+                        validator: (value) {
+                          final sku = value?.trim() ?? '';
+                          if (sku.isEmpty) {
+                            return 'El SKU es obligatorio.';
+                          }
+                          // VALIDACIÓN DE LONGITUD DE SKU
+                          if (sku.length < _minSKULength ||
+                              sku.length > _maxSKULength) {
+                            return 'La longitud del SKU debe estar entre $_minSKULength y $_maxSKULength caracteres.';
+                          }
+                          // Validación de unicidad
+                          bool existe = productosExistentes.any(
+                            (p) => p.sku.toLowerCase() == sku.toLowerCase(),
+                          );
+                          if (existe) {
+                            return 'El SKU ya está registrado.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 3. Descripción (Opcional)
+                      TextFormField(
+                        controller: descripcionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción',
+                        ),
+                        // Ya no tiene validador, es opcional
+                      ),
+                      // 4. Precio costo (Obligatorio + Numérico)
+                      TextFormField(
+                        controller: costoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Precio costo *',
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          // Permite números y el punto decimal (hasta 2 decimales)
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}'),
                           ),
+                        ],
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) {
+                            return 'El precio de costo es obligatorio.';
+                          }
+                          if (double.tryParse(v) == null) {
+                            return 'Debe ser un número válido.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 5. Precio venta (Obligatorio + Numérico)
+                      TextFormField(
+                        controller: ventaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Precio venta *',
                         ),
-                        TextField(
-                          controller: skuController,
-                          decoration: const InputDecoration(labelText: 'SKU'),
-                        ),
-                        TextField(
-                          controller: descripcionController,
-                          decoration: const InputDecoration(
-                            labelText: 'Descripción',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          // Permite números y el punto decimal (hasta 2 decimales)
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}'),
                           ),
+                        ],
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) {
+                            return 'El precio de venta es obligatorio.';
+                          }
+                          if (double.tryParse(v) == null) {
+                            return 'Debe ser un número válido.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12.0),
+                      // 6. Select box para proveedor (Obligatorio)
+                      DropdownButtonFormField<Proveedor>(
+                        value: proveedorSeleccionado,
+                        decoration: const InputDecoration(
+                          labelText: 'Proveedor *',
                         ),
-                        TextField(
-                          controller: costoController,
-                          decoration: const InputDecoration(
-                            labelText: 'Precio costo',
-                          ),
-                          keyboardType: TextInputType.number,
+                        items: _proveedores.map((Proveedor proveedor) {
+                          return DropdownMenuItem<Proveedor>(
+                            value: proveedor,
+                            child: Text(proveedor.nombre),
+                          );
+                        }).toList(),
+                        onChanged: (Proveedor? nuevo) {
+                          setStateDialog(() {
+                            proveedorSeleccionado = nuevo;
+                          });
+                        },
+                        validator: (Proveedor? value) {
+                          if (value == null) {
+                            return 'El proveedor es obligatorio.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12.0),
+                      // 7. Select box para categoría (Obligatorio)
+                      DropdownButtonFormField<Categoria>(
+                        value: categoriaSeleccionada,
+                        decoration: const InputDecoration(
+                          labelText: 'Categoría *',
                         ),
-                        TextField(
-                          controller: ventaController,
-                          decoration: const InputDecoration(
-                            labelText: 'Precio venta',
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 12.0),
-                        // Select box para proveedor
-                        DropdownButtonFormField<Proveedor>(
-                          value: proveedorSeleccionado,
-                          decoration: const InputDecoration(
-                            labelText: 'Proveedor',
-                          ),
-                          items: _proveedores.map((Proveedor proveedor) {
-                            return DropdownMenuItem<Proveedor>(
-                              value: proveedor,
-                              child: Text(proveedor.nombre),
-                            );
-                          }).toList(),
-                          onChanged: (Proveedor? nuevo) {
-                            setStateDialog(() {
-                              proveedorSeleccionado = nuevo;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12.0),
-                        // Select box para categoría
-                        DropdownButtonFormField<Categoria>(
-                          value: categoriaSeleccionada,
-                          decoration: const InputDecoration(
-                            labelText: 'Categoría',
-                          ),
-                          items: _categorias.map((Categoria categoria) {
-                            return DropdownMenuItem<Categoria>(
-                              value: categoria,
-                              child: Text(categoria.nombreCategoria),
-                            );
-                          }).toList(),
-                          onChanged: (Categoria? nuevo) {
-                            setStateDialog(() {
-                              categoriaSeleccionada = nuevo;
-                            });
-                          },
-                        ),
-                      
-                      ],
-                    ),
+                        items: _categorias.map((Categoria categoria) {
+                          return DropdownMenuItem<Categoria>(
+                            value: categoria,
+                            child: Text(categoria.nombreCategoria),
+                          );
+                        }).toList(),
+                        onChanged: (Categoria? nuevo) {
+                          setStateDialog(() {
+                            categoriaSeleccionada = nuevo;
+                          });
+                        },
+                        validator: (Categoria? value) {
+                          if (value == null) {
+                            return 'La categoría es obligatoria.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        // Cierra el diálogo sin hacer nada.
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Cancelar'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        int? idProveedorSeleccionado;
-                        int? idCategoriaSeleccionada;
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    // Cierra el diálogo sin hacer nada.
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // LLAMADA A VALIDACIÓN DEL FORMULARIO
+                    if (formKey.currentState!.validate()) {
+                      int? idProveedorSeleccionado;
+                      int? idCategoriaSeleccionada;
 
-                        if (proveedorSeleccionado != null) {
-                          idProveedorSeleccionado =
-                              proveedorSeleccionado!.idProveedor;
-                        }
+                      if (proveedorSeleccionado != null) {
+                        idProveedorSeleccionado =
+                            proveedorSeleccionado!.idProveedor;
+                      }
 
-                        if (categoriaSeleccionada != null) {
-                          idCategoriaSeleccionada =
-                              categoriaSeleccionada!.idCategoria;
-                        }
+                      if (categoriaSeleccionada != null) {
+                        idCategoriaSeleccionada =
+                            categoriaSeleccionada!.idCategoria;
+                      }
 
+                      // Construye el nuevo producto con los valores validados.
+                      Producto nuevo = Producto(
+                        nombre: nombreController.text.trim(),
+                        sku: skuController.text.trim(),
+                        // La descripción es opcional
+                        descripcion: descripcionController.text.trim(),
+                        // Parseamos los valores que ya sabemos que son válidos
+                        precioCosto:
+                            double.tryParse(costoController.text) ?? 0.0,
+                        precioVenta:
+                            double.tryParse(ventaController.text) ?? 0.0,
+                        idProveedor: idProveedorSeleccionado,
+                        idCategoria: idCategoriaSeleccionada,
+                        activo: true,
+                      );
 
-                        // Construye el nuevo producto con los valores del formulario.
-                        Producto nuevo = Producto(
-                          nombre: nombreController.text.trim(),
-                          sku: skuController.text.trim(),
-                          descripcion: descripcionController.text.trim(),
-                          precioCosto:
-                              double.tryParse(costoController.text) ?? 0.0,
-                          precioVenta:
-                              double.tryParse(ventaController.text) ?? 0.0,
-                          idProveedor: idProveedorSeleccionado,
-                          idCategoria: idCategoriaSeleccionada,
+                      // Llama al servicio para crear el producto.
+                      await _inventarioService.crearProducto(nuevo);
 
-                          activo: true,
-                        );
+                      if (!mounted) {
+                        return;
+                      }
 
-                        // Llama al servicio para crear el producto.
-                        await _inventarioService.crearProducto(nuevo);
+                      // Muestra SnackBar de éxito (sin emoji)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Producto creado exitosamente.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
 
-                        if (!mounted) {
-                          return;
-                        }
-
-                        // Cierra el diálogo y recarga la lista.
-                        Navigator.of(context).pop();
-                        _recargarProductos();
-                      },
-                      child: const Text('Guardar'),
-                    ),
-                  ],
-                );
-              },
+                      // Cierra el diálogo y recarga la lista.
+                      Navigator.of(context).pop();
+                      _recargarProductos();
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
   /// Muestra un diálogo para editar un producto existente.
-  /// Incluye select boxes para proveedor y categoría y campo de stock.
   Future<void> _abrirDialogoEditarProducto(Producto producto) async {
     if (_cargandoCombos) {
       await _cargarProveedoresYCategorias();
     }
+
+    // 1. CLAVE DEL FORMULARIO
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     TextEditingController nombreController = TextEditingController(
       text: producto.nombre,
@@ -257,172 +361,256 @@ class _ProductosPageState extends State<ProductosPage> {
     );
 
     // Buscamos el proveedor y la categoría actualmente asociados al producto.
-    Proveedor? proveedorInicial;
-    for (int i = 0; i < _proveedores.length; i++) {
-      Proveedor proveedor = _proveedores[i];
-      if (producto.idProveedor != null &&
-          proveedor.idProveedor == producto.idProveedor) {
-        proveedorInicial = proveedor;
-      }
-    }
-
-    Categoria? categoriaInicial;
-    for (int i = 0; i < _categorias.length; i++) {
-      Categoria categoria = _categorias[i];
-      if (producto.idCategoria != null &&
-          categoria.idCategoria == producto.idCategoria) {
-        categoriaInicial = categoria;
-      }
-    }
+    Proveedor? proveedorInicial = _proveedores.firstWhereOrNull(
+      (p) => p.idProveedor == producto.idProveedor,
+    );
+    Categoria? categoriaInicial = _categorias.firstWhereOrNull(
+      (c) => c.idCategoria == producto.idCategoria,
+    );
 
     // Variables locales que controlan los select boxes.
     Proveedor? proveedorSeleccionado = proveedorInicial;
     Categoria? categoriaSeleccionada = categoriaInicial;
 
-    showDialog<void>(
+    // Obtener la lista de productos actuales para validar unicidad (ej. SKU)
+    final List<Producto> productosExistentes =
+        await _inventarioService.obtenerProductos();
+
+    await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder:
-              (
-                BuildContext context,
-                void Function(void Function()) setStateDialog,
-              ) {
-                return AlertDialog(
-                  title: const Text('Editar producto'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      children: <Widget>[
-                        TextField(
-                          controller: nombreController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre',
+          builder: (
+            BuildContext context,
+            void Function(void Function()) setStateDialog,
+          ) {
+            return AlertDialog(
+              title: const Text('Editar producto'),
+              // 2. ENVOLVER EN SINGLECHILDSCROLLVIEW Y FORM
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey, // Asignar la clave
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // 1. Nombre (Obligatorio)
+                      TextFormField(
+                        controller: nombreController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre *',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El nombre del producto es obligatorio.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 2. SKU (Obligatorio + Unicidad, excluyendo el actual + Longitud)
+                      TextFormField(
+                        controller: skuController,
+                        decoration:
+                            const InputDecoration(labelText: 'SKU *'),
+                        validator: (value) {
+                          final sku = value?.trim() ?? '';
+                          if (sku.isEmpty) {
+                            return 'El SKU es obligatorio.';
+                          }
+                          // VALIDACIÓN DE LONGITUD DE SKU
+                          if (sku.length < _minSKULength ||
+                              sku.length > _maxSKULength) {
+                            return 'La longitud del SKU debe estar entre $_minSKULength y $_maxSKULength caracteres.';
+                          }
+                          // Validación de unicidad (ignorando el producto actual)
+                          bool existe = productosExistentes.any(
+                            (p) =>
+                                p.sku.toLowerCase() == sku.toLowerCase() &&
+                                p.idProducto != producto.idProducto,
+                          );
+                          if (existe) {
+                            return 'El SKU ya está registrado para otro producto.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 3. Descripción (Opcional)
+                      TextFormField(
+                        controller: descripcionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción',
+                        ),
+                        // Ya no tiene validador, es opcional
+                      ),
+                      // 4. Precio costo (Obligatorio + Numérico)
+                      TextFormField(
+                        controller: costoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Precio costo *',
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          // Permite números y el punto decimal (hasta 2 decimales)
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}'),
                           ),
+                        ],
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) {
+                            return 'El precio de costo es obligatorio.';
+                          }
+                          if (double.tryParse(v) == null) {
+                            return 'Debe ser un número válido.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 5. Precio venta (Obligatorio + Numérico)
+                      TextFormField(
+                        controller: ventaController,
+                        decoration: const InputDecoration(
+                          labelText: 'Precio venta *',
                         ),
-                        TextField(
-                          controller: skuController,
-                          decoration: const InputDecoration(labelText: 'SKU'),
-                        ),
-                        TextField(
-                          controller: descripcionController,
-                          decoration: const InputDecoration(
-                            labelText: 'Descripción',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          // Permite números y el punto decimal (hasta 2 decimales)
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d+\.?\d{0,2}'),
                           ),
+                        ],
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) {
+                            return 'El precio de venta es obligatorio.';
+                          }
+                          if (double.tryParse(v) == null) {
+                            return 'Debe ser un número válido.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12.0),
+                      // 6. Select box para proveedor (Obligatorio)
+                      DropdownButtonFormField<Proveedor>(
+                        value: proveedorSeleccionado,
+                        decoration: const InputDecoration(
+                          labelText: 'Proveedor *',
                         ),
-                        TextField(
-                          controller: costoController,
-                          decoration: const InputDecoration(
-                            labelText: 'Precio costo',
-                          ),
-                          keyboardType: TextInputType.number,
+                        items: _proveedores.map((Proveedor proveedor) {
+                          return DropdownMenuItem<Proveedor>(
+                            value: proveedor,
+                            child: Text(proveedor.nombre),
+                          );
+                        }).toList(),
+                        onChanged: (Proveedor? nuevo) {
+                          setStateDialog(() {
+                            proveedorSeleccionado = nuevo;
+                          });
+                        },
+                        validator: (Proveedor? value) {
+                          if (value == null) {
+                            return 'El proveedor es obligatorio.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12.0),
+                      // 7. Select box para categoría (Obligatorio)
+                      DropdownButtonFormField<Categoria>(
+                        value: categoriaSeleccionada,
+                        decoration: const InputDecoration(
+                          labelText: 'Categoría *',
                         ),
-                        TextField(
-                          controller: ventaController,
-                          decoration: const InputDecoration(
-                            labelText: 'Precio venta',
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 12.0),
-                        DropdownButtonFormField<Proveedor>(
-                          value: proveedorSeleccionado,
-                          decoration: const InputDecoration(
-                            labelText: 'Proveedor',
-                          ),
-                          items: _proveedores.map((Proveedor proveedor) {
-                            return DropdownMenuItem<Proveedor>(
-                              value: proveedor,
-                              child: Text(proveedor.nombre),
-                            );
-                          }).toList(),
-                          onChanged: (Proveedor? nuevo) {
-                            setStateDialog(() {
-                              proveedorSeleccionado = nuevo;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12.0),
-                        DropdownButtonFormField<Categoria>(
-                          value: categoriaSeleccionada,
-                          decoration: const InputDecoration(
-                            labelText: 'Categoría',
-                          ),
-                          items: _categorias.map((Categoria categoria) {
-                            return DropdownMenuItem<Categoria>(
-                              value: categoria,
-                              child: Text(categoria.nombreCategoria),
-                            );
-                          }).toList(),
-                          onChanged: (Categoria? nuevo) {
-                            setStateDialog(() {
-                              categoriaSeleccionada = nuevo;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                        items: _categorias.map((Categoria categoria) {
+                          return DropdownMenuItem<Categoria>(
+                            value: categoria,
+                            child: Text(categoria.nombreCategoria),
+                          );
+                        }).toList(),
+                        onChanged: (Categoria? nuevo) {
+                          setStateDialog(() {
+                            categoriaSeleccionada = nuevo;
+                          });
+                        },
+                        validator: (Categoria? value) {
+                          if (value == null) {
+                            return 'La categoría es obligatoria.';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        // Cierra el diálogo sin aplicar cambios.
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Cancelar'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        int? idProveedorSeleccionado;
-                        int? idCategoriaSeleccionada;
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    // Cierra el diálogo sin aplicar cambios.
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // LLAMADA A VALIDACIÓN DEL FORMULARIO
+                    if (formKey.currentState!.validate()) {
+                      int? idProveedorSeleccionado;
+                      int? idCategoriaSeleccionada;
 
-                        if (proveedorSeleccionado != null) {
-                          idProveedorSeleccionado =
-                              proveedorSeleccionado!.idProveedor;
-                        }
+                      if (proveedorSeleccionado != null) {
+                        idProveedorSeleccionado =
+                            proveedorSeleccionado!.idProveedor;
+                      }
 
-                        if (categoriaSeleccionada != null) {
-                          idCategoriaSeleccionada =
-                              categoriaSeleccionada!.idCategoria;
-                        }
+                      if (categoriaSeleccionada != null) {
+                        idCategoriaSeleccionada =
+                            categoriaSeleccionada!.idCategoria;
+                      }
 
-                        // int stock = int.tryParse(stockController.text) ?? 0;
+                      // Actualiza los campos del producto con los nuevos valores.
+                      producto.nombre = nombreController.text.trim();
+                      producto.sku = skuController.text.trim();
+                      producto.descripcion = descripcionController.text.trim(); // La descripción es opcional
+                      // Actualiza los valores parseados y validados
+                      producto.precioCosto =
+                          double.tryParse(costoController.text) ?? 0.0;
+                      producto.precioVenta =
+                          double.tryParse(ventaController.text) ?? 0.0;
+                      producto.idProveedor = idProveedorSeleccionado;
+                      producto.idCategoria = idCategoriaSeleccionada;
 
-                        // Actualiza los campos del producto con los nuevos valores.
-                        producto.nombre = nombreController.text.trim();
-                        producto.sku = skuController.text.trim();
-                        producto.descripcion = descripcionController.text
-                            .trim();
-                        producto.precioCosto =
-                            double.tryParse(costoController.text) ?? 0.0;
-                        producto.precioVenta =
-                            double.tryParse(ventaController.text) ?? 0.0;
-                        // producto.stock = stock;
-                        producto.idProveedor = idProveedorSeleccionado;
-                        producto.idCategoria = idCategoriaSeleccionada;
+                      // Llama al servicio para guardar los cambios.
+                      await _inventarioService.actualizarProducto(producto);
 
-                        // Llama al servicio para guardar los cambios.
-                        await _inventarioService.actualizarProducto(producto);
+                      if (!mounted) {
+                        return;
+                      }
+                      
+                      // Muestra SnackBar de éxito (sin emoji)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Producto actualizado exitosamente.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
 
-                        if (!mounted) {
-                          return;
-                        }
-
-                        // Cierra el diálogo y recarga la lista.
-                        Navigator.of(context).pop();
-                        _recargarProductos();
-                      },
-                      child: const Text('Guardar cambios'),
-                    ),
-                  ],
-                );
-              },
+                      // Cierra el diálogo y recarga la lista.
+                      Navigator.of(context).pop();
+                      _recargarProductos();
+                    }
+                  },
+                  child: const Text('Guardar cambios'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
   /// Muestra un modal para confirmar si realmente se desea eliminar el producto.
-  /// Solo si el usuario confirma se llama al método que elimina.
   void _confirmarEliminarProducto(Producto producto) {
     showDialog<void>(
       context: context,
@@ -444,6 +632,17 @@ class _ProductosPageState extends State<ProductosPage> {
               onPressed: () async {
                 if (producto.idProducto != null) {
                   await _eliminarProducto(producto.idProducto!);
+                  if (!mounted) {
+                    return;
+                  }
+                  
+                  // Muestra un SnackBar de éxito (sin emoji)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Producto "${producto.nombre}" eliminado (desactivado).'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
                 }
 
                 if (!mounted) {
@@ -466,6 +665,22 @@ class _ProductosPageState extends State<ProductosPage> {
   Future<void> _eliminarProducto(int idProducto) async {
     await _inventarioService.eliminarProducto(idProducto);
     _recargarProductos();
+  }
+
+  // Helper para mostrar texto de proveedor
+  String _getNombreProveedor(int? idProveedor) {
+    if (idProveedor == null) return '-';
+    Proveedor? p = _proveedores
+        .firstWhereOrNull((p) => p.idProveedor == idProveedor);
+    return p?.nombre ?? '-';
+  }
+
+  // Helper para mostrar texto de categoría
+  String _getNombreCategoria(int? idCategoria) {
+    if (idCategoria == null) return '-';
+    Categoria? c = _categorias
+        .firstWhereOrNull((c) => c.idCategoria == idCategoria);
+    return c?.nombreCategoria ?? '-';
   }
 
   @override
@@ -493,12 +708,12 @@ class _ProductosPageState extends State<ProductosPage> {
                     await Navigator.of(
                       context,
                     ).pushNamed(AppRoutes.rutaGestionMaestros);
+                    // Recargar combos por si se crearon nuevos proveedores/categorías
                     await _cargarProveedoresYCategorias();
                   },
                   icon: const Icon(Icons.settings),
                   label: const Text('Configuración'),
                 ),
-                const SizedBox(width: 8.0),
                 const SizedBox(width: 8.0),
                 // Botón para crear un nuevo producto
                 ElevatedButton.icon(
@@ -514,94 +729,107 @@ class _ProductosPageState extends State<ProductosPage> {
             Expanded(
               child: FutureBuilder<List<Producto>>(
                 future: _futureProductos,
-                builder:
-                    (
-                      BuildContext context,
-                      AsyncSnapshot<List<Producto>> snapshot,
-                    ) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                builder: (
+                  BuildContext context,
+                  AsyncSnapshot<List<Producto>> snapshot,
+                ) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'Error al cargar productos: ${snapshot.error}',
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error al cargar productos: ${snapshot.error}',
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text('No hay productos registrados.'),
+                    );
+                  }
+
+                  List<Producto> productos = snapshot.data!
+                      .where((producto) => producto.activo)
+                      .toList();
+
+                  return ListView.builder(
+                    itemCount: productos.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      Producto producto = productos[index];
+
+                      return Card(
+                        child: ListTile(
+                          title: Text(producto.nombre),
+                          subtitle: Text(
+                            'SKU: ${producto.sku}\n'
+                            'Precio venta: \$${producto.precioVenta.toStringAsFixed(2)}\n' // Formateo de precio
+                            'Proveedor: ${_getNombreProveedor(producto.idProveedor)}\n' // Mostrar nombre
+                            'Categoría: ${_getNombreCategoria(producto.idCategoria)}' // Mostrar nombre
                           ),
-                        );
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(
-                          child: Text('No hay productos registrados.'),
-                        );
-                      }
-
-                      List<Producto> productos = snapshot.data!
-                          .where((producto) => producto.activo)
-                          .toList();
-
-                      return ListView.builder(
-                        itemCount: productos.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          if (productos[index].activo) {}
-                          Producto producto = productos[index];
-
-                          return Card(
-                            child: ListTile(
-                              title: Text(producto.nombre),
-                              subtitle: Text(
-                                'SKU: ${producto.sku}\n'
-                                'Precio venta: ${producto.precioVenta}\n'
-                                'Stock: ${0}',
+                          // Trailing con botones de editar y eliminar.
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              // Botón de Ubicaciones
+                              IconButton(
+                                icon: const Icon(Icons.location_on),
+                                tooltip: 'Ubicaciones',
+                                onPressed: () {
+                                  if (producto.idProducto != null) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (BuildContext context) {
+                                          return UbicacionesProductoPage(
+                                            producto: producto,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
-                              // Trailing con botones de editar y eliminar.
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  IconButton(
-                                    icon: const Icon(Icons.location_on),
-                                    tooltip: 'Ubicaciones',
-                                    onPressed: () {
-                                      if (producto.idProducto != null) {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (BuildContext context) {
-                                              return UbicacionesProductoPage(
-                                                producto: producto,
-                                              );
-                                            },
-                                          ),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit),
-                                    tooltip: 'Editar',
-                                    onPressed: () {
-                                      _abrirDialogoEditarProducto(producto);
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    tooltip: 'Eliminar',
-                                    onPressed: () {
-                                      _confirmarEliminarProducto(producto);
-                                    },
-                                  ),
-                                ],
+                              // Botón de Editar
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                tooltip: 'Editar',
+                                onPressed: () {
+                                  _abrirDialogoEditarProducto(producto);
+                                },
                               ),
-                            ),
-                          );
-                        },
+                              // Botón de Eliminar
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                tooltip: 'Eliminar (Desactivar)',
+                                onPressed: () {
+                                  _confirmarEliminarProducto(producto);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     },
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+// Extensión para simplificar la búsqueda de elementos iniciales en listas
+extension ListExtension<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    try {
+      return firstWhere(test);
+    } catch (e) {
+      return null;
+    }
   }
 }

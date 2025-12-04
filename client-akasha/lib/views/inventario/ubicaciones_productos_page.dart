@@ -97,7 +97,7 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
 
     await _inventarioService.establecerStockEnUbicacion(
       widget.producto.idProducto!,
-      _ubicacionSeleccionada!.idUbicacion!,
+      _ubicacionSeleccionada!.idUbicacion!.toString(),
       cantidad,
     );
 

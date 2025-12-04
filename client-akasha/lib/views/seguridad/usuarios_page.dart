@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // NECESARIO para FilteringTextInputFormatter
 
 import '../../models/usuario.dart';
 import '../../services/usuario_service.dart';
@@ -15,6 +16,20 @@ class UsuariosPage extends StatefulWidget {
 class _UsuariosPageState extends State<UsuariosPage> {
   final UsuarioService _usuarioService = UsuarioService();
   late Future<List<Usuario>> _futureUsuarios;
+
+  // Rango mínimo y máximo para la clave
+  static const int _minClaveLength = 8;
+  static const int _maxClaveLength = 64;
+
+  // Expresión regular para validar Nombre Completo (letras y al menos dos palabras)
+  static final RegExp _nombreCompletoRegExp = RegExp(
+    r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+(?: [a-zA-ZáéíóúÁÉÍÓÚñÑ]+)+$',
+  );
+  
+  // Expresión regular para validar formato de Email (estándar)
+  static final RegExp _emailRegExp = RegExp(
+    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+  );
 
   @override
   void initState() {
@@ -34,7 +49,8 @@ class _UsuariosPageState extends State<UsuariosPage> {
   }
 
   /// Convierte el idTipoUsuario en un texto amigable.
-  String _textoTipoUsuario(int? idTipoUsuario) {
+  String _textoTipoUsuario(String? tipoUsuario) {
+    int? idTipoUsuario = int.tryParse(tipoUsuario ?? '');
     switch (idTipoUsuario) {
       case 1:
         return 'Administrador (1)';
@@ -43,11 +59,15 @@ class _UsuariosPageState extends State<UsuariosPage> {
       case 3:
         return 'Consulta (3)';
       default:
-        return idTipoUsuario?.toString() ?? '-';
+        return tipoUsuario ?? '-';
     }
   }
 
+  /// Muestra un diálogo para crear un nuevo usuario con validaciones.
   Future<void> _abrirDialogoNuevoUsuario() async {
+    // Clave Global para validar el formulario
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
     final TextEditingController nombreUsuarioController =
         TextEditingController();
     final TextEditingController claveController = TextEditingController();
@@ -58,139 +78,254 @@ class _UsuariosPageState extends State<UsuariosPage> {
 
     bool activo = true;
 
+    // Obtener la lista de usuarios actuales para validar unicidad
+    final List<Usuario> usuariosExistentes =
+        await _usuarioService.obtenerUsuarios();
+
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder:
-              (
-                BuildContext context,
-                void Function(void Function()) setStateDialog,
-              ) {
-                return AlertDialog(
-                  title: const Text('Nuevo usuario'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      children: <Widget>[
-                        TextField(
-                          controller: nombreUsuarioController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre de usuario',
-                          ),
+          builder: (
+            BuildContext context,
+            void Function(void Function()) setStateDialog,
+          ) {
+            return AlertDialog(
+              title: const Text('Nuevo usuario'),
+              // 1. Envolvemos el contenido en SingleChildScrollView y Form
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey, // Asignamos la clave
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // 1. Nombre de usuario (Obligatorio + No existente)
+                      TextFormField(
+                        controller: nombreUsuarioController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de usuario *',
                         ),
-                        TextField(
-                          controller: claveController,
-                          decoration: const InputDecoration(
-                            labelText: 'Clave / hash',
-                          ),
-                          obscureText: true,
+                        validator: (value) {
+                          final nombre = value?.trim() ?? '';
+                          if (nombre.isEmpty) {
+                            return 'El campo "Nombre de usuario" es obligatorio.';
+                          }
+                          // Validación de unicidad
+                          bool existe = usuariosExistentes.any(
+                            (u) =>
+                                u.nombreUsuario.toLowerCase() ==
+                                nombre.toLowerCase(),
+                          );
+                          if (existe) {
+                            return 'El nombre de usuario ya existe.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 2. Clave / hash (Obligatorio + Longitud 8-64)
+                      TextFormField(
+                        controller: claveController,
+                        decoration: InputDecoration(
+                          labelText: 'Clave / hash *',
+                          helperText:
+                              'Mínimo $_minClaveLength y máximo $_maxClaveLength caracteres.',
                         ),
-                        TextField(
-                          controller: nombreCompletoController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre completo',
-                          ),
+                        obscureText: true,
+                        validator: (value) {
+                          final clave = value?.trim() ?? '';
+                          if (clave.isEmpty) {
+                            return 'El campo "Clave" es obligatorio.';
+                          }
+                          if (clave.length < _minClaveLength ||
+                              clave.length > _maxClaveLength) {
+                            return 'La clave debe tener entre $_minClaveLength y $_maxClaveLength caracteres.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 3. Nombre completo (Obligatorio + Validación de dos palabras, letras y espacios)
+                      TextFormField(
+                        controller: nombreCompletoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre completo *',
+                          helperText:
+                              'Debe contener al menos un nombre y un apellido.',
                         ),
-                        TextField(
-                          controller: emailController,
-                          decoration: const InputDecoration(labelText: 'Email'),
-                          keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          final nombreCompleto = value?.trim() ?? '';
+                          
+                          // Hacemos que sea obligatorio
+                          if (nombreCompleto.isEmpty) {
+                            return 'El campo "Nombre completo" es obligatorio.';
+                          }
+
+                          // Validación de formato con Expresión Regular
+                          if (!_nombreCompletoRegExp.hasMatch(nombreCompleto)) {
+                            return 'Debe contener al menos un nombre y un apellido (solo letras y espacios).';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 4. Email (Validación de formato, AHORA OBLIGATORIO)
+                      TextFormField(
+                        controller: emailController,
+                        decoration:
+                            const InputDecoration(labelText: 'Email *'), // Etiqueta actualizada
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          final email = value?.trim() ?? '';
+                          
+                          // Hacemos que sea obligatorio
+                          if (email.isEmpty) {
+                            return 'El campo "Email" es obligatorio.';
+                          }
+                          
+                          // Validación de formato
+                          if (!_emailRegExp.hasMatch(email)) {
+                            return 'El formato del correo electrónico proporcionado es incorrecto.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 5. Tipo Usuario (Obligatorio + Solo 1, 2 o 3)
+                      TextFormField(
+                        controller: tipoUsuarioController,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo Usuario *',
+                          helperText:
+                              'Debe ser: 1=Admin, 2=Vendedor, o 3=Consulta',
                         ),
-                        TextField(
-                          controller: tipoUsuarioController,
-                          decoration: const InputDecoration(
-                            labelText: 'Tipo Usuario',
-                            helperText:
-                                'Por ejemplo: 1=Admin, 2=Vendedor, 3=Consulta',
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 8.0),
-                        SwitchListTile(
-                          title: const Text('Activo'),
-                          contentPadding: EdgeInsets.zero,
-                          value: activo,
-                          onChanged: (bool value) {
-                            setStateDialog(() {
-                              activo = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                        keyboardType: TextInputType.number,
+                        // Limita a solo dígitos
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          final tipo = value?.trim() ?? '';
+                          if (tipo.isEmpty) {
+                            return 'El campo "Tipo Usuario" es obligatorio.';
+                          }
+                          final int? idTipo = int.tryParse(tipo);
+                          if (idTipo == null || idTipo < 1 || idTipo > 3) {
+                            return 'El valor debe ser 1, 2 o 3.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8.0),
+                      SwitchListTile(
+                        title: const Text('Activo'),
+                        contentPadding: EdgeInsets.zero,
+                        value: activo,
+                        onChanged: (bool value) {
+                          setStateDialog(() {
+                            activo = value;
+                          });
+                        },
+                      ),
+                    ],
                   ),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Cancelar'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final String nombreUsuario = nombreUsuarioController
-                            .text
-                            .trim();
-                        final String clave = claveController.text.trim();
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final String nombreUsuario =
+                        nombreUsuarioController.text.trim();
 
-                        // Campos mínimos
-                        if (nombreUsuario.isEmpty || clave.isEmpty) {
-                          // Si quieres, aquí puedes mostrar un SnackBar de error.
-                          return;
-                        }
+                    // **INICIO: Lógica para mostrar SnackBar de unicidad antes de validar todo el formulario**
+                    // Re-verificar unicidad aquí, independientemente del validador del campo
+                    bool existe = usuariosExistentes.any(
+                      (u) =>
+                          u.nombreUsuario.toLowerCase() ==
+                          nombreUsuario.toLowerCase(),
+                    );
 
-                        final String? nombreCompleto =
-                            nombreCompletoController.text.trim().isEmpty
-                            ? null
-                            : nombreCompletoController.text.trim();
+                    if (existe) {
+                      // Si el nombre de usuario ya existe, mostramos el SnackBar
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('⚠️ El nombre de usuario ya está registrado. Por favor, elige uno diferente.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      // Detenemos la ejecución para que el usuario pueda corregir
+                      return; 
+                    }
+                    // **FIN: Lógica para mostrar SnackBar de unicidad**
+                    
+                    // Disparamos la validación del formulario (si pasamos el chequeo de unicidad con SnackBar)
+                    if (formKey.currentState!.validate()) {
+                      final String clave = claveController.text.trim();
+                      final String nombreCompleto =
+                          nombreCompletoController.text.trim();
+                      
+                      // El email es obligatorio y ya validado
+                      final String email = emailController.text.trim();
 
-                        final String? email =
-                            emailController.text.trim().isEmpty
-                            ? null
-                            : emailController.text.trim();
+                      // Aquí ya sabemos que tipoUsuarioController.text es '1', '2' o '3'
+                      final String tipoUsuario =
+                          tipoUsuarioController.text.trim();
 
-                        final String? tipoUsuario =
-                            tipoUsuarioController.text.trim().isEmpty
-                            ? null
-                            : tipoUsuarioController.text.trim();
+                      final Usuario nuevo = Usuario(
+                        nombreUsuario: nombreUsuario,
+                        claveHash: clave,
+                        nombreCompleto: nombreCompleto,
+                        email: email,
+                        // Asignamos el valor validado
+                        tipoUsuario: tipoUsuario,
+                        activo: activo,
+                      );
 
-                        final Usuario nuevo = Usuario(
-                          nombreUsuario: nombreUsuario,
-                          claveHash: clave,
-                          nombreCompleto: nombreCompleto,
-                          email: email,
-                          tipoUsuario: tipoUsuario,
-                          activo: activo,
-                        );
+                      await _usuarioService.crearUsuario(nuevo);
 
-                        await _usuarioService.crearUsuario(nuevo);
+                      if (!mounted) {
+                        return;
+                      }
 
-                        if (!mounted) {
-                          return;
-                        }
-
-                        Navigator.of(context).pop();
-                        _recargarUsuarios();
-                      },
-                      child: const Text('Guardar'),
-                    ),
-                  ],
-                );
-              },
+                      // Muestra un SnackBar de éxito
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✅ Usuario creado exitosamente.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      
+                      Navigator.of(context).pop();
+                      _recargarUsuarios();
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
+  /// Muestra un diálogo para editar un usuario existente con validaciones.
   Future<void> _abrirDialogoEditarUsuario(Usuario usuario) async {
+    // Clave Global para validar el formulario
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
     final TextEditingController nombreUsuarioController = TextEditingController(
       text: usuario.nombreUsuario,
     );
     final TextEditingController claveController = TextEditingController(
       text: usuario.claveHash,
     );
+    // El campo de nombre completo debe inicializarse con un valor no nulo
     final TextEditingController nombreCompletoController =
         TextEditingController(text: usuario.nombreCompleto ?? '');
+    // El campo de email debe inicializarse con un valor no nulo
     final TextEditingController emailController = TextEditingController(
       text: usuario.email ?? '',
     );
@@ -198,108 +333,233 @@ class _UsuariosPageState extends State<UsuariosPage> {
       text: usuario.tipoUsuario,
     );
 
-    bool activo =  usuario.activo == true;
+    bool activo = usuario.activo == true;
+
+    // Obtener la lista de usuarios actuales para validar unicidad
+    final List<Usuario> usuariosExistentes =
+        await _usuarioService.obtenerUsuarios();
 
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder:
-              (
-                BuildContext context,
-                void Function(void Function()) setStateDialog,
-              ) {
-                return AlertDialog(
-                  title: const Text('Editar usuario'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      children: <Widget>[
-                        TextField(
-                          controller: nombreUsuarioController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre de usuario',
-                          ),
+          builder: (
+            BuildContext context,
+            void Function(void Function()) setStateDialog,
+          ) {
+            return AlertDialog(
+              title: const Text('Editar usuario'),
+              // 1. Envolvemos el contenido en SingleChildScrollView y Form
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey, // Asignamos la clave
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // 1. Nombre de usuario (Obligatorio + No existente, excluyendo el actual)
+                      TextFormField(
+                        controller: nombreUsuarioController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre de usuario *',
                         ),
-                        TextField(
-                          controller: claveController,
-                          decoration: const InputDecoration(
-                            labelText: 'Clave / hash',
-                          ),
-                          obscureText: true,
+                        validator: (value) {
+                          final nombre = value?.trim() ?? '';
+                          if (nombre.isEmpty) {
+                            return 'El campo "Nombre de usuario" es obligatorio.';
+                          }
+                          // Validación de unicidad (ignorando el ID del usuario que estamos editando)
+                          bool existe = usuariosExistentes.any(
+                            (u) =>
+                                u.nombreUsuario.toLowerCase() ==
+                                    nombre.toLowerCase() &&
+                                u.idUsuario != usuario.idUsuario,
+                          );
+                          if (existe) {
+                            return 'El nombre de usuario ya existe.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 2. Clave / hash (Obligatorio + Longitud 8-64)
+                      TextFormField(
+                        controller: claveController,
+                        decoration: InputDecoration(
+                          labelText: 'Clave / hash *',
+                          helperText:
+                              'Mínimo $_minClaveLength y máximo $_maxClaveLength caracteres.',
                         ),
-                        TextField(
-                          controller: nombreCompletoController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre completo (opcional)',
-                          ),
+                        obscureText: true,
+                        validator: (value) {
+                          final clave = value?.trim() ?? '';
+                          if (clave.isEmpty) {
+                            return 'El campo "Clave" es obligatorio.';
+                          }
+                          if (clave.length < _minClaveLength ||
+                              clave.length > _maxClaveLength) {
+                            return 'La clave debe tener entre $_minClaveLength y $_maxClaveLength caracteres.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 3. Nombre completo (Obligatorio + Validación de dos palabras, letras y espacios)
+                      TextFormField(
+                        controller: nombreCompletoController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre completo *',
+                          helperText:
+                              'Debe contener al menos un nombre y un apellido.',
                         ),
-                        TextField(
-                          controller: emailController,
-                          decoration: const InputDecoration(
-                            labelText: 'Email (opcional)',
-                          ),
-                          keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          final nombreCompleto = value?.trim() ?? '';
+                          
+                          // Hacemos que sea obligatorio
+                          if (nombreCompleto.isEmpty) {
+                            return 'El campo "Nombre completo" es obligatorio.';
+                          }
+
+                          // Validación de formato con Expresión Regular
+                          if (!_nombreCompletoRegExp.hasMatch(nombreCompleto)) {
+                            return 'Debe contener al menos un nombre y un apellido (solo letras y espacios).';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 4. Email (Validación de formato, AHORA OBLIGATORIO)
+                      TextFormField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email *', // Etiqueta actualizada
                         ),
-                        TextField(
-                          controller: tipoUsuarioController,
-                          decoration: const InputDecoration(
-                            labelText: 'Id tipo usuario (opcional)',
-                          ),
-                          keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          final email = value?.trim() ?? '';
+                          
+                          // Hacemos que sea obligatorio
+                          if (email.isEmpty) {
+                            return 'El campo "Email" es obligatorio.';
+                          }
+                          
+                          // Validación de formato
+                          if (!_emailRegExp.hasMatch(email)) {
+                            return 'El formato del correo electrónico proporcionado es incorrecto.';
+                          }
+                          return null;
+                        },
+                      ),
+                      // 5. Tipo Usuario (Obligatorio + Solo 1, 2 o 3)
+                      TextFormField(
+                        controller: tipoUsuarioController,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo Usuario *',
+                          helperText:
+                              'Debe ser: 1=Admin, 2=Vendedor, o 3=Consulta',
                         ),
-                        const SizedBox(height: 8.0),
-                        SwitchListTile(
-                          title: const Text('Activo'),
-                          contentPadding: EdgeInsets.zero,
-                          value: activo,
-                          onChanged: (bool value) {
-                            setStateDialog(() {
-                              activo = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                        keyboardType: TextInputType.number,
+                        // Limita a solo dígitos
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        validator: (value) {
+                          final tipo = value?.trim() ?? '';
+                          if (tipo.isEmpty) {
+                            return 'El campo "Tipo Usuario" es obligatorio.';
+                          }
+                          final int? idTipo = int.tryParse(tipo);
+                          if (idTipo == null || idTipo < 1 || idTipo > 3) {
+                            return 'El valor debe ser 1, 2 o 3.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8.0),
+                      SwitchListTile(
+                        title: const Text('Activo'),
+                        contentPadding: EdgeInsets.zero,
+                        value: activo,
+                        onChanged: (bool value) {
+                          setStateDialog(() {
+                            activo = value;
+                          });
+                        },
+                      ),
+                    ],
                   ),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Cancelar'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        usuario.nombreUsuario = nombreUsuarioController.text
-                            .trim();
-                        usuario.claveHash = claveController.text.trim();
-                        usuario.nombreCompleto =
-                            nombreCompletoController.text.trim().isEmpty
-                            ? null
-                            : nombreCompletoController.text.trim();
-                        usuario.email = emailController.text.trim().isEmpty
-                            ? null
-                            : emailController.text.trim();
-                        usuario.tipoUsuario =
-                            tipoUsuarioController.text.trim().isEmpty
-                            ? null
-                            : tipoUsuarioController.text.trim();
-                        usuario.activo = activo;
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final String nombreUsuario =
+                        nombreUsuarioController.text.trim();
 
-                        await _usuarioService.actualizarUsuario(usuario);
+                    // **INICIO: Lógica para mostrar SnackBar de unicidad antes de validar todo el formulario**
+                    // Re-verificar unicidad aquí, independientemente del validador del campo
+                    bool existe = usuariosExistentes.any(
+                      (u) =>
+                          u.nombreUsuario.toLowerCase() ==
+                              nombreUsuario.toLowerCase() &&
+                          u.idUsuario != usuario.idUsuario,
+                    );
 
-                        if (!mounted) {
-                          return;
-                        }
+                    if (existe) {
+                      // Si el nombre de usuario ya existe, mostramos el SnackBar
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('⚠️ El nombre de usuario ya está registrado para otro usuario. Por favor, elige uno diferente.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      // Detenemos la ejecución para que el usuario pueda corregir
+                      return; 
+                    }
+                    // **FIN: Lógica para mostrar SnackBar de unicidad**
 
-                        Navigator.of(context).pop();
-                        _recargarUsuarios();
-                      },
-                      child: const Text('Guardar cambios'),
-                    ),
-                  ],
-                );
-              },
+
+                    // Disparamos la validación del formulario
+                    if (formKey.currentState!.validate()) {
+                      // Los campos requeridos ya fueron validados, podemos asignar
+                      usuario.nombreUsuario =
+                          nombreUsuarioController.text.trim();
+                      usuario.claveHash = claveController.text.trim();
+                      usuario.nombreCompleto =
+                          nombreCompletoController.text.trim();
+                      
+                      // El email es obligatorio y ya validado
+                      usuario.email = emailController.text.trim();
+                          
+                      // Asignamos el valor validado
+                      usuario.tipoUsuario = tipoUsuarioController.text.trim();
+                      usuario.activo = activo;
+
+                      await _usuarioService.actualizarUsuario(usuario);
+
+                      if (!mounted) {
+                        return;
+                      }
+
+                      // Muestra un SnackBar de éxito
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✅ Usuario actualizado exitosamente.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+
+                      Navigator.of(context).pop();
+                      _recargarUsuarios();
+                    }
+                  },
+                  child: const Text('Guardar cambios'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -328,6 +588,15 @@ class _UsuariosPageState extends State<UsuariosPage> {
                   if (!mounted) {
                     return;
                   }
+                  
+                  // Muestra un SnackBar de éxito
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('🗑️ Usuario "${usuario.nombreUsuario}" desactivado.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+
                   Navigator.of(context).pop();
                   _recargarUsuarios();
                 }
@@ -370,75 +639,84 @@ class _UsuariosPageState extends State<UsuariosPage> {
             Expanded(
               child: FutureBuilder<List<Usuario>>(
                 future: _futureUsuarios,
-                builder:
-                    (
-                      BuildContext context,
-                      AsyncSnapshot<List<Usuario>> snapshot,
-                    ) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                builder: (
+                  BuildContext context,
+                  AsyncSnapshot<List<Usuario>> snapshot,
+                ) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'Error al cargar usuarios: ${snapshot.error}',
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error al cargar usuarios: ${snapshot.error}',
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text('No se encontraron usuarios.'),
+                    );
+                  }
+
+                  final List<Usuario> usuarios =
+                      snapshot.data!.where((usuario) => usuario.activo == true).toList();
+
+                  return ListView.builder(
+                    itemCount: usuarios.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final Usuario usuario = usuarios[index];
+
+                      return Card(
+                        child: ListTile(
+                          title: Text(usuario.nombreUsuario),
+                          subtitle: Text(
+                            'Nombre completo: ${usuario.nombreCompleto ?? '-'}\n'
+                            'Email: ${usuario.email ?? '-'}\n'
+                            'Tipo: ${_textoTipoUsuario(usuario.tipoUsuario)}',
                           ),
-                        );
-                      }
-
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(
-                          child: Text('No se encontraron usuarios.'),
-                        );
-                      }
-
-                      final List<Usuario> usuarios = snapshot.data!
-                          .where((usuario) => usuario.activo)
-                          .toList();
-
-                      return ListView.builder(
-                        itemCount: usuarios.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final Usuario usuario = usuarios[index];
-
-                          return Card(
-                            child: ListTile(
-                              title: Text(usuario.nombreUsuario),
-                              subtitle: Text(
-                                'Nombre completo: ${usuario.nombreCompleto ?? '-'}\n'
-                                'Email: ${usuario.email ?? '-'}\n'
-                                'Tipo: ${usuario.tipoUsuario}'
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                tooltip: 'Editar',
+                                onPressed: () {
+                                  _abrirDialogoEditarUsuario(usuario);
+                                },
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  IconButton(
-                                    icon: const Icon(Icons.edit),
-                                    tooltip: 'Editar',
-                                    onPressed: () {
-                                      _abrirDialogoEditarUsuario(usuario);
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    tooltip: 'Desactivar',
-                                    onPressed: () {
-                                      _confirmarEliminarUsuario(usuario);
-                                    },
-                                  ),
-                                ],
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                tooltip: 'Desactivar',
+                                onPressed: () {
+                                  _confirmarEliminarUsuario(usuario);
+                                },
                               ),
-                            ),
-                          );
-                        },
+                            ],
+                          ),
+                        ),
                       );
                     },
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+// Extensión para simplificar la búsqueda de elementos iniciales en listas
+extension ListExtension<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    try {
+      return firstWhere(test);
+    } catch (e) {
+      return null;
+    }
   }
 }

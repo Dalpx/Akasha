@@ -1,6 +1,9 @@
 import 'package:akasha/core/responsive_layout.dart';
 import 'package:akasha/core/session_manager.dart';
+import 'package:akasha/services/compra_service.dart';
+import 'package:akasha/services/venta_service.dart';
 import 'package:akasha/views/auth/login_page.dart';
+import 'package:akasha/views/clientes/clientes_page.dart';
 import 'package:akasha/views/compras/compras_page.dart';
 import 'package:akasha/views/inventario/movimientos_inventario_page.dart';
 import 'package:akasha/views/inventario/productos_page.dart';
@@ -88,6 +91,13 @@ class _AppShellState extends State<AppShell> {
       label: 'Reportes',
       requiredRoles: ["super", "administrador"],
     ),
+    // Cliente: Superusuario (0) y Admin (1)
+    _NavOption(
+      index: 6,
+      icon: Icons.person_2,
+      label: 'Clientes',
+      requiredRoles: ["super", "administrador"],
+    ),
   ];
 
   /// Retorna la página correspondiente al índice seleccionado.
@@ -122,9 +132,11 @@ class _AppShellState extends State<AppShell> {
       case 4:
         return UsuariosPage();
       case 5:
-        return ReportesPage();
+        return ReportesPage(ventaService: VentaService(), compraService: CompraService(),);
+      case 6:
+        return ClientesPage();
       default:
-        return ProductosPage(); // Fallback
+        return UsuariosPage(); // Fallback
     }
   }
 

@@ -2,7 +2,7 @@
 class StockUbicacion {
   int? idStockUbicacion;
   int idProducto;
-  int idUbicacion;
+  String idUbicacion;
   int cantidad;
 
   StockUbicacion({
@@ -16,7 +16,7 @@ class StockUbicacion {
     return StockUbicacion(
       idStockUbicacion: json['id_stock_ubicacion'] as int?,
       idProducto: json['id_producto'] as int,
-      idUbicacion: json['id_ubicacion'] as int,
+      idUbicacion: json['id_ubicacion'] as String,
       cantidad: json['cantidad'] as int,
     );
   }

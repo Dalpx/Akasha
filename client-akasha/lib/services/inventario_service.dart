@@ -182,7 +182,7 @@ class InventarioService {
   /// en una ubicación específica. Después recalcula el stock total del producto.
   Future<void> establecerStockEnUbicacion(
     int idProducto,
-    int idUbicacion,
+    String idUbicacion,
     int cantidad,
   ) async {
     await Future.delayed(const Duration(milliseconds: 100));
@@ -233,7 +233,7 @@ class InventarioService {
   /// Si la cantidad vendida es mayor que el stock actual, el stock se deja en 0.
   Future<void> disminuirStockEnUbicacion(
     int idProducto,
-    int idUbicacion,
+    String idUbicacion,
     int cantidadVendida,
   ) async {
     await Future.delayed(const Duration(milliseconds: 100));
@@ -272,7 +272,7 @@ class InventarioService {
   /// Aumenta el stock de un producto en una ubicación específica.
   Future<void> aumentarStockEnUbicacion(
     int idProducto,
-    int idUbicacion,
+    String idUbicacion,
     int cantidadComprada,
   ) async {
     await Future.delayed(const Duration(milliseconds: 100));

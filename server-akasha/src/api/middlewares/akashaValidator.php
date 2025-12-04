@@ -47,7 +47,7 @@ class akashaValidator
             case 'proveedor':
                 $query = "SELECT nombre FROM proveedor WHERE nombre = :nom";
                 $stmt = $this->DB->prepare($query);
-                $stmt->execute([':nro_d' => $this->data['nombre']]);
+                $stmt->execute([':nom' => $this->data['nombre']]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($result) return true;
@@ -106,7 +106,7 @@ class akashaValidator
     {
         $len = mb_strlen($this->data['sku'], 'UTF-8');
 
-        if ($len >= 8 && $len <= 12) return false;
+        if ($len < 8 && $len > 12) return false;
         else return true;
     }
 

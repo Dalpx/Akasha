@@ -10,44 +10,72 @@ class compraController
         $this->DB = $pdo;
     }
 
+    /**
+     * Función Auxiliar: Obtiene los productos (detalles) de una compra específica.
+     */
+    private function getDetallesPorIdCompra($id_compra)
+    {
+        // Hacemos un JOIN con la tabla de productos para traer el nombre del producto, 
+        // no solo su ID.
+        $query = "SELECT 
+                    dc.id_detalle_compra,
+                    dc.id_producto,
+                    p.nombre AS nombre_producto, 
+                    dc.cantidad,
+                    dc.precio_unitario,
+                    dc.subtotal
+                  FROM detalle_compra AS dc
+                  INNER JOIN producto AS p ON dc.id_producto = p.id_producto
+                  WHERE dc.id_compra = :id";
+
+        $stmt = $this->DB->prepare($query);
+        $stmt->execute([':id' => $id_compra]);
+
+        // Retornamos todos los items de esa compra
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getCompra(?int $id)
     {
-        //Lógica para la obtención detallada de los datos de una venta
         try {
+            //Preparamos la query mastodóntica
+            $query = "SELECT c.id_compra, c.fecha_hora, c.nro_comprobante, c.subtotal, c.impuesto, c.total, 
+                             tp.nombre AS tipo_pago, pr.nombre AS proveedor, 
+                             u.nombre_completo AS 'hecho_por', u.email, 
+                             tu.nombre_tipo_usuario 
+                      FROM compra AS c 
+                      INNER JOIN tipo_pago AS tp ON c.id_tipo_comprobante=tp.id_tipo_comprobante 
+                      INNER JOIN proveedor AS pr ON c.id_proveedor=pr.id_proveedor 
+                      INNER JOIN usuario AS u ON c.id_usuario=u.id_usuario 
+                      INNER JOIN tipo_usuario AS tu ON u.id_tipo_usuario = tu.id_tipo_usuario";
+
+            // Si hay ID, filtramos
             if ($id !== null) {
-                 //Query mastodóntica para el caso en el que se nos envie una ID mediante get
-                $query = "SELECT c.id_compra, c.fecha_hora, c.nro_comprobante, c.subtotal, c.impuesto, c.total, tp.nombre, pr.nombre, u.nombre_completo AS 'hecho_por', 
-                u.email, tu.nombre_tipo_usuario FROM compra AS c 
-                INNER JOIN tipo_pago AS tp ON c.id_tipo_comprobante=tp.id_tipo_comprobante 
-                INNER JOIN proveedor AS pr ON c.id_proveedor=pr.id_proveedor 
-                INNER JOIN usuario AS u ON c.id_usuario=u.id_usuario 
-                INNER JOIN tipo_usuario AS tu ON u.id_tipo_usuario = tu.id_tipo_usuario WHERE c.id_compra = :id";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute();
-                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $query .= " WHERE c.id_compra = :id";
+            }
 
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('Registro de compra no encontrado', 404);
+            $stmt = $this->DB->prepare($query);
+
+            if ($id !== null) {
+                $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            }
+
+            $stmt->execute();
+            $compras = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if ($compras) {
+                foreach ($compras as &$compra) {
+                    $detalles = $this->getDetallesPorIdCompra($compra['id_compra']);
+                    $compra['detalle_compra'] = $detalles;
                 }
+
+                if ($id !== null && count($compras) > 0) {
+                    return $compras[0];
+                }
+
+                return $compras;
             } else {
-                //Query mastodóntica para el caso en el que no nos se nos envíe un ID, por lo cual retornamos todo
-                $query = "SELECT c.id_compra, c.fecha_hora, c.nro_comprobante, c.subtotal, c.impuesto, c.total, tp.nombre, pr.nombre, u.nombre_completo AS 
-                'hecho_por', u.email, tu.nombre_tipo_usuario FROM compra AS c 
-                INNER JOIN tipo_pago AS tp ON c.id_tipo_comprobante=tp.id_tipo_comprobante 
-                INNER JOIN proveedor AS pr ON c.id_proveedor=pr.id_proveedor 
-                INNER JOIN usuario AS u ON c.id_usuario=u.id_usuario 
-                INNER JOIN tipo_usuario AS tu ON u.id_tipo_usuario = tu.id_tipo_usuario";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute();
-                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('Registro de compra no encontrado', 404);
-                }
+                throw new Exception('Registro de compra no encontrado', 404);
             }
         } catch (Exception $e) {
             throw $e;

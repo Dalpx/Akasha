@@ -57,7 +57,7 @@ class _ComprasPageState extends State<ComprasPage> {
     super.initState();
 
     // Inicializamos el servicio de compras con el inventario compartido.
-    _compraService = CompraService(inventarioService: _inventarioService);
+    _compraService = CompraService();
 
     _cargarDatosIniciales();
   }
@@ -98,7 +98,7 @@ class _ComprasPageState extends State<ComprasPage> {
     double total = 0.0;
 
     for (int i = 0; i < _lineasOrden.length; i++) {
-      total = total + _lineasOrden[i].subtotal;
+      total = total + double.parse(_lineasOrden[i].subtotal);
     }
 
     return total;
@@ -152,9 +152,9 @@ class _ComprasPageState extends State<ComprasPage> {
     DetalleCompra detalle = DetalleCompra(
       idProducto: _productoSeleccionado!.idProducto!,
       cantidad: cantidad,
-      precioUnitario: precioUnitario,
-      subtotal: subtotal,
-      idUbicacion: idUbicacion,
+      precioUnitario: precioUnitario.toString(),
+      subtotal: subtotal.toString(),
+      nombreProducto: '',
     );
 
     setState(() {
@@ -218,10 +218,16 @@ class _ComprasPageState extends State<ComprasPage> {
     String numeroDocumento = _generarNumeroDocumentoCompra();
 
     Compra compra = Compra(
+      idCompra: null,
       idProveedor: _proveedorSeleccionado!.idProveedor!,
-      fecha: DateTime.now(),
-      total: total,
-      numeroDocumento: numeroDocumento,
+      fecha: DateTime.now().toIso8601String(),
+      total: total.toString(),
+      numeroComprobante: numeroDocumento,
+      idUsuario: 1,
+      subtotal: total.toString(),
+      impuesto: "21",
+      estado: 1,
+      idTipoComprobante: 1,
     );
 
     Compra compraRegistrada = await _compraService.registrarCompra(
@@ -248,14 +254,14 @@ class _ComprasPageState extends State<ComprasPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Compra registrada: ${compra.numeroDocumento}'),
+          title: Text('Compra registrada: ${compra.numeroComprobante}'),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text('ID Compra: ${compra.idCompra ?? '-'}'),
                 Text('Proveedor ID: ${compra.idProveedor}'),
-                Text('Fecha: ${_formatearFecha(compra.fecha)}'),
+                Text('Fecha: ${compra.fecha}'),
                 const SizedBox(height: 8.0),
                 const Text(
                   'Detalle:',
@@ -268,17 +274,16 @@ class _ComprasPageState extends State<ComprasPage> {
                     String nombreProducto = producto != null
                         ? producto.nombre
                         : 'Producto ${d.idProducto}';
-
                     String textoUbicacion = '';
-                    if (d.idUbicacion != null) {
-                      Ubicacion? ubicacion = _buscarUbicacionPorId(
-                        d.idUbicacion!,
-                      );
-                      String nombreUbicacion = ubicacion != null
-                          ? ubicacion.nombreAlmacen
-                          : 'Ubicación ${d.idUbicacion}';
-                      textoUbicacion = '\nUbicación: $nombreUbicacion';
-                    }
+                    // if (d.idUbicacion != null) {
+                    //   Ubicacion? ubicacion = _buscarUbicacionPorId(
+                    //     d.idUbicacion!,
+                    //   );
+                    //   String nombreUbicacion = ubicacion != null
+                    //       ? ubicacion.nombreAlmacen
+                    //       : 'Ubicación ${d.idUbicacion}';
+                    //   textoUbicacion = '\nUbicación: $nombreUbicacion';
+                    // }
 
                     return ListTile(
                       dense: true,
@@ -640,17 +645,17 @@ class _ComprasPageState extends State<ComprasPage> {
                                       : 'Producto ${detalle.idProducto}';
 
                                   String textoUbicacion = '';
-                                  if (detalle.idUbicacion != null) {
-                                    Ubicacion? ubicacion =
-                                        _buscarUbicacionPorId(
-                                          detalle.idUbicacion!,
-                                        );
-                                    String nombreUbicacion = ubicacion != null
-                                        ? ubicacion.nombreAlmacen
-                                        : 'Ubicación ${detalle.idUbicacion}';
-                                    textoUbicacion =
-                                        '\nUbicación: $nombreUbicacion';
-                                  }
+                                  // if (detalle.idUbicacion != null) {
+                                  //   Ubicacion? ubicacion =
+                                  //       _buscarUbicacionPorId(
+                                  //         detalle.idUbicacion!,
+                                  //       );
+                                  //   String nombreUbicacion = ubicacion != null
+                                  //       ? ubicacion.nombreAlmacen
+                                  //       : 'Ubicación ${detalle.idUbicacion}';
+                                  //   textoUbicacion =
+                                  //       '\nUbicación: $nombreUbicacion';
+                                  // }
 
                                   return ListTile(
                                     title: Text(nombreProducto),
@@ -715,9 +720,9 @@ class _ComprasPageState extends State<ComprasPage> {
                                   Compra compra = _compras[index];
 
                                   return ListTile(
-                                    title: Text(compra.numeroDocumento),
+                                    title: Text(compra.numeroComprobante),
                                     subtitle: Text(
-                                      'Fecha: ${_formatearFecha(compra.fecha)}\nTotal: ${compra.total}',
+                                      'Fecha: ${compra.fecha}\nTotal: ${compra.total}',
                                     ),
                                     trailing: IconButton(
                                       icon: const Icon(Icons.visibility),
