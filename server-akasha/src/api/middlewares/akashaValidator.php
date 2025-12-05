@@ -106,8 +106,54 @@ class akashaValidator
     {
         $len = mb_strlen($this->data['sku'], 'UTF-8');
 
-        if ($len < 8 && $len > 12) return false;
-        else return true;
+        if ($len < 8 && $len > 12) return true;
+        else return false;
+    }
+
+    /**
+     * Valida que la cantidad solicitada no supere el stock actual.
+     * Itera sobre el array de detalles incluido en el JSON.
+     * * @return string|bool Retorna un mensaje de error (string) si falta stock, o false si todo está correcto.
+     */
+    public function checkStockAvailability(): string|bool
+    {
+        // Verificamos que existan detalles en el JSON
+        if (!isset($this->data['detalle_venta']) || !is_array($this->data['detalle_venta'])) {
+            return "No se han proporcionado detalles de venta válidos.";
+        }
+
+        foreach ($this->data['detalle_venta'] as $item) {
+            // Validamos que vengan los datos mínimos necesarios
+            if (!isset($item['id_producto'], $item['id_ubicacion'], $item['cantidad'])) {
+                return "Datos incompletos en el detalle de venta (se requiere id_producto, id_ubicacion y cantidad).";
+            }
+
+            $id_producto = $item['id_producto'];
+            $id_ubicacion = $item['id_ubicacion'];
+            $cantidad_solicitada = $item['cantidad'];
+
+            // Consultamos la cantidad actual en la tabla stock
+            // Es vital filtrar por producto Y ubicación, ya que el stock se divide por almacenes
+            $query = "SELECT cantidad_actual FROM stock WHERE id_producto = :id_p AND id_ubicacion = :id_u";
+            $stmt = $this->DB->prepare($query);
+            $stmt->execute([
+                ':id_p' => $id_producto,
+                ':id_u' => $id_ubicacion
+            ]);
+
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Si no existe registro en stock, asumimos cantidad 0
+            $cantidad_actual = $result ? (int)$result['cantidad_actual'] : 0;
+
+            // COMPARACIÓN: Si lo que pide el cliente es mayor a lo que hay
+            if ($cantidad_solicitada > $cantidad_actual) {
+                return "Stock insuficiente para el producto ID $id_producto en la ubicación ID $id_ubicacion. Solicitado: $cantidad_solicitada, Disponible: $cantidad_actual.";
+            }
+        }
+
+        // Si el bucle termina sin retornar errores, es que hay stock para todo
+        return false;
     }
 
     //Esta función nos permite verificar que la combinación de id_ubicacion e id_producto sea única, de forma que se pueda lanzar un error personalizado

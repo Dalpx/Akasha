@@ -91,12 +91,12 @@ class clienteController
         $validator = new akashaValidator($this->DB, $body);
         $error = $validator->clienteIsValid();
 
-         if ($validator->entityAlreadyExists('cliente')) {
+       /*  if ($validator->entityAlreadyExists('cliente')) {
             throw new Exception('Un cliente con este documento ya existe', 409);
         } else if ($error !== false) {
             throw new Exception($error, 400);
 
-        }
+        }*/
 
         try {
             $query = "UPDATE cliente SET 

@@ -92,14 +92,28 @@ class ventaController
 
     public function addVenta()
     {
-        //Lógica transaccional para la adición de una venta
+        // Decodificar JSON
         $body = json_decode(file_get_contents('php://input'), true);
+
+        // --- INICIO DE VALIDACIÓN DE STOCK ---
+        // Instanciamos el validador pasándole la conexión DB y el body
+        $validator = new akashaValidator($this->DB, $body);
+
+        // Ejecutamos la validación. Si retorna un string (mensaje de error), lanzamos la excepción.
+        $errorStock = $validator->checkStockAvailability();
+
+        if ($errorStock) {
+            // Lanzamos excepción con código 409 (Conflict) o 400 (Bad Request)
+            throw new Exception($errorStock, 409);
+        }
+
         try {
-            // Se corrige la variable a 'venta'
             $venta = $body['venta'];
             $detalles = $body['detalle_venta'];
 
             $this->DB->beginTransaction();
+
+            // ... (Resto de tu código original: Inserts de venta y detalles) ...
 
             // 1. Inserción de la Cabecera de Venta
             $query_venta = "INSERT INTO venta (nro_comprobante, id_tipo_comprobante, id_cliente, id_usuario, subtotal, impuesto, total, estado) 

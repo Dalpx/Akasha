@@ -370,21 +370,26 @@ class _ComprasPageState extends State<ComprasPage> {
                               'Productos de la compra',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
-                            // TextButton.icon(
-                            //   onPressed: _agregarLinea,
-                            //   icon: const Icon(Icons.add),
-                            //   label: const Text('Agregar producto'),
-                            // ),
+                            TextButton.icon(
+                              onPressed: _agregarLinea,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Agregar producto'),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Column(
-                          children: List.generate(
-                            _lineas.length,
-                            (i) => _buildLineaDetalle(i, _lineas[i]),
+                        SizedBox(
+                          height: 200,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: List.generate(
+                                _lineas.length,
+                                (i) => _buildLineaDetalle(i, _lineas[i]),
+                              ),
+                            ),
                           ),
                         ),
-                        
+
                         // Align(
                         //   alignment: Alignment.centerRight,
                         //   child: ElevatedButton.icon(

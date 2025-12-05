@@ -503,17 +503,17 @@ class _ClientesPageState extends State<ClientesPage> {
                         maxLines: 2,
                       ),
 
-                      // 8. Estado
-                      SwitchListTile(
-                        title: const Text('Activo'),
-                        contentPadding: EdgeInsets.zero,
-                        value: cliente.activo,
-                        onChanged: (bool value) {
-                          setStateDialog(() {
-                            cliente.activo = value;
-                          });
-                        },
-                      ),
+                      // // 8. Estado
+                      // SwitchListTile(
+                      //   title: const Text('Activo'),
+                      //   contentPadding: EdgeInsets.zero,
+                      //   value: cliente.activo,
+                      //   onChanged: (bool value) {
+                      //     setStateDialog(() {
+                      //       cliente.activo = value;
+                      //     });
+                      //   },
+                      // ),
                     ],
                   ),
                 ),
