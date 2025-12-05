@@ -20,7 +20,7 @@ class productoController
         try {
             //Lógica de transacción, si tenemos ID, buscamos la entrada que coincida con dicha ID
             if ($id !== null) {
-                $query. "WHERE p.id_producto=:id";
+                $query . "WHERE p.id_producto=:id";
                 $stmt = $this->DB->prepare($query);
                 $result = $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(\pdo::FETCH_ASSOC);
@@ -54,11 +54,11 @@ class productoController
 
         //Instanciamos akashaValidator y hacemos la validación de si el SKU ya existe, y si el SKU tiene la longitud requerida
         $validator = new akashaValidator($this->DB, $body);
-        if ($validator->entityAlreadyExists('producto')){
+        if ($validator->entityAlreadyExists('producto')) {
             throw new Exception('Un producto con este SKU ya existe.', 409);
-        }else if($validator->skuLength()){
+        }/*else if($validator->skuLength()){
             throw new Exception('La longitud del SKU debe estar entre 8 y 12 caracteres', 400);
-        }
+        }*/
 
         try {
             //Lógica de transacción que nos permite interactuar con la DB
@@ -76,8 +76,16 @@ class productoController
                 ':id_cat' => $body['id_categoria']
             ]);
 
+            $id_producto = $this->DB->lastInsertId();
+            $query_stock = "INSERT INTO stock (id_producto, id_ubicacion, cantidad_actual) VALUES (:id_prod, :id_ubi, 0)";
+            $stmt_stock = $this->DB->prepare($query_stock);
+            $stmt_stock->execute([
+                ':id_prod' => $id_producto,
+                ':id_ubi' => $body['id_ubicacion']
+            ]);
+
             //Mensajes de respuesta
-            if ($stmt) {
+            if ($stmt && $stmt_stock) {
                 $this->DB->commit();
                 return true;
             } else {
@@ -92,38 +100,105 @@ class productoController
 
     public function updateProducto()
     {
-
-        //Del JSON extraemos los datos
+        // Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
 
         $validator = new akashaValidator($this->DB, $body);
-        //Valida que el SKU tenga la longitud deseada
-        if($validator->skuLength()){
+        // Valida que el SKU tenga la longitud deseada
+        if ($validator->skuLength()) {
             throw new Exception('La longitud del SKU debe estar entre 8 y 12 caracteres', 400);
         }
 
+        // Aseguramos que los datos necesarios para la lógica de stock existan en el body
+        if (!isset($body['id_producto'], $body['id_ubicacion'])) {
+            throw new Exception('Faltan datos de producto o ubicación para la actualización.', 400);
+        }
+
         try {
-            //Lógica de transacción, buscamos el producto con el ID que sea idéntico
-            $query = "UPDATE producto SET nombre=:nomprod, sku=:sku, descripcion=:descr, precio_costo=:pre_c, 
-        precio_venta=:pre_v, id_proveedor=:id_prov, id_categoria=:id_cat WHERE id_producto = :id_p";
-            $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([
+            $this->DB->beginTransaction();
+
+            // ----------------------------------------------------
+            // PASO 1: Lógica de actualización de la tabla 'producto'
+            // ----------------------------------------------------
+            $query_prod = "UPDATE producto SET 
+                            nombre=:nomprod, 
+                            sku=:sku, 
+                            descripcion=:descr, 
+                            precio_costo=:pre_c, 
+                            precio_venta=:pre_v, 
+                            id_proveedor=:id_prov, 
+                            id_categoria=:id_cat 
+                        WHERE id_producto = :id_p";
+            $stmt_prod = $this->DB->prepare($query_prod);
+            $result_prod = $stmt_prod->execute([
                 ':nomprod' => $body['nombre'],
                 ':sku' => $body['sku'],
                 ':descr' => $body['descripcion'],
                 ':pre_c' => floatval($body['precio_costo']),
-                'pre_v' => floatval($body['precio_venta']),
+                ':pre_v' => floatval($body['precio_venta']),
                 ':id_prov' => $body['id_proveedor'],
                 ':id_cat' => $body['id_categoria'],
                 ':id_p' => $body['id_producto']
             ]);
-            //Mensajes de respuesta
-            if ($result) {
-                return $result;
+
+            // ----------------------------------------------------
+            // PASO 2: Lógica de reubicación de STOCK
+            // ----------------------------------------------------
+
+            // 2.1 Obtener la ubicación y cantidad actuales del producto
+            $query_current_stock = "SELECT id_ubicacion, cantidad_actual 
+                                FROM stock 
+                                WHERE id_producto = :id_p";
+            $stmt_current_stock = $this->DB->prepare($query_current_stock);
+            $stmt_current_stock->execute([':id_p' => $body['id_producto']]);
+            $current_stock = $stmt_current_stock->fetch(PDO::FETCH_ASSOC);
+
+            // Si existe stock registrado y la ubicación nueva es diferente a la antigua
+            if ($current_stock && $current_stock['id_ubicacion'] != $body['id_ubicacion']) {
+
+                // 2.2 Eliminar la fila de stock antigua (rompe la clave primaria compuesta)
+                $query_delete = "DELETE FROM stock 
+                             WHERE id_producto = :id_p AND id_ubicacion = :old_ubi";
+                $stmt_delete = $this->DB->prepare($query_delete);
+                $result_delete = $stmt_delete->execute([
+                    ':id_p' => $body['id_producto'],
+                    ':old_ubi' => $current_stock['id_ubicacion']
+                ]);
+
+                // 2.3 Insertar la nueva fila con la nueva ubicación y la cantidad_actual que tenía
+                // Usamos INSERT en lugar de UPDATE para crear la nueva clave primaria (id_producto, id_ubicacion)
+                $query_insert = "INSERT INTO stock (id_producto, id_ubicacion, cantidad_actual) 
+                             VALUES (:id_p, :new_ubi, :cantidad)";
+                $stmt_insert = $this->DB->prepare($query_insert);
+                $result_insert = $stmt_insert->execute([
+                    ':id_p' => $body['id_producto'],
+                    ':new_ubi' => $body['id_ubicacion'],
+                    ':cantidad' => $current_stock['cantidad_actual']
+                ]);
+
+                $result_stock = $result_delete && $result_insert;
+            } else if ($current_stock && $current_stock['id_ubicacion'] == $body['id_ubicacion']) {
+                // Si la ubicación es la misma, no se hace nada en la tabla 'stock'
+                $result_stock = true;
             } else {
-                throw new Exception('Algo ha sucedido mal', 500);
+                // El producto no tenía stock, se omite la lógica de reubicación, pero la actualización del producto sigue
+                $result_stock = true;
+            }
+
+
+            // ----------------------------------------------------
+            // PASO 3: Mensajes de respuesta
+            // ----------------------------------------------------
+            if ($result_prod && $result_stock) {
+                $this->DB->commit();
+                return ['success' => true, 'message' => 'Producto y stock actualizados correctamente.'];
+            } else {
+                $this->DB->rollBack();
+                // Lanza una excepción más específica si es posible
+                throw new Exception("Fallo en la actualización del producto o el stock.", 500);
             }
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }

@@ -1,4 +1,4 @@
-
+import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/services/ubicacion_service.dart';
 import 'package:akasha/views/inventario/ubicaciones_productos_page.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +42,7 @@ class _ProductosPageState extends State<ProductosPage> {
   // Listas para los select boxes.
   List<Proveedor> _proveedores = <Proveedor>[];
   List<Categoria> _categorias = <Categoria>[];
+  List<Ubicacion> _ubicaciones = <Ubicacion>[];
 
   // Indica si todavía se están cargando proveedores y categorías.
   bool _cargandoCombos = true;
@@ -55,13 +56,16 @@ class _ProductosPageState extends State<ProductosPage> {
 
   /// Carga las listas de proveedores y categorías desde sus servicios.
   Future<void> _cargarProveedoresYCategorias() async {
-    List<Proveedor> proveedores =
-        await _proveedorService.obtenerProveedoresActivos();
+    List<Proveedor> proveedores = await _proveedorService
+        .obtenerProveedoresActivos();
     List<Categoria> categorias = await _categoriaService.obtenerCategorias();
+    List<Ubicacion> ubicaciones = await _ubicacionService
+        .obtenerUbicacionesActivas();
 
     setState(() {
       _proveedores = proveedores;
       _categorias = categorias;
+      _ubicaciones = ubicaciones;
       _cargandoCombos = false;
     });
   }
@@ -93,20 +97,18 @@ class _ProductosPageState extends State<ProductosPage> {
     // Variables locales para el select box.
     Proveedor? proveedorSeleccionado;
     Categoria? categoriaSeleccionada;
+    Ubicacion? ubicacionSeleccionada;
 
     // Obtener la lista de productos actuales para validar unicidad (ej. SKU)
-    final List<Producto> productosExistentes =
-        await _inventarioService.obtenerProductos();
+    final List<Producto> productosExistentes = await _inventarioService
+        .obtenerProductos();
 
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         // StatefulBuilder permite manejar estado local dentro del diálogo.
         return StatefulBuilder(
-          builder: (
-            BuildContext context,
-            void Function(void Function()) setStateDialog,
-          ) {
+          builder: (BuildContext context, void Function(void Function()) setStateDialog) {
             return AlertDialog(
               title: const Text('Nuevo producto'),
               // 2. ENVOLVER EN SINGLECHILDSCROLLVIEW Y FORM
@@ -132,8 +134,7 @@ class _ProductosPageState extends State<ProductosPage> {
                       // 2. SKU (Obligatorio + Unicidad + Longitud)
                       TextFormField(
                         controller: skuController,
-                        decoration:
-                            const InputDecoration(labelText: 'SKU *'),
+                        decoration: const InputDecoration(labelText: 'SKU *'),
                         validator: (value) {
                           final sku = value?.trim() ?? '';
                           if (sku.isEmpty) {
@@ -260,6 +261,31 @@ class _ProductosPageState extends State<ProductosPage> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 12.0),
+                      // .8 Select box para categoría (Obligatorio)
+                      DropdownButtonFormField<Ubicacion>(
+                        initialValue: ubicacionSeleccionada,
+                        decoration: const InputDecoration(
+                          labelText: 'Ubicacion',
+                        ),
+                        items: _ubicaciones.map((Ubicacion ubicacion) {
+                          return DropdownMenuItem<Ubicacion>(
+                            value: ubicacion,
+                            child: Text(ubicacion.nombreAlmacen),
+                          );
+                        }).toList(),
+                        onChanged: (Ubicacion? nuevo) {
+                          setStateDialog(() {
+                            ubicacionSeleccionada = nuevo;
+                          });
+                        },
+                        validator: (Ubicacion? value) {
+                          if (value == null) {
+                            return 'La categoría es obligatoria.';
+                          }
+                          return null;
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -278,6 +304,7 @@ class _ProductosPageState extends State<ProductosPage> {
                     if (formKey.currentState!.validate()) {
                       int? idProveedorSeleccionado;
                       int? idCategoriaSeleccionada;
+                      int? idUbicacionSeleccionada;
 
                       if (proveedorSeleccionado != null) {
                         idProveedorSeleccionado =
@@ -287,6 +314,11 @@ class _ProductosPageState extends State<ProductosPage> {
                       if (categoriaSeleccionada != null) {
                         idCategoriaSeleccionada =
                             categoriaSeleccionada!.idCategoria;
+                      }
+
+                      if (ubicacionSeleccionada != null) {
+                        idUbicacionSeleccionada =
+                            ubicacionSeleccionada!.idUbicacion;
                       }
 
                       // Construye el nuevo producto con los valores validados.
@@ -302,6 +334,7 @@ class _ProductosPageState extends State<ProductosPage> {
                             double.tryParse(ventaController.text) ?? 0.0,
                         idProveedor: idProveedorSeleccionado.toString(),
                         idCategoria: idCategoriaSeleccionada.toString(),
+                        idUbicacion: idUbicacionSeleccionada.toString(),
                         activo: true,
                       );
 
@@ -367,23 +400,24 @@ class _ProductosPageState extends State<ProductosPage> {
     Categoria? categoriaInicial = _categorias.firstWhereOrNull(
       (c) => c.idCategoria == producto.idCategoria,
     );
+    Ubicacion? ubicacionInicial = _ubicaciones.firstWhereOrNull(
+      (u) => u.idUbicacion == producto.idUbicacion,
+    );
 
     // Variables locales que controlan los select boxes.
     Proveedor? proveedorSeleccionado = proveedorInicial;
     Categoria? categoriaSeleccionada = categoriaInicial;
+    Ubicacion? ubicacionSeleccionada = ubicacionInicial;
 
     // Obtener la lista de productos actuales para validar unicidad (ej. SKU)
-    final List<Producto> productosExistentes =
-        await _inventarioService.obtenerProductos();
+    final List<Producto> productosExistentes = await _inventarioService
+        .obtenerProductos();
 
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (
-            BuildContext context,
-            void Function(void Function()) setStateDialog,
-          ) {
+          builder: (BuildContext context, void Function(void Function()) setStateDialog) {
             return AlertDialog(
               title: const Text('Editar producto'),
               // 2. ENVOLVER EN SINGLECHILDSCROLLVIEW Y FORM
@@ -409,8 +443,7 @@ class _ProductosPageState extends State<ProductosPage> {
                       // 2. SKU (Obligatorio + Unicidad, excluyendo el actual + Longitud)
                       TextFormField(
                         controller: skuController,
-                        decoration:
-                            const InputDecoration(labelText: 'SKU *'),
+                        decoration: const InputDecoration(labelText: 'SKU *'),
                         validator: (value) {
                           final sku = value?.trim() ?? '';
                           if (sku.isEmpty) {
@@ -539,6 +572,31 @@ class _ProductosPageState extends State<ProductosPage> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 12.0),
+                      // .8 Select box para categoría (Obligatorio)
+                      DropdownButtonFormField<Ubicacion>(
+                        initialValue: ubicacionSeleccionada,
+                        decoration: const InputDecoration(
+                          labelText: 'Ubicacion',
+                        ),
+                        items: _ubicaciones.map((Ubicacion ubicacion) {
+                          return DropdownMenuItem<Ubicacion>(
+                            value: ubicacion,
+                            child: Text(ubicacion.nombreAlmacen),
+                          );
+                        }).toList(),
+                        onChanged: (Ubicacion? nuevo) {
+                          setStateDialog(() {
+                            ubicacionSeleccionada = nuevo;
+                          });
+                        },
+                        validator: (Ubicacion? value) {
+                          if (value == null) {
+                            return 'La categoría es obligatoria.';
+                          }
+                          return null;
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -557,6 +615,7 @@ class _ProductosPageState extends State<ProductosPage> {
                     if (formKey.currentState!.validate()) {
                       int? idProveedorSeleccionado;
                       int? idCategoriaSeleccionada;
+                      int? idUbicacionSeleccionada;
 
                       if (proveedorSeleccionado != null) {
                         idProveedorSeleccionado =
@@ -568,10 +627,16 @@ class _ProductosPageState extends State<ProductosPage> {
                             categoriaSeleccionada!.idCategoria;
                       }
 
+                      if (ubicacionSeleccionada != null) {
+                        idUbicacionSeleccionada =
+                            ubicacionSeleccionada!.idUbicacion;
+                      }
+
                       // Actualiza los campos del producto con los nuevos valores.
                       producto.nombre = nombreController.text.trim();
                       producto.sku = skuController.text.trim();
-                      producto.descripcion = descripcionController.text.trim(); // La descripción es opcional
+                      producto.descripcion = descripcionController.text
+                          .trim(); // La descripción es opcional
                       // Actualiza los valores parseados y validados
                       producto.precioCosto =
                           double.tryParse(costoController.text) ?? 0.0;
@@ -579,6 +644,7 @@ class _ProductosPageState extends State<ProductosPage> {
                           double.tryParse(ventaController.text) ?? 0.0;
                       producto.idProveedor = idProveedorSeleccionado.toString();
                       producto.idCategoria = idCategoriaSeleccionada.toString();
+                      producto.idUbicacion = idUbicacionSeleccionada.toString();
 
                       // Llama al servicio para guardar los cambios.
                       await _inventarioService.actualizarProducto(producto);
@@ -586,7 +652,7 @@ class _ProductosPageState extends State<ProductosPage> {
                       if (!mounted) {
                         return;
                       }
-                      
+
                       // Muestra SnackBar de éxito (sin emoji)
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -635,11 +701,13 @@ class _ProductosPageState extends State<ProductosPage> {
                   if (!mounted) {
                     return;
                   }
-                  
+
                   // Muestra un SnackBar de éxito (sin emoji)
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Producto "${producto.nombre}" eliminado (desactivado).'),
+                      content: Text(
+                        'Producto "${producto.nombre}" eliminado (desactivado).',
+                      ),
                       backgroundColor: Colors.orange,
                     ),
                   );
@@ -666,7 +734,6 @@ class _ProductosPageState extends State<ProductosPage> {
     await _inventarioService.eliminarProducto(idProducto);
     _recargarProductos();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -714,10 +781,7 @@ class _ProductosPageState extends State<ProductosPage> {
             Expanded(
               child: FutureBuilder<List<Producto>>(
                 future: _futureProductos,
-                builder: (
-                  BuildContext context,
-                  AsyncSnapshot<List<Producto>> snapshot,
-                ) {
+                builder: (BuildContext context, AsyncSnapshot<List<Producto>> snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
@@ -752,7 +816,7 @@ class _ProductosPageState extends State<ProductosPage> {
                             'SKU: ${producto.sku}\n'
                             'Precio venta: \$${producto.precioVenta.toStringAsFixed(2)}\n' // Formateo de precio
                             'Proveedor: ${producto.idProveedor}\n' // Mostrar nombre
-                            'Categoría: ${producto.idCategoria}' // Mostrar nombre
+                            'Categoría: ${producto.idCategoria}', // Mostrar nombre
                           ),
                           // Trailing con botones de editar y eliminar.
                           trailing: Row(

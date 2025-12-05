@@ -1,3 +1,5 @@
+import 'package:akasha/models/ubicacion.dart';
+
 /// Representa un registro de la tabla `producto` de la base de datos.
 /// En este ejemplo incluimos un campo `stock` para manejar las existencias
 /// directamente desde el modelo.
@@ -11,6 +13,7 @@ class Producto {
 
   String? idProveedor;
   String? idCategoria;
+  String? idUbicacion;
   bool activo;
 
   Producto({
@@ -23,6 +26,7 @@ class Producto {
 
     this.idProveedor,
     this.idCategoria,
+    this.idUbicacion,
     required this.activo,
   });
 
@@ -55,6 +59,7 @@ class Producto {
       'id_proveedor': idProveedor,
       'id_categoria': idCategoria,
       'activo': activo ? 1 : 0,
+      'id_ubicacion': idUbicacion,
     };
   }
 }

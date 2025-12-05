@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 
 import '../models/producto.dart';
 
-
 class InventarioService {
   // Lista interna de productos en memoria.
   final List<Producto> _productosEnMemoria = <Producto>[];
