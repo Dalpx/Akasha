@@ -1,0 +1,133 @@
+<?php
+
+class proveedorController
+{
+
+    protected $DB;
+
+    public function __construct($pdo)
+    {
+        $this->DB = $pdo;
+    }
+
+
+    public function getProveedor(?int $id_prov)
+    {
+
+        try {
+            if ($id_prov !== null) { //Esta función nos permite retornar proveedor en caso de que se especifique una ID o no
+                $query = "SELECT * FROM proveedor WHERE id_proveedor  = :id";
+                $stmt = $this->DB->prepare($query);
+                $result = $stmt->execute([':id' => $id_prov]);
+                $result = $stmt->fetch(pdo::FETCH_ASSOC);
+
+                if ($result) {
+                    return $result;
+                } else {
+                    throw new Exception('Proveedor no encontrado', 404);
+                }
+            } else {
+                $query = "SELECT * from proveedor";
+                $stmt =  $this->DB->prepare($query);
+                $result = $stmt->execute();
+                $result = $stmt->fetchAll(pdo::FETCH_ASSOC);
+
+                if ($result) {
+                    return $result;
+                } else {
+                    throw new Exception('Producto no encontrado', 404);
+                }
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function addProveedor()
+    {
+        //Del JSON extraemos los datos
+        $body = json_decode(file_get_contents('php://input'), true);
+        $validator = new akashaValidator($this->DB, $body);
+
+        if($validator->entityAlreadyExists('proveedor')){
+            throw new Exception('Un proveedor con este nombre ya existe', 409);
+        }
+
+        try {
+            $query = "INSERT INTO proveedor (nombre, telefono, correo, direccion, activo) VALUES
+                    (:nom, :telefono, :corr, :dir, 1)";
+            $stmt = $this->DB->prepare($query);
+            $result = $stmt->execute([
+                ':nom' => $body['nombre'],
+                'telefono' => $body['telefono'],
+                ':corr' => $body['correo'],
+                ':dir' => $body['direccion']
+            ]);
+
+            if ($result) {
+                return $result;
+            } else {
+                throw new Exception('Ha ocurrido un error', 500);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function updateProveedor()
+    {
+
+        //Del JSON extraemos los datos
+        $body = json_decode(file_get_contents('php://input'), true);
+        try {
+            $query = "UPDATE proveedor SET nombre=:nom, telefono=:telefono, correo=:corr,
+            direccion=:dir WHERE id_proveedor = :id_prov";
+            $stmt = $this->DB->prepare($query);
+            $result = $stmt->execute([
+                ':nom' => $body['nombre'],
+                ':telefono' => $body['telefono'],
+                ':corr' => $body['correo'],
+                ':dir' => $body['direccion'],
+                ':id_prov' => $body['id_proveedor']
+            ]);
+
+            if ($result) {
+                return $result;
+            } else {
+                throw new Exception('Producto no encontrado', 404);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function deleteProveedor()
+    {
+        //Del JSON extraemos los datos
+        $body = json_decode(file_get_contents('php://input'), true);
+
+        $id = $body['id_prov'];
+        $validator = new akashaValidator($this->DB, $body);
+        if ($validator->isAssigned('proveedor')) {
+            throw new Exception('No se puede eliminar el proveedor porque está siendo utilizada al menos un producto', 400);
+        }
+
+        try {
+            $query = "UPDATE proveedor SET activo=0 WHERE id_proveedor = :id_prov";
+            $stmt = $this->DB->prepare($query);
+            $stmt->execute([':id_prov' => $id]);
+
+            $rows_af = $stmt->rowCount();
+
+            if ($rows_af > 0) {
+                return true;
+            } else if ($rows_af == 0) {
+                throw new Exception('El proveedor ya ha sido eliminado o no fue posible encontrarlo', 404);
+            } else {
+                throw new Exception('Se ha producido un error', 500);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+}
