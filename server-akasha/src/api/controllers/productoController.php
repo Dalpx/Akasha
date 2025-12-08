@@ -13,10 +13,9 @@ class productoController
     public function getProducto(?int $id)
     {
         $query = "SELECT p.id_producto, p.nombre, p.sku, p.descripcion, p.precio_costo, p.precio_venta, pr.nombre as nombre_proveedor, 
-                c.nombre_categoria as categoria, p.activo, s.cantidad_actual as stock FROM producto as p 
+                c.nombre_categoria as categoria, p.activo FROM producto as p 
                 INNER JOIN proveedor as pr ON p.id_proveedor=pr.id_proveedor 
-                INNER JOIN categoria as c ON p.id_categoria=c.id_categoria 
-                LEFT JOIN stock as s ON p.id_producto=s.id_producto";
+                INNER JOIN categoria as c ON p.id_categoria=c.id_categoria";
         try {
             //Lógica de transacción, si tenemos ID, buscamos la entrada que coincida con dicha ID
             if ($id !== null) {
@@ -76,16 +75,8 @@ class productoController
                 ':id_cat' => $body['id_categoria']
             ]);
 
-            $id_producto = $this->DB->lastInsertId();
-            $query_stock = "INSERT INTO stock (id_producto, id_ubicacion, cantidad_actual) VALUES (:id_prod, :id_ubi, 0)";
-            $stmt_stock = $this->DB->prepare($query_stock);
-            $stmt_stock->execute([
-                ':id_prod' => $id_producto,
-                ':id_ubi' => $body['id_ubicacion']
-            ]);
-
             //Mensajes de respuesta
-            if ($stmt && $stmt_stock) {
+            if ($stmt) {
                 $this->DB->commit();
                 return true;
             } else {

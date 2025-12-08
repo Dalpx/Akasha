@@ -41,10 +41,6 @@ class MovimientoCreate {
   final int idProducto;
   final int idUsuario;
 
-  /// Puede ser null si tu DB lo permite.
-  /// Importante: el controller accede a la clave, así que la enviamos igual.
-  final int? idProveedor;
-
   /// OBLIGATORIO para actualizar stock
   final int idUbicacion;
 
@@ -55,7 +51,6 @@ class MovimientoCreate {
     required this.idProducto,
     required this.idUsuario,
     required this.idUbicacion,
-    this.idProveedor,
   });
 
   Map<String, dynamic> toJson() {
@@ -65,7 +60,6 @@ class MovimientoCreate {
       'descripcion': descripcion,
       'id_producto': idProducto,
       'id_usuario': idUsuario,
-      'id_proveedor': idProveedor, // puede ser null
       'id_ubicacion': idUbicacion,
     };
   }

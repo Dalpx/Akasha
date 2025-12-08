@@ -61,36 +61,48 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
     super.dispose();
   }
 
-  Future<void> _cargarDatos() async {
-    setState(() => _cargandoInicial = true);
-    try {
-      final results = await Future.wait([
-        _movService.obtenerMovimientos(),
-        _inventarioService.obtenerProductos(),
-        _ubicacionService.obtenerUbicacionesActivas(),
-        _proveedorService.obtenerProveedoresActivos(),
-      ]);
+Future<void> _cargarDatos() async {
+  setState(() => _cargandoInicial = true);
 
-      setState(() {
-        _movimientos = results[0] as List<MovimientoInventario>;
-        _productos = results[1] as List<Producto>;
-        _ubicaciones = results[2] as List<Ubicacion>;
-        _proveedores = results[3] as List<Proveedor>;
+  // 1. Manejamos el future de movimientos por separado. Si falla (por ejemplo, 404 porque no hay registros),
+  // se captura el error y se devuelve una lista vacía para no detener el Future.wait.
+  final Future<List<MovimientoInventario>> movimientosFuture = _movService
+    .obtenerMovimientos()
+    .catchError((e) {
+     // Opcional: imprimir el error para debug
+     print('ADVERTENCIA: Error controlado al obtener movimientos (posible 404 por lista vacía): $e'); 
+     // Devolvemos una lista vacía de forma segura
+     return <MovimientoInventario>[]; 
+    });
 
-        if (_productos.isNotEmpty) {
-          _productoSeleccionado ??= _productos.first;
-        }
-        if (_ubicaciones.isNotEmpty) {
-          _ubicacionSeleccionada ??= _ubicaciones.first;
-        }
-      });
-    } catch (e) {
-      _showMessage('Error cargando datos: $e');
-    } finally {
-      if (mounted) setState(() => _cargandoInicial = false);
+  try {
+   final results = await Future.wait([
+    movimientosFuture, // Usamos el Future controlado
+    _inventarioService.obtenerProductos(),
+    _ubicacionService.obtenerUbicacionesActivas(),
+    _proveedorService.obtenerProveedoresActivos(),
+   ]);
+
+   setState(() {
+    _movimientos = results[0] as List<MovimientoInventario>;
+    _productos = results[1] as List<Producto>;
+    _ubicaciones = results[2] as List<Ubicacion>;
+    _proveedores = results[3] as List<Proveedor>;
+
+    if (_productos.isNotEmpty) {
+     _productoSeleccionado ??= _productos.first;
     }
+    if (_ubicaciones.isNotEmpty) {
+     _ubicacionSeleccionada ??= _ubicaciones.first;
+    }
+   });
+  } catch (e) {
+   // Este catch ahora solo se activará por fallas en servicios esenciales (productos, ubicaciones, etc.)
+   _showMessage('Error cargando datos: $e');
+  } finally {
+   if (mounted) setState(() => _cargandoInicial = false);
   }
-
+ }
   int _parseInt(String s) => int.tryParse(s.trim()) ?? 0;
 
   Future<void> _refrescar() async {
@@ -129,31 +141,12 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
       return;
     }
 
-    // // Validación útil para salida (evitar negativos)
-    // if (_tipoMovimiento == 0) {
-    //   try {
-    //     final stock = await _inventarioService.obtenerStockPorUbicacion(
-    //       producto!.idProducto!,
-    //       ubicacion!.idUbicacion!,
-    //     );
-    //     if (stock < cantidad) {
-    //       _showMessage(
-    //         'Stock insuficiente para salida. Disponible: $stock.',
-    //       );
-    //       return;
-    //     }
-    //   } catch (_) {
-    //     // Si no existe este método en tu servicio, puedes quitar este bloque.
-    //   }
-    // }
-
     final mov = MovimientoCreate(
       tipoMovimiento: _tipoMovimiento,
       cantidad: cantidad,
       descripcion: _descripcionCtrl.text.trim(),
       idProducto: producto!.idProducto!,
       idUsuario: usuario!.idUsuario!,
-      idProveedor: _proveedorSeleccionado?.idProveedor,
       idUbicacion: ubicacion!.idUbicacion!,
     );
 
@@ -197,10 +190,9 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
                           spacing: 18,
                           runSpacing: 18,
                           children: [
-                            Expanded(child: _buildTipoMovimientoSelector()),
-                            Expanded(child: _buildProductoSelector()),
-                            Expanded(child: _buildUbicacionSelector()),
-                            // Expanded(child: _buildProveedorSelector()),
+                            _buildTipoMovimientoSelector(),
+                            _buildProductoSelector(),
+                            _buildUbicacionSelector(),
                           ],
                         ),
                         const SizedBox(height: 18),
@@ -241,14 +233,6 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Align(
-                        //   alignment: Alignment.centerRight,
-                        //   child: ElevatedButton.icon(
-                        //     onPressed: _guardando ? null : _registrarMovimiento,
-                        //     icon: const Icon(Icons.save),
-                        //     label: const Text('Registrar movimiento'),
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
@@ -267,8 +251,9 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
                             return ListTile(
                               leading: Icon(
                                 isEntrada
-                                    ? Icons.arrow_downward
-                                    : Icons.arrow_upward,
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward,
+                                color:  isEntrada ? Colors.green: Colors.red,
                               ),
                               title: Text(
                                 '${m.nombreProducto ?? "Producto"} · ${m.tipoMovimiento}',

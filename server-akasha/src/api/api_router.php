@@ -150,6 +150,12 @@ try {
                 http_response_code(201);
                 echo json_encode(["message" => "Stock añadido con éxito"]);
             }
+        case 'DELETE_stock':
+            $result = stockOrchestrator::deleteStock();
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(["message" => "Stock borrado con éxito"]);
+            }
             break;
         case 'GET_cliente':
             $result = clienteOrchestrator::getCliente($id, $parts);

@@ -110,6 +110,21 @@ class akashaValidator
         else return false;
     }
 
+    public function stockIsNotEmpty(): bool
+    {
+        $query = "SELECT cantidad_actual FROM stock WHERE id_producto = :id_prod AND id_ubicacion = :id_ubi";
+                $stmt = $this->DB->prepare($query);
+                $stmt->execute([
+                ':id_prod' => $this->data['id_producto'],
+                ':id_ubi' => $this->data['id_ubicacion']
+            ]);
+                $count = $stmt->fetchColumn();
+            
+            if($count > 0) return true;
+            
+            else return false;
+    }
+
     /**
      * Valida que la cantidad solicitada no supere el stock actual.
      * Itera sobre el array de detalles incluido en el JSON.
