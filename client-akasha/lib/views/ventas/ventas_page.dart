@@ -67,18 +67,18 @@ class _VentasPageState extends State<VentasPage> {
   Future<void> _cargarDatosIniciales() async {
     setState(() => _cargandoInicial = true);
 
+    final Future<List<Venta>> ventasFuture = _ventaService
+        .obtenerVentas()
+        .catchError((e) {
+          return <Venta>[];
+        });
+
     try {
       final resultados = await Future.wait([
-        _ventaService.obtenerVentas(),
-
-        // Si tu método se llama distinto, ajusta aquí:
+        ventasFuture, 
         _clienteService.obtenerClientesActivos(),
-
         _inventarioService.obtenerProductos(),
-
         _tipoComprobanteService.obtenerTiposComprobante(),
-
-        // Si tu método se llama obtenerUbicacionesActivas(), cámbialo:
         _ubicacionService.obtenerUbicacionesActivas(),
       ]);
 
@@ -99,6 +99,7 @@ class _VentasPageState extends State<VentasPage> {
         _inicializarLineas();
       });
     } catch (e) {
+      // Este catch ahora solo capturará errores en la carga de datos esenciales
       _showMessage('Error cargando datos iniciales: $e');
     } finally {
       if (mounted) {
@@ -219,11 +220,6 @@ class _VentasPageState extends State<VentasPage> {
     } catch (e) {
       _showMessage('Error al refrescar ventas: $e');
     }
-  }
-
-  double _parseDouble(String value) {
-    if (value.trim().isEmpty) return 0;
-    return double.tryParse(value.replaceAll(',', '.')) ?? 0;
   }
 
   int _parseInt(String value) {
@@ -440,15 +436,6 @@ class _VentasPageState extends State<VentasPage> {
                             ),
                           ),
                         ),
-
-                        // Align(
-                        //   alignment: Alignment.centerRight,
-                        //   child: ElevatedButton.icon(
-                        //     onPressed: _guardando ? null : _registrarVenta,
-                        //     icon: const Icon(Icons.save),
-                        //     label: const Text('Registrar venta'),
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
@@ -598,6 +585,19 @@ class _VentasPageState extends State<VentasPage> {
                     enabled: false,
                     decoration: const InputDecoration(
                       labelText: 'Precio unitario',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: TextFormField(
+                    controller: null,
+                    readOnly: true,
+                    enabled: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Cantidad',
                       border: OutlineInputBorder(),
                     ),
                   ),

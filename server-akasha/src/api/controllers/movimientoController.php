@@ -23,12 +23,12 @@ class movimientoController
             mi.fecha_hora as fecha, 
             mi.descripcion, 
             p.nombre AS nombre_producto,
-            u.nombre_completo AS nombre_usuario, 
-            pr.nombre AS nombre_proveedor 
+            u.nombre_completo AS nombre_usuario,
+            ubi.nombre_almacen as ubicacion
             FROM movimiento_inventario as mi
             LEFT JOIN producto as p ON mi.id_producto = p.id_producto
             LEFT JOIN usuario as u ON mi.id_usuario = u.id_usuario
-            LEFT JOIN proveedor as pr ON mi.id_proveedor = pr.id_proveedor";
+            LEFT JOIN ubicacion as ubi ON mi.id_ubicacion = ubi.id_ubicacion";
 
             $params = [];
             if ($id !== null) {
@@ -71,8 +71,8 @@ class movimientoController
             $this->DB->beginTransaction();
 
             // --- PASO 1: Insertar el registro en movimiento_inventario ---
-            $queryMov = "INSERT INTO movimiento_inventario (tipo_movimiento, cantidad, descripcion, id_producto, id_usuario, id_proveedor)
-                         VALUES (:tipo_mov, :cant, :descripcion, :id_producto, :id_usuario, :id_proveedor)";
+            $queryMov = "INSERT INTO movimiento_inventario (tipo_movimiento, cantidad, descripcion, id_producto, id_usuario, id_ubicacion)
+                         VALUES (:tipo_mov, :cant, :descripcion, :id_producto, :id_usuario, :id_ubi)";
             $stmtMov = $this->DB->prepare($queryMov);
 
             // Ejecución con chequeo de errores SQL, estilo ventaController
@@ -82,7 +82,7 @@ class movimientoController
                 ':descripcion' => $body['descripcion'],
                 ':id_producto' => $body['id_producto'],
                 ':id_usuario' => $body['id_usuario'],
-                ':id_proveedor' => $body['id_proveedor']
+                ':id_ubi' => $body['id_ubicacion']
             ])) {
                 $errorInfo = $stmtMov->errorInfo();
                 // Lanzamos el error específico de SQL

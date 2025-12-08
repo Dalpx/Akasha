@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 05-12-2025 a las 08:18:50
+-- Tiempo de generación: 09-12-2025 a las 00:38:03
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -103,12 +103,8 @@ CREATE TABLE `compra` (
 --
 
 INSERT INTO `compra` (`id_compra`, `fecha_hora`, `nro_comprobante`, `id_tipo_comprobante`, `id_proveedor`, `id_usuario`, `subtotal`, `impuesto`, `total`, `estado`) VALUES
-(1, '2025-11-25 10:00:00', 'C-20251125-0001', 2, 1, 3, 430.00, 90.30, 520.30, 1),
-(2, '2025-11-26 15:30:00', 'C-20251126-0002', 2, 2, 3, 340.00, 71.40, 411.40, 1),
-(3, '2025-11-27 08:50:00', 'C-20251127-0003', 3, 3, 3, 1160.00, 243.60, 1403.60, 1),
-(4, '2025-11-28 12:10:00', 'C-20251128-0004', 2, 4, 3, 436.00, 91.56, 527.56, 1),
-(5, '2025-11-29 17:05:00', 'C-20251129-0005', 4, 5, 3, 345.00, 72.45, 417.45, 1),
-(6, '2025-12-05 03:01:51', 'FC-PROV-811100891', 1, 1, 1, 6.50, 1.04, 7.54, 1);
+(7, '2025-12-08 16:10:52', 'FC-PROV-465294969', 1, 1, 1, 200.00, 32.00, 232.00, 1),
+(8, '2025-12-08 19:33:05', 'FC-PROV-678557838', 1, 5, 1, 370.00, 59.20, 429.20, 1);
 
 -- --------------------------------------------------------
 
@@ -130,22 +126,10 @@ CREATE TABLE `detalle_compra` (
 --
 
 INSERT INTO `detalle_compra` (`id_detalle_compra`, `id_compra`, `id_producto`, `cantidad`, `precio_unitario`, `subtotal`) VALUES
-(1, 1, 1, 10, 6.50, 65.00),
-(2, 1, 4, 5, 55.00, 275.00),
-(3, 1, 7, 50, 1.80, 90.00),
-(4, 2, 9, 5, 28.00, 140.00),
-(5, 2, 10, 100, 0.90, 90.00),
-(6, 2, 11, 100, 1.10, 110.00),
-(7, 3, 17, 100, 6.80, 680.00),
-(8, 3, 18, 100, 2.40, 240.00),
-(9, 3, 15, 20, 12.00, 240.00),
-(10, 4, 12, 80, 3.20, 256.00),
-(11, 4, 13, 100, 0.45, 45.00),
-(12, 4, 14, 30, 4.50, 135.00),
-(13, 5, 21, 100, 0.60, 60.00),
-(14, 5, 22, 20, 6.00, 120.00),
-(15, 5, 24, 30, 5.50, 165.00),
-(16, 6, 1, 1, 6.50, 6.50);
+(17, 7, 25, 20, 10.00, 200.00),
+(18, 8, 25, 20, 10.00, 200.00),
+(19, 8, 27, 15, 10.00, 150.00),
+(20, 8, 27, 2, 10.00, 20.00);
 
 -- --------------------------------------------------------
 
@@ -168,20 +152,7 @@ CREATE TABLE `detalle_venta` (
 --
 
 INSERT INTO `detalle_venta` (`id_detalle_venta`, `id_venta`, `id_producto`, `cantidad`, `precio_unitario`, `descuento_porcentaje`, `subtotal`) VALUES
-(1, 1, 4, 1, 99.00, 0.00, 99.00),
-(2, 1, 1, 2, 12.99, 0.00, 25.98),
-(3, 2, 17, 10, 9.80, 0.00, 98.00),
-(4, 2, 18, 10, 3.90, 0.00, 39.00),
-(5, 2, 15, 5, 22.00, 5.00, 104.50),
-(6, 3, 9, 2, 49.00, 0.00, 98.00),
-(7, 3, 10, 10, 1.80, 0.00, 18.00),
-(8, 3, 11, 10, 2.20, 0.00, 22.00),
-(9, 4, 12, 6, 6.50, 0.00, 39.00),
-(10, 4, 13, 10, 1.10, 0.00, 11.00),
-(11, 4, 14, 2, 9.50, 0.00, 19.00),
-(12, 5, 22, 5, 12.00, 0.00, 60.00),
-(13, 5, 21, 10, 1.50, 0.00, 15.00),
-(14, 5, 24, 2, 11.00, 0.00, 22.00);
+(15, 6, 25, 1, 15.00, 0.00, 15.00);
 
 -- --------------------------------------------------------
 
@@ -197,24 +168,8 @@ CREATE TABLE `movimiento_inventario` (
   `descripcion` varchar(255) DEFAULT NULL,
   `id_producto` int(11) DEFAULT NULL,
   `id_usuario` int(11) DEFAULT NULL,
-  `id_proveedor` int(11) DEFAULT NULL
+  `id_ubicacion` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `movimiento_inventario`
---
-
-INSERT INTO `movimiento_inventario` (`id_movimiento`, `tipo_movimiento`, `cantidad`, `fecha_hora`, `descripcion`, `id_producto`, `id_usuario`, `id_proveedor`) VALUES
-(1, 1, 10, '2025-12-05 06:00:25', 'Ingreso por compra inicial', 1, 3, 1),
-(2, 1, 5, '2025-12-05 06:00:25', 'Ingreso por compra inicial', 4, 3, 1),
-(3, 1, 50, '2025-12-05 06:00:25', 'Ingreso por compra inicial', 7, 3, 1),
-(4, 1, 5, '2025-12-05 06:00:25', 'Ingreso por compra inicial', 9, 3, 2),
-(5, 1, 100, '2025-12-05 06:00:25', 'Ingreso por compra inicial', 17, 3, 3),
-(6, 2, 1, '2025-12-05 06:00:25', 'Salida por venta mostrador', 4, 2, NULL),
-(7, 2, 10, '2025-12-05 06:00:25', 'Salida por venta materiales', 17, 2, NULL),
-(8, 2, 5, '2025-12-05 06:00:25', 'Salida por venta seguridad', 22, 2, NULL),
-(10, 1, 50, '2025-12-05 06:04:51', 'Recepción de nuevo lote de tornillos', 1, 1, 4),
-(11, 2, 50, '2025-12-05 06:05:16', 'Recepción de nuevo lote de tornillos', 1, 1, 4);
 
 -- --------------------------------------------------------
 
@@ -239,30 +194,8 @@ CREATE TABLE `producto` (
 --
 
 INSERT INTO `producto` (`id_producto`, `nombre`, `sku`, `descripcion`, `precio_costo`, `precio_venta`, `id_proveedor`, `id_categoria`, `activo`) VALUES
-(1, 'Martillo carpintero 16oz', 'HM-016OZ', 'Mango ergonómico, cabeza de acero templado', 6.5, 12.99, 1, 1, 1),
-(2, 'Destornillador Phillips #2', 'DST-PH2', 'Punta imantada, mango antideslizante', 2.1, 4.5, 1, 1, 1),
-(3, 'Juego llaves combinadas 8-19mm', 'LLC-SET-8-19', 'Acero cromo vanadio, 12 piezas', 18, 32, 1, 1, 1),
-(4, 'Taladro percutor 18V', 'TLD-18V', 'Inalámbrico, incluye batería y cargador', 55, 99, 1, 2, 1),
-(5, 'Amoladora angular 4 1/2\"', 'AMO-4.5', 'Motor 850W, guarda de seguridad', 40, 79, 1, 2, 1),
-(6, 'Sierra circular 7 1/4\"', 'SRC-7.25', 'Motor 1400W, guía de corte', 70, 129, 1, 2, 1),
-(7, 'Tornillos madera 1 1/2\" (caja 100u)', 'TOR-MAD-1.5', 'Acero zincado, rosca gruesa', 1.8, 3.5, 1, 3, 1),
-(8, 'Tarugos nylon 8mm (bolsa 50u)', 'TAR-NYL-8', 'Alta expansión, uso general', 1.2, 2.4, 1, 3, 1),
-(9, 'Cable THHN 12 AWG (rollo 100m)', 'CAB-THHN-12', 'Aislación 600V, uso residencial', 28, 49, 2, 4, 1),
-(10, 'Interruptor sencillo', 'INT-SEN', 'Formato estándar, 10A', 0.9, 1.8, 2, 4, 1),
-(11, 'Tomacorriente doble', 'TOM-DOB', 'Formato estándar, 15A', 1.1, 2.2, 2, 4, 1),
-(12, 'Tubo PVC 1\" 3m', 'PVC-TUB-1', 'Presión estándar, blanco', 3.2, 6.5, 4, 5, 1),
-(13, 'Codo PVC 1\"', 'PVC-COD-1', 'Conexión 90°, alta resistencia', 0.45, 1.1, 4, 5, 1),
-(14, 'Llave de paso 1\"', 'LLP-1', 'Cuerpo metálico, cierre rápido', 4.5, 9.5, 4, 5, 1),
-(15, 'Pintura látex blanca 4L', 'PNT-LAT-B4', 'Interior/exterior, alto rendimiento', 12, 22, 3, 6, 1),
-(16, 'Rodillo 9\"', 'ROD-9', 'Felpón medio, para látex', 1.9, 4, 3, 6, 1),
-(17, 'Cemento gris 50kg', 'CEM-GRI-50', 'Uso estructural general', 6.8, 9.8, 3, 7, 1),
-(18, 'Arena lavada (saco 40kg)', 'ARE-LAV-40', 'Agregado fino para obra', 2.4, 3.9, 3, 7, 1),
-(19, 'Sellador silicona transparente 280ml', 'SIL-TR-280', 'Uso sanitario y vidrio', 1.5, 3.2, 1, 8, 1),
-(20, 'Adhesivo epóxico 2 componentes', 'EPX-2C', 'Alta resistencia, secado rápido', 3.8, 7.5, 1, 8, 1),
-(21, 'Guantes de nitrilo (par)', 'GUA-NIT', 'Protección ligera para trabajo general', 0.6, 1.5, 5, 9, 1),
-(22, 'Casco de seguridad', 'CAS-SEG', 'Ajuste ratchet, norma industrial', 6, 12, 5, 9, 1),
-(23, 'Bomba de agua periférica 1HP', 'BOM-PER-1HP', 'Ideal para uso doméstico', 75, 135, 1, 10, 1),
-(24, 'Linterna recargable LED', 'LIN-REC-LED', 'Batería 18650, cargador USB', 5.5, 11, 5, 9, 1);
+(25, 'Tonrillo rojo', 'TOR-ROJO', 'TORNILLO MUY ROJO', 10, 15, 1, 3, 1),
+(27, 'TORNILLO AZUL', 'TOR-AZUL', 'Tornillo muy azul', 10, 15, 5, 3, 1);
 
 -- --------------------------------------------------------
 
@@ -307,30 +240,10 @@ CREATE TABLE `stock` (
 --
 
 INSERT INTO `stock` (`id_producto`, `id_ubicacion`, `cantidad_actual`) VALUES
-(1, 1, 51),
-(2, 1, 80),
-(3, 1, 20),
-(4, 1, 15),
-(5, 1, 10),
-(6, 1, 8),
-(7, 1, 200),
-(8, 1, 150),
-(9, 3, 12),
-(10, 3, 300),
-(11, 3, 250),
-(12, 3, 120),
-(13, 3, 500),
-(14, 3, 60),
-(15, 2, 40),
-(16, 1, 100),
-(17, 2, 200),
-(18, 2, 180),
-(19, 1, 90),
-(20, 1, 70),
-(21, 4, 200),
-(22, 4, 40),
-(23, 3, 6),
-(24, 4, 50);
+(25, 1, 45),
+(25, 2, 20),
+(27, 1, 15),
+(27, 2, 2);
 
 -- --------------------------------------------------------
 
@@ -392,8 +305,7 @@ CREATE TABLE `tipo_usuario` (
 INSERT INTO `tipo_usuario` (`id_tipo_usuario`, `nombre_tipo_usuario`) VALUES
 (1, 'super'),
 (2, 'administrador'),
-(3, 'almacen'),
-(4, 'vendedor');
+(3, 'almacen');
 
 -- --------------------------------------------------------
 
@@ -413,10 +325,8 @@ CREATE TABLE `ubicacion` (
 --
 
 INSERT INTO `ubicacion` (`id_ubicacion`, `nombre_almacen`, `descripcion`, `activo`) VALUES
-(1, 'Almacén Principal', 'Zona de herramientas y tornillería', 1),
-(2, 'Almacén Principal', 'Zona de materiales de construcción y pintura', 1),
-(3, 'Almacén Principal', 'Zona de electricidad y plomería', 1),
-(4, 'Depósito Secundario', 'Seguridad, misceláneos y equipos especiales', 1);
+(1, 'Almacen A', 'Zona de herramientas y tornillería', 1),
+(2, 'Almacen B', 'Zona de materiales de construcción y pintura', 1);
 
 -- --------------------------------------------------------
 
@@ -441,8 +351,7 @@ CREATE TABLE `usuario` (
 INSERT INTO `usuario` (`id_usuario`, `nombre_usuario`, `clave_hash`, `nombre_completo`, `email`, `id_tipo_usuario`, `activo`) VALUES
 (1, 'admin', 'admin', 'Administrador del Sistema', 'admin@akasha.com', 1, 1),
 (2, 'caja01', '123456', 'Operador de Caja', 'caja01@akasha.com', 2, 1),
-(3, 'almacen01', '123456', 'Encargado de Almacén', 'almacen01@akasha.com', 3, 1),
-(4, 'vendedor01', '123456', 'Vendedor Mostrador', 'vendedor01@akasha.com', 4, 1);
+(3, 'almacen01', '123456', 'Encargado de Almacén', 'almacen01@akasha.com', 3, 1);
 
 -- --------------------------------------------------------
 
@@ -468,11 +377,7 @@ CREATE TABLE `venta` (
 --
 
 INSERT INTO `venta` (`id_venta`, `fecha_hora`, `nro_comprobante`, `id_tipo_comprobante`, `id_cliente`, `id_usuario`, `subtotal`, `impuesto`, `total`, `estado`) VALUES
-(1, '2025-12-01 11:15:00', 'VTA-20251201-0001', 4, 1, 2, 124.98, 26.25, 151.23, 1),
-(2, '2025-12-02 16:40:00', 'VTA-20251202-0002', 2, 2, 2, 241.50, 50.72, 292.22, 1),
-(3, '2025-12-03 09:05:00', 'VTA-20251203-0003', 3, 3, 2, 138.00, 28.98, 166.98, 1),
-(4, '2025-12-04 13:20:00', 'VTA-20251204-0004', 4, 4, 2, 69.00, 14.49, 83.49, 1),
-(5, '2025-12-05 10:10:00', 'VTA-20251205-0005', 1, 5, 2, 97.00, 20.37, 117.37, 1);
+(6, '2025-12-08 16:11:38', 'VTA-4698-32056', 1, 1, 1, 15.00, 3.15, 18.15, 1);
 
 --
 -- Índices para tablas volcadas
@@ -523,7 +428,7 @@ ALTER TABLE `movimiento_inventario`
   ADD PRIMARY KEY (`id_movimiento`),
   ADD KEY `id_producto` (`id_producto`),
   ADD KEY `id_usuario` (`id_usuario`),
-  ADD KEY `id_proveedor` (`id_proveedor`);
+  ADD KEY `id_ubicacion` (`id_ubicacion`);
 
 --
 -- Indices de la tabla `producto`
@@ -608,31 +513,31 @@ ALTER TABLE `cliente`
 -- AUTO_INCREMENT de la tabla `compra`
 --
 ALTER TABLE `compra`
-  MODIFY `id_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_compra`
 --
 ALTER TABLE `detalle_compra`
-  MODIFY `id_detalle_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id_detalle_compra` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `detalle_venta`
 --
 ALTER TABLE `detalle_venta`
-  MODIFY `id_detalle_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id_detalle_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT de la tabla `movimiento_inventario`
 --
 ALTER TABLE `movimiento_inventario`
-  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id_movimiento` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT de la tabla `producto`
 --
 ALTER TABLE `producto`
-  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id_producto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedor`
@@ -674,7 +579,7 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `venta`
 --
 ALTER TABLE `venta`
-  MODIFY `id_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id_venta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Restricciones para tablas volcadas
@@ -714,7 +619,7 @@ ALTER TABLE `detalle_venta`
 ALTER TABLE `movimiento_inventario`
   ADD CONSTRAINT `movimiento_inventario_ibfk_1` FOREIGN KEY (`id_producto`) REFERENCES `producto` (`id_producto`),
   ADD CONSTRAINT `movimiento_inventario_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`),
-  ADD CONSTRAINT `movimiento_inventario_ibfk_3` FOREIGN KEY (`id_proveedor`) REFERENCES `proveedor` (`id_proveedor`);
+  ADD CONSTRAINT `movimiento_inventario_ibfk_3` FOREIGN KEY (`id_ubicacion`) REFERENCES `ubicacion` (`id_ubicacion`);
 
 --
 -- Filtros para la tabla `producto`

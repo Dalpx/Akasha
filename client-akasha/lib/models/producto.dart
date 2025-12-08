@@ -13,7 +13,7 @@ class Producto {
 
   String? idProveedor;
   String? idCategoria;
-  String? idUbicacion;
+
   bool activo;
 
   Producto({
@@ -26,7 +26,6 @@ class Producto {
 
     this.idProveedor,
     this.idCategoria,
-    this.idUbicacion,
     required this.activo,
   });
 
@@ -59,7 +58,6 @@ class Producto {
       'id_proveedor': idProveedor,
       'id_categoria': idCategoria,
       'activo': activo ? 1 : 0,
-      'id_ubicacion': idUbicacion,
     };
   }
 }

@@ -63,41 +63,47 @@ class _ComprasPageState extends State<ComprasPage> {
     super.dispose();
   }
 
-  Future<void> _cargarDatosIniciales() async {
-    setState(() => _cargandoInicial = true);
+Future<void> _cargarDatosIniciales() async {
+  setState(() => _cargandoInicial = true);
 
-    try {
-      final resultados = await Future.wait([
-        _compraService.obtenerCompras(),
-        _proveedorService.obtenerProveedoresActivos(),
-        _inventarioService.obtenerProductos(),
-        _tipoComprobanteService.obtenerTiposComprobante(),
-        _ubicacionService.obtenerUbicacionesActivas(),
-      ]);
+  final Future<List<Compra>> comprasFuture = _compraService
+    .obtenerCompras()
+    .catchError((e) {
+     return <Compra>[]; 
+    });
 
-      setState(() {
-        _compras = resultados[0] as List<Compra>;
-        _proveedores = resultados[1] as List<Proveedor>;
-        _productos = resultados[2] as List<Producto>;
-        _tiposComprobante = resultados[3] as List<TipoComprobante>;
-        _ubicaciones = resultados[4] as List<Ubicacion>;
+  try {
+   final resultados = await Future.wait([
+    comprasFuture, // Usamos el Future controlado
+    _proveedorService.obtenerProveedoresActivos(),
+    _inventarioService.obtenerProductos(),
+    _tipoComprobanteService.obtenerTiposComprobante(),
+    _ubicacionService.obtenerUbicacionesActivas(),
+   ]);
 
-        if (_proveedores.isNotEmpty) {
-          _proveedorSeleccionado ??= _proveedores.first;
-        }
-        if (_tiposComprobante.isNotEmpty) {
-          _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
-        }
+   setState(() {
+    _compras = resultados[0] as List<Compra>;
+    _proveedores = resultados[1] as List<Proveedor>;
+    _productos = resultados[2] as List<Producto>;
+    _tiposComprobante = resultados[3] as List<TipoComprobante>;
+    _ubicaciones = resultados[4] as List<Ubicacion>;
 
-        _inicializarLineas();
-      });
-    } catch (e) {
-      _showMessage('Error cargando datos iniciales: $e');
-    } finally {
-      if (mounted) setState(() => _cargandoInicial = false);
+    if (_proveedores.isNotEmpty) {
+     _proveedorSeleccionado ??= _proveedores.first;
     }
-  }
+    if (_tiposComprobante.isNotEmpty) {
+     _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
+    }
 
+    _inicializarLineas();
+   });
+  } catch (e) {
+   // Este catch ahora solo se activará por fallas en servicios esenciales (proveedores, productos, etc.)
+   _showMessage('Error cargando datos iniciales: $e');
+  } finally {
+   if (mounted) setState(() => _cargandoInicial = false);
+  }
+ }
   void _inicializarLineas() {
     for (final l in _lineas) {
       l.dispose();
@@ -389,15 +395,6 @@ class _ComprasPageState extends State<ComprasPage> {
                             ),
                           ),
                         ),
-
-                        // Align(
-                        //   alignment: Alignment.centerRight,
-                        //   child: ElevatedButton.icon(
-                        //     onPressed: _guardando ? null : _registrarCompra,
-                        //     icon: const Icon(Icons.save),
-                        //     label: const Text('Registrar compra'),
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
@@ -545,6 +542,19 @@ class _ComprasPageState extends State<ComprasPage> {
                     enabled: false,
                     decoration: const InputDecoration(
                       labelText: 'Precio costo',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: TextFormField(
+                    controller: null,
+                    readOnly: true,
+                    enabled: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Cantidad',
                       border: OutlineInputBorder(),
                     ),
                   ),

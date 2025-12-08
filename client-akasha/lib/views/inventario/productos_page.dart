@@ -42,7 +42,7 @@ class _ProductosPageState extends State<ProductosPage> {
   // Listas para los select boxes.
   List<Proveedor> _proveedores = <Proveedor>[];
   List<Categoria> _categorias = <Categoria>[];
-  List<Ubicacion> _ubicaciones = <Ubicacion>[];
+  // List<Ubicacion> _ubicaciones = <Ubicacion>[];
 
   // Indica si todavía se están cargando proveedores y categorías.
   bool _cargandoCombos = true;
@@ -59,13 +59,13 @@ class _ProductosPageState extends State<ProductosPage> {
     List<Proveedor> proveedores = await _proveedorService
         .obtenerProveedoresActivos();
     List<Categoria> categorias = await _categoriaService.obtenerCategorias();
-    List<Ubicacion> ubicaciones = await _ubicacionService
-        .obtenerUbicacionesActivas();
+    // List<Ubicacion> ubicaciones = await _ubicacionService
+        // .obtenerUbicacionesActivas();
 
     setState(() {
       _proveedores = proveedores;
       _categorias = categorias;
-      _ubicaciones = ubicaciones;
+      // _ubicaciones = ubicaciones;
       _cargandoCombos = false;
     });
   }
@@ -97,7 +97,7 @@ class _ProductosPageState extends State<ProductosPage> {
     // Variables locales para el select box.
     Proveedor? proveedorSeleccionado;
     Categoria? categoriaSeleccionada;
-    Ubicacion? ubicacionSeleccionada;
+    // Ubicacion? ubicacionSeleccionada;
 
     // Obtener la lista de productos actuales para validar unicidad (ej. SKU)
     final List<Producto> productosExistentes = await _inventarioService
@@ -262,30 +262,30 @@ class _ProductosPageState extends State<ProductosPage> {
                         },
                       ),
                       const SizedBox(height: 12.0),
-                      // .8 Select box para categoría (Obligatorio)
-                      DropdownButtonFormField<Ubicacion>(
-                        initialValue: ubicacionSeleccionada,
-                        decoration: const InputDecoration(
-                          labelText: 'Ubicacion',
-                        ),
-                        items: _ubicaciones.map((Ubicacion ubicacion) {
-                          return DropdownMenuItem<Ubicacion>(
-                            value: ubicacion,
-                            child: Text(ubicacion.nombreAlmacen),
-                          );
-                        }).toList(),
-                        onChanged: (Ubicacion? nuevo) {
-                          setStateDialog(() {
-                            ubicacionSeleccionada = nuevo;
-                          });
-                        },
-                        validator: (Ubicacion? value) {
-                          if (value == null) {
-                            return 'La categoría es obligatoria.';
-                          }
-                          return null;
-                        },
-                      ),
+                      // // .8 Select box para categoría (Obligatorio)
+                      // DropdownButtonFormField<Ubicacion>(
+                      //   initialValue: ubicacionSeleccionada,
+                      //   decoration: const InputDecoration(
+                      //     labelText: 'Ubicacion',
+                      //   ),
+                      //   items: _ubicaciones.map((Ubicacion ubicacion) {
+                      //     return DropdownMenuItem<Ubicacion>(
+                      //       value: ubicacion,
+                      //       child: Text(ubicacion.nombreAlmacen),
+                      //     );
+                      //   }).toList(),
+                      //   onChanged: (Ubicacion? nuevo) {
+                      //     setStateDialog(() {
+                      //       ubicacionSeleccionada = nuevo;
+                      //     });
+                      //   },
+                      //   validator: (Ubicacion? value) {
+                      //     if (value == null) {
+                      //       return 'La categoría es obligatoria.';
+                      //     }
+                      //     return null;
+                      //   },
+                      // ),
                     ],
                   ),
                 ),
@@ -304,7 +304,7 @@ class _ProductosPageState extends State<ProductosPage> {
                     if (formKey.currentState!.validate()) {
                       int? idProveedorSeleccionado;
                       int? idCategoriaSeleccionada;
-                      int? idUbicacionSeleccionada;
+                      // int? idUbicacionSeleccionada;
 
                       if (proveedorSeleccionado != null) {
                         idProveedorSeleccionado =
@@ -316,10 +316,10 @@ class _ProductosPageState extends State<ProductosPage> {
                             categoriaSeleccionada!.idCategoria;
                       }
 
-                      if (ubicacionSeleccionada != null) {
-                        idUbicacionSeleccionada =
-                            ubicacionSeleccionada!.idUbicacion;
-                      }
+                      // if (ubicacionSeleccionada != null) {
+                      //   idUbicacionSeleccionada =
+                      //       ubicacionSeleccionada!.idUbicacion;
+                      // }
 
                       // Construye el nuevo producto con los valores validados.
                       Producto nuevo = Producto(
@@ -334,7 +334,7 @@ class _ProductosPageState extends State<ProductosPage> {
                             double.tryParse(ventaController.text) ?? 0.0,
                         idProveedor: idProveedorSeleccionado.toString(),
                         idCategoria: idCategoriaSeleccionada.toString(),
-                        idUbicacion: idUbicacionSeleccionada.toString(),
+                        // idUbicacion: idUbicacionSeleccionada.toString(),
                         activo: true,
                       );
 
@@ -400,14 +400,14 @@ class _ProductosPageState extends State<ProductosPage> {
     Categoria? categoriaInicial = _categorias.firstWhereOrNull(
       (c) => c.idCategoria == producto.idCategoria,
     );
-    Ubicacion? ubicacionInicial = _ubicaciones.firstWhereOrNull(
-      (u) => u.idUbicacion == producto.idUbicacion,
-    );
+    // Ubicacion? ubicacionInicial = _ubicaciones.firstWhereOrNull(
+    //   (u) => u.idUbicacion == producto.idUbicacion,
+    // );
 
     // Variables locales que controlan los select boxes.
     Proveedor? proveedorSeleccionado = proveedorInicial;
     Categoria? categoriaSeleccionada = categoriaInicial;
-    Ubicacion? ubicacionSeleccionada = ubicacionInicial;
+    // Ubicacion? ubicacionSeleccionada = ubicacionInicial;
 
     // Obtener la lista de productos actuales para validar unicidad (ej. SKU)
     final List<Producto> productosExistentes = await _inventarioService
@@ -573,30 +573,30 @@ class _ProductosPageState extends State<ProductosPage> {
                         },
                       ),
                       const SizedBox(height: 12.0),
-                      // .8 Select box para categoría (Obligatorio)
-                      DropdownButtonFormField<Ubicacion>(
-                        initialValue: ubicacionSeleccionada,
-                        decoration: const InputDecoration(
-                          labelText: 'Ubicacion',
-                        ),
-                        items: _ubicaciones.map((Ubicacion ubicacion) {
-                          return DropdownMenuItem<Ubicacion>(
-                            value: ubicacion,
-                            child: Text(ubicacion.nombreAlmacen),
-                          );
-                        }).toList(),
-                        onChanged: (Ubicacion? nuevo) {
-                          setStateDialog(() {
-                            ubicacionSeleccionada = nuevo;
-                          });
-                        },
-                        validator: (Ubicacion? value) {
-                          if (value == null) {
-                            return 'La categoría es obligatoria.';
-                          }
-                          return null;
-                        },
-                      ),
+                      // // .8 Select box para categoría (Obligatorio)
+                      // DropdownButtonFormField<Ubicacion>(
+                      //   // initialValue: ubicacionSeleccionada,
+                      //   decoration: const InputDecoration(
+                      //     labelText: 'Ubicacion',
+                      //   ),
+                      //   items: _ubicaciones.map((Ubicacion ubicacion) {
+                      //     return DropdownMenuItem<Ubicacion>(
+                      //       value: ubicacion,
+                      //       child: Text(ubicacion.nombreAlmacen),
+                      //     );
+                      //   }).toList(),
+                      //   onChanged: (Ubicacion? nuevo) {
+                      //     setStateDialog(() {
+                      //       ubicacionSeleccionada = nuevo;
+                      //     });
+                      //   },
+                      //   validator: (Ubicacion? value) {
+                      //     if (value == null) {
+                      //       return 'La categoría es obligatoria.';
+                      //     }
+                      //     return null;
+                      //   },
+                      // ),
                     ],
                   ),
                 ),
@@ -615,7 +615,7 @@ class _ProductosPageState extends State<ProductosPage> {
                     if (formKey.currentState!.validate()) {
                       int? idProveedorSeleccionado;
                       int? idCategoriaSeleccionada;
-                      int? idUbicacionSeleccionada;
+                      // int? idUbicacionSeleccionada;
 
                       if (proveedorSeleccionado != null) {
                         idProveedorSeleccionado =
@@ -627,10 +627,10 @@ class _ProductosPageState extends State<ProductosPage> {
                             categoriaSeleccionada!.idCategoria;
                       }
 
-                      if (ubicacionSeleccionada != null) {
-                        idUbicacionSeleccionada =
-                            ubicacionSeleccionada!.idUbicacion;
-                      }
+                      // if (ubicacionSeleccionada != null) {
+                      //   idUbicacionSeleccionada =
+                      //       ubicacionSeleccionada!.idUbicacion;
+                      // }
 
                       // Actualiza los campos del producto con los nuevos valores.
                       producto.nombre = nombreController.text.trim();
@@ -644,7 +644,7 @@ class _ProductosPageState extends State<ProductosPage> {
                           double.tryParse(ventaController.text) ?? 0.0;
                       producto.idProveedor = idProveedorSeleccionado.toString();
                       producto.idCategoria = idCategoriaSeleccionada.toString();
-                      producto.idUbicacion = idUbicacionSeleccionada.toString();
+                      // producto.idUbicacion = idUbicacionSeleccionada.toString();
 
                       // Llama al servicio para guardar los cambios.
                       await _inventarioService.actualizarProducto(producto);
@@ -853,7 +853,8 @@ class _ProductosPageState extends State<ProductosPage> {
                                 icon: const Icon(Icons.delete),
                                 tooltip: 'Eliminar (Desactivar)',
                                 onPressed: () {
-                                  _confirmarEliminarProducto(producto);
+                                   
+                                 _confirmarEliminarProducto(producto);
                                 },
                               ),
                             ],

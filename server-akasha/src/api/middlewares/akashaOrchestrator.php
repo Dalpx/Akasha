@@ -206,6 +206,18 @@ class stockOrchestrator
             throw $e;
         }
     }
+
+    public static function deleteStock()
+    {
+        try {
+            $con = DBConnection::getInstance()->getPDO();
+            $controller = new stockController($con);
+            $result = $controller->deleteStock();
+            return $result;
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
 }
 
 class compraventaOrchestrator
