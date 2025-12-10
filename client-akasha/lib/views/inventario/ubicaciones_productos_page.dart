@@ -70,14 +70,12 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
     });
   }
 
-  /// Devuelve la lista de ubicaciones activas que NO están en _stockUbicaciones (stock > 0).
-  /// ✨ **CUMPLE REQUISITO 1: FILTRO DE NO ASIGNADAS**
   List<Ubicacion> _obtenerUbicacionesNoAsignadas() {
-    // Nombres de los almacenes que ya tienen stock para este producto
+    
     final Set<String> nombresAsignados = _stockUbicaciones
         .map(
           (s) => s.idUbicacion,
-        ) // Asumiendo que idUbicacion de StockUbicacion es el nombre del almacén
+        ) 
         .toSet();
 
     // Filtramos la lista completa de ubicaciones
@@ -208,8 +206,6 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                     Row(
                       children: <Widget>[
                         Expanded(
-                          // Dropdown solo muestra ubicaciones SIN ASIGNAR
-                          // ✨ **CUMPLE REQUISITO 1**
                           child: DropdownButtonFormField<Ubicacion>(
                             value: _ubicacionSeleccionada,
                             decoration: const InputDecoration(
@@ -224,7 +220,7 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                             onChanged: (Ubicacion? nueva) {
                               setState(() {
                                 _ubicacionSeleccionada = nueva;
-                                // Para nuevas asignaciones, la cantidad es 0 por defecto
+                                
                                 _cantidadController.text = '0';
                               });
                             },
@@ -276,12 +272,11 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                                 itemBuilder: (BuildContext context, int index) {
                                   StockUbicacion s = _stockUbicaciones[index];
 
-                                  // Buscamos la Ubicacion completa para usarla en el Dropdown
                                   Ubicacion?
                                   ubicacionCompleta = _ubicaciones.firstWhere(
                                     (u) =>
                                         u.nombreAlmacen ==
-                                        s.idUbicacion, // Asumo que idUbicacion de StockUbicacion es el nombre del almacén
+                                        s.idUbicacion, 
                                     orElse: () => Ubicacion(
                                       idUbicacion: -1,
                                       nombreAlmacen: s.idUbicacion,
@@ -292,14 +287,14 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                                   return ListTile(
                                     title: Text(
                                       s.idUbicacion,
-                                    ), // El nombre del almacén viene en s.idUbicacion
+                                    ), 
                                     subtitle: Text(
                                       'Stock actual: ${s.cantidad}',
                                     ),
                                     selected:
                                         ubicacionCompleta ==
                                         _ubicacionSeleccionada,
-                                    // Trailing con botones de editar y eliminar.
+                                  
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: <Widget>[
@@ -308,21 +303,19 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                                           icon: const Icon(Icons.delete),
                                           tooltip: 'Eliminar asignación',
                                           onPressed: () async {
-                                            // Verificamos que tengamos un ID de ubicación válido
+                                           
                                             if (ubicacionCompleta.idUbicacion !=
                                                     null &&
                                                 ubicacionCompleta.idUbicacion! >
                                                     0) {
-                                              // 1. Llamada al servicio con los dos parámetros (idProducto, idUbicacion)
+                                              
                                               await _inventarioService
                                                   .eliminarInstanciaUbicacion(
                                                     widget.producto.idProducto!,
                                                     ubicacionCompleta
-                                                        .idUbicacion!, // <-- Aquí está el ID entero
+                                                        .idUbicacion!,
                                                   );
 
-                                              // 2. Recargamos los datos para actualizar la lista en pantalla
-                                              // ✨ **CUMPLE REQUISITO 2: ACTUALIZACIÓN DE VISTA**
                                               await _cargarDatos();
 
                                               _mostrarMensaje(

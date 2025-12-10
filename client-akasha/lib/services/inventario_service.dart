@@ -169,6 +169,25 @@ class InventarioService {
     }
   }
 
+  Future<int> obtenerStockTotalDeProducto(int idProducto) async {
+    try {
+      final List<StockUbicacion> stocks =
+          await obtenerStockPorUbicacionDeProducto(idProducto);
+
+      int stockTotal = stocks.fold(
+        0,
+        (sum, item) =>
+            sum +
+            item.cantidad, 
+      );
+
+      return stockTotal;
+    } catch (e) {
+      log("Error al calcular el stock total: $e");
+      return 0; 
+    }
+  }
+
   Future<void> establecerStock(int idProducto, int idUbicacion) async {
     final url = Uri.parse(_stockUbicacionUrl);
 
