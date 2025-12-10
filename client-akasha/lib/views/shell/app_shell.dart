@@ -1,3 +1,4 @@
+import 'package:akasha/core/constants.dart';
 import 'package:akasha/core/responsive_layout.dart';
 import 'package:akasha/core/session_manager.dart';
 import 'package:akasha/services/compra_service.dart';
@@ -112,8 +113,7 @@ class _AppShellState extends State<AppShell> {
       orElse: () => _opcionesBase.first, // Fallback al primero
     );
 
-    if (opcionActual != null &&
-        opcionActual.requiredRoles != null &&
+    if (opcionActual.requiredRoles != null &&
         !opcionActual.requiredRoles!.contains(tipoUsuario)) {
       // Si no tiene permiso, volvemos a Inventario (index 0)
       _indiceSeleccionado = 0;
@@ -124,15 +124,18 @@ class _AppShellState extends State<AppShell> {
       case 0:
         return ProductosPage();
       case 1:
-        return VentasPage(sessionManager: widget.sessionManager,);
+        return VentasPage(sessionManager: widget.sessionManager);
       case 2:
         return ComprasPage(sessionManager: widget.sessionManager);
       case 3:
-        return MovimientoInventarioPage(sessionManager: widget.sessionManager,);
+        return MovimientoInventarioPage(sessionManager: widget.sessionManager);
       case 4:
         return UsuariosPage();
       case 5:
-        return ReportesPage(ventaService: VentaService(), compraService: CompraService(),);
+        return ReportesPage(
+          ventaService: VentaService(),
+          compraService: CompraService(),
+        );
       case 6:
         return ClientesPage();
       default:
@@ -206,16 +209,28 @@ class _AppShellState extends State<AppShell> {
             // Side bar
             Container(
               width: 250.0,
-              color: Colors.grey.shade200,
+              color: Constants().sidebar,
               child: Column(
                 children: <Widget>[
                   const SizedBox(height: 40.0),
-                  const Text(
-                    'Akasha',
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        "assets/images/akasha_logo.png",
+                        width: 64,
+                        height: 64,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        "AKASHA",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20.0),
 
@@ -229,11 +244,13 @@ class _AppShellState extends State<AppShell> {
                   }),
 
                   const Spacer(),
-                  TextButton(
+                  ElevatedButton.icon(
+                    
                     onPressed: () {
                       _cerrarSesion(context);
                     },
-                    child: const Text('Cerrar sesión'),
+                    icon: Icon(Icons.logout),
+                    label: Text("Cerrar Sesión"),
                   ),
                   const SizedBox(height: 20.0),
                 ],
@@ -245,8 +262,6 @@ class _AppShellState extends State<AppShell> {
         ),
       );
     } else {
-      // Layout para mobile (bottom bar)
-
       // Encontramos el índice *visible* que corresponde al índice original seleccionado.
       final int indiceVisible = opcionesPermitidas.indexWhere(
         (option) => option.index == _indiceSeleccionado,
@@ -294,18 +309,31 @@ class _AppShellState extends State<AppShell> {
   }) {
     bool seleccionado = _indiceSeleccionado == index;
 
-    return ListTile(
-      leading: Icon(icon, color: seleccionado ? Colors.blue : Colors.black),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: seleccionado ? Colors.blue : Colors.black,
-          fontWeight: seleccionado ? FontWeight.bold : FontWeight.normal,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Card(
+        color: seleccionado ? Constants().primary : Colors.transparent,
+        child: ListTile(
+          leading: Icon(
+            icon,
+            color: seleccionado
+                ? Constants().sidebar
+                : Constants().sidebarForeground,
+          ),
+          title: Text(
+            label,
+            style: TextStyle(
+              color: seleccionado
+                  ? Constants().sidebar
+                  : Constants().sidebarForeground,
+              fontWeight: seleccionado ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          onTap: () {
+            _onItemTapped(index);
+          },
         ),
       ),
-      onTap: () {
-        _onItemTapped(index);
-      },
     );
   }
 }

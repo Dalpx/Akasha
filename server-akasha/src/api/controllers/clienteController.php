@@ -14,7 +14,7 @@ class clienteController
     {
         try {
             if ($id !== null) {
-                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo
+                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo, c.direccion
                 FROM cliente as c LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento
                 WHERE id_cliente = :id";
                 $stmt = $this->DB->prepare($query);
@@ -27,7 +27,7 @@ class clienteController
                     throw new Exception('Cliente no encontrado', 404);
                 }
             } else {
-                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo
+                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo, c.direccion
                 FROM cliente as c LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute();

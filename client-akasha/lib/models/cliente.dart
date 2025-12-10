@@ -43,7 +43,7 @@ class Cliente {
       'id_cliente': idCliente,
       'nombre': nombre,
       'apellido': apellido,
-      "tipo_documento": tipoDocumento,
+      "tipo_documento": int.parse(tipoDocumento),
       "nro_documento": nroDocumento,
       'telefono': telefono,
       'email': email,

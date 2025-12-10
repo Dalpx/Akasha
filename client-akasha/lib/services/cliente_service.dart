@@ -48,9 +48,9 @@ class ClienteService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(
           cliente.toJson(),
-        ), // Usamos toJson() del modelo Cateogria
+        ),
       );
-
+      
       if (response.statusCode == 201) {
         // 201 Created es la respuesta estándar para una creación exitosa
         log("Cliente creado con éxito. ID: ${response.body}");

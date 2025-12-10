@@ -1,5 +1,6 @@
 import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/services/ubicacion_service.dart';
+import 'package:akasha/widgets/custom_tile.dart';
 import 'package:flutter/material.dart';
 import '../../models/proveedor.dart';
 import '../../models/categoria.dart';
@@ -497,7 +498,6 @@ class _GestionProveedoresCategoriasPageState
                             labelText: 'Descripción (opcional)',
                           ),
                         ),
-                        
                       ],
                     ),
                   ),
@@ -593,7 +593,6 @@ class _GestionProveedoresCategoriasPageState
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        // 🔙 AppBar con botón para regresar a la pantalla anterior (ProductosPage)
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -602,7 +601,7 @@ class _GestionProveedoresCategoriasPageState
               Navigator.of(context).pop();
             },
           ),
-          title: const Text('Gestión de proveedores y categorías'),
+          title: const Text('Gestión'),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -636,6 +635,7 @@ class _GestionProveedoresCategoriasPageState
   Widget _buildTabProveedores() {
     return Column(
       children: <Widget>[
+        SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: ElevatedButton.icon(
@@ -648,73 +648,78 @@ class _GestionProveedoresCategoriasPageState
         ),
         const SizedBox(height: 8.0),
         Expanded(
-          child: FutureBuilder<List<Proveedor>>(
-            future: _futureProveedores,
-            builder:
-                (
-                  BuildContext context,
-                  AsyncSnapshot<List<Proveedor>> snapshot,
-                ) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              child: FutureBuilder<List<Proveedor>>(
+                future: _futureProveedores,
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<List<Proveedor>> snapshot,
+                    ) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error al cargar proveedores: ${snapshot.error}',
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text('No hay proveedores registrados.'),
-                    );
-                  }
-
-                  List<Proveedor> proveedores = snapshot.data!
-                      .where((proovedor) => proovedor.activo)
-                      .toList();
-
-                  return ListView.builder(
-                    itemCount: proveedores.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      Proveedor proveedor = proveedores[index];
-
-                      return Card(
-                        child: ListTile(
-                          onTap: () {
-                            _abrirDialogoEditarProveedor(proveedor);
-                          },
-                          title: Text(proveedor.nombre),
-                          subtitle: Text(
-                            'Teléfono: ${proveedor.telefono}\nCorreo: ${proveedor.correo ?? '-'}',
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar proveedores: ${snapshot.error}',
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Editar',
-                                onPressed: () {
-                                  _abrirDialogoEditarProveedor(proveedor);
-                                },
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text('No hay proveedores registrados.'),
+                        );
+                      }
+
+                      List<Proveedor> proveedores = snapshot.data!
+                          .where((proovedor) => proovedor.activo)
+                          .toList();
+
+                      return ListView.builder(
+                        itemCount: proveedores.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          Proveedor proveedor = proveedores[index];
+
+                          return CustomTile(
+                            listTile: ListTile(
+                              onTap: () {
+                                _abrirDialogoEditarProveedor(proveedor);
+                              },
+                              title: Text(proveedor.nombre),
+                              subtitle: Text(
+                                'Teléfono: ${proveedor.telefono}\nCorreo: ${proveedor.correo ?? '-'} \n${proveedor.direccion}',
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: 'Eliminar',
-                                onPressed: () {
-                                  _confirmarEliminarProveedor(proveedor);
-                                },
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    tooltip: 'Editar',
+                                    onPressed: () {
+                                      _abrirDialogoEditarProveedor(proveedor);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    tooltip: 'Eliminar',
+                                    onPressed: () {
+                                      _confirmarEliminarProveedor(proveedor);
+                                    },
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
+              ),
+            ),
           ),
         ),
       ],
@@ -725,6 +730,7 @@ class _GestionProveedoresCategoriasPageState
   Widget _buildTabCategorias() {
     return Column(
       children: <Widget>[
+        SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: ElevatedButton.icon(
@@ -737,70 +743,75 @@ class _GestionProveedoresCategoriasPageState
         ),
         const SizedBox(height: 8.0),
         Expanded(
-          child: FutureBuilder<List<Categoria>>(
-            future: _futureCategorias,
-            builder:
-                (
-                  BuildContext context,
-                  AsyncSnapshot<List<Categoria>> snapshot,
-                ) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              child: FutureBuilder<List<Categoria>>(
+                future: _futureCategorias,
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<List<Categoria>> snapshot,
+                    ) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error al cargar categorías: ${snapshot.error}',
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text('No hay categorías registradas.'),
-                    );
-                  }
-
-                  List<Categoria> categorias = snapshot.data!
-                      .where((categoria) => categoria.activo)
-                      .toList();
-
-                  return ListView.builder(
-                    itemCount: categorias.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      Categoria categoria = categorias[index];
-
-                      return Card(
-                        child: ListTile(
-                          onTap: () {
-                            _abrirDialogoEditarCategoria(categoria);
-                          },
-                          title: Text(categoria.nombreCategoria),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Editar',
-                                onPressed: () {
-                                  _abrirDialogoEditarCategoria(categoria);
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: 'Eliminar',
-                                onPressed: () {
-                                  _confirmarEliminarCategoria(categoria);
-                                },
-                              ),
-                            ],
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar categorías: ${snapshot.error}',
                           ),
-                        ),
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text('No hay categorías registradas.'),
+                        );
+                      }
+
+                      List<Categoria> categorias = snapshot.data!
+                          .where((categoria) => categoria.activo)
+                          .toList();
+
+                      return ListView.builder(
+                        itemCount: categorias.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          Categoria categoria = categorias[index];
+
+                          return CustomTile(
+                            listTile: ListTile(
+                              onTap: () {
+                                _abrirDialogoEditarCategoria(categoria);
+                              },
+                              title: Text(categoria.nombreCategoria),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    tooltip: 'Editar',
+                                    onPressed: () {
+                                      _abrirDialogoEditarCategoria(categoria);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    tooltip: 'Eliminar',
+                                    onPressed: () {
+                                      _confirmarEliminarCategoria(categoria);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
+              ),
+            ),
           ),
         ),
       ],
@@ -811,6 +822,7 @@ class _GestionProveedoresCategoriasPageState
   Widget _buildTabUbicaciones() {
     return Column(
       children: <Widget>[
+        SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: ElevatedButton.icon(
@@ -823,74 +835,79 @@ class _GestionProveedoresCategoriasPageState
         ),
         const SizedBox(height: 8.0),
         Expanded(
-          child: FutureBuilder<List<Ubicacion>>(
-            future: _futureUbicaciones,
-            builder:
-                (
-                  BuildContext context,
-                  AsyncSnapshot<List<Ubicacion>> snapshot,
-                ) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: FutureBuilder<List<Ubicacion>>(
+                future: _futureUbicaciones,
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<List<Ubicacion>> snapshot,
+                    ) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error al cargar categorías: ${snapshot.error}',
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text('No hay categorías registradas.'),
-                    );
-                  }
-
-                  List<Ubicacion> ubicaciones = snapshot.data!
-                      .where((ubicacion) => ubicacion.activa)
-                      .toList();
-
-                  return ListView.builder(
-                    itemCount: ubicaciones.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      Ubicacion ubicacion = ubicaciones[index];
-
-                      return Card(
-                        child: ListTile(
-                          onTap: () {
-                            _abrirDialogoEditarUbicacion(ubicacion);
-                          },
-                          title: Text(ubicacion.nombreAlmacen),
-                          subtitle: Text(
-                            'Descripción: ${ubicacion.descripcion ?? '-'}\n'
-                            'Estado: ${ubicacion.activa ? 'Activa' : 'Inactiva'}',
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar categorías: ${snapshot.error}',
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                tooltip: 'Editar',
-                                onPressed: () {
-                                  _abrirDialogoEditarUbicacion(ubicacion);
-                                },
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text('No hay categorías registradas.'),
+                        );
+                      }
+
+                      List<Ubicacion> ubicaciones = snapshot.data!
+                          .where((ubicacion) => ubicacion.activa)
+                          .toList();
+
+                      return ListView.builder(
+                        itemCount: ubicaciones.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          Ubicacion ubicacion = ubicaciones[index];
+
+                          return CustomTile(
+                            listTile: ListTile(
+                              onTap: () {
+                                _abrirDialogoEditarUbicacion(ubicacion);
+                              },
+                              title: Text(ubicacion.nombreAlmacen),
+                              subtitle: Text(
+                                'Descripción: ${ubicacion.descripcion ?? '-'}\n'
+                                'Estado: ${ubicacion.activa ? 'Activa' : 'Inactiva'}',
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                tooltip: 'Eliminar',
-                                onPressed: () {
-                                  _confirmarEliminarUbicacion(ubicacion);
-                                },
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    tooltip: 'Editar',
+                                    onPressed: () {
+                                      _abrirDialogoEditarUbicacion(ubicacion);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    tooltip: 'Eliminar',
+                                    onPressed: () {
+                                      _confirmarEliminarUbicacion(ubicacion);
+                                    },
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  );
-                },
+              ),
+            ),
           ),
         ),
       ],

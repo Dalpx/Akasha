@@ -1,6 +1,6 @@
 import 'package:akasha/core/app_routes.dart';
+import 'package:akasha/widgets/app_theme.dart';
 import 'package:flutter/material.dart';
-
 import 'core/session_manager.dart';
 import 'views/auth/login_page.dart';
 import 'views/shell/app_shell.dart';
@@ -39,13 +39,7 @@ class _AkashaAppState extends State<AkashaApp> {
     return MaterialApp(
       title: 'Akasha - Inventario y Ventas',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-        ),
-      ),
-      // Ruta inicial depende de si hay usuario logueado o no
+      theme: AppTheme.lightTheme,
       home: _buildHome(),
       routes: AppRoutes.buildRoutes(_sessionManager),
     );
@@ -55,14 +49,10 @@ class _AkashaAppState extends State<AkashaApp> {
   Widget _buildHome() {
     if (_sessionManager.estaAutenticado()) {
       // Si hay sesión, mostrar el shell principal con navegación lateral/bottom
-      return AppShell(
-        sessionManager: _sessionManager,
-      );
+      return AppShell(sessionManager: _sessionManager);
     } else {
       // Si no hay sesión, mostrar pantalla de login
-      return LoginPage(
-        sessionManager: _sessionManager,
-      );
+      return LoginPage(sessionManager: _sessionManager);
     }
   }
 }

@@ -36,7 +36,7 @@ class Usuario {
       'clave_hash': claveHash,
       'nombre_completo': nombreCompleto,
       'email': email,
-      'id_tipo_usuario': tipoUsuario,
+      'id_tipo_usuario': int.parse(tipoUsuario!),
       'activo': activo ? 1 : 0,
     };
   }
