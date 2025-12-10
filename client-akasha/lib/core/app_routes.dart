@@ -2,15 +2,16 @@ import 'package:akasha/services/compra_service.dart';
 import 'package:akasha/services/venta_service.dart';
 import 'package:akasha/views/auth/login_page.dart';
 import 'package:akasha/views/clientes/clientes_page.dart';
-import 'package:akasha/views/compras/compras_page.dart';
-import 'package:akasha/views/configuracion/gestion_proveedores_categorias_ubicaciones_page.dart';
-import 'package:akasha/views/configuracion/gestion_ubicaciones_page.dart';
+// import 'package:akasha/views/compras/compras_page.dart';
+import 'package:akasha/views/entidades_maestras/gestion_entidades_maestras_page.dart';
+
+import 'package:akasha/views/entidades_maestras/gestion_ubicaciones_page.dart';
 import 'package:akasha/views/inventario/movimientos_inventario_page.dart';
 import 'package:akasha/views/inventario/productos_page.dart';
 import 'package:akasha/views/reportes/reportes_page.dart';
 import 'package:akasha/views/seguridad/usuarios_page.dart';
 import 'package:akasha/views/shell/app_shell.dart';
-import 'package:akasha/views/ventas/ventas_page.dart';
+import 'package:akasha/views/transacciones/compras_ventas_page.dart';
 import 'package:flutter/material.dart';
 
 import 'session_manager.dart';
@@ -20,8 +21,7 @@ class AppRoutes {
   static const String rutaLogin = '/login';
   static const String rutaShell = '/appshell';
   static const String rutaInventario = '/inventario';
-  static const String rutaVentas = '/ventas';
-  static const String rutaCompras = '/compras';
+  static const String rutaComprasVentas = '/compras-ventas';
   static const String rutaReportes = '/reportes';
   static const String rutaGestionMaestros = '/gestion-maestros';
   static const String rutaGestionUbicaciones = '/gestion-ubicaciones';
@@ -41,17 +41,14 @@ class AppRoutes {
       rutaInventario: (BuildContext context) {
         return ProductosPage();
       },
-      rutaVentas: (BuildContext context) {
-        return VentasPage(sessionManager: sessionManager,);
-      },
-      rutaCompras: (BuildContext context) {
-        return ComprasPage(sessionManager: sessionManager,);
+      rutaComprasVentas: (BuildContext context) {
+        return ComprasVentasPage(sessionManager: sessionManager,);
       },
       rutaReportes: (BuildContext context) {
         return ReportesPage(ventaService: VentaService(), compraService: CompraService(),);
       },
       rutaGestionMaestros: (BuildContext context) {
-        return GestionProveedoresCategoriasPage();
+        return GestionEntidadesMaestrasPage();
       },
       rutaGestionUbicaciones: (BuildContext context) {
         return GestionUbicacionesPage();

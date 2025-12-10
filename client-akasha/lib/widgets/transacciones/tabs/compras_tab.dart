@@ -1,31 +1,32 @@
 import 'dart:math';
+
+import 'package:akasha/core/constants.dart';
+import 'package:akasha/core/session_manager.dart';
+import 'package:akasha/models/compra.dart';
+import 'package:akasha/models/detalle_compra.dart';
+import 'package:akasha/models/producto.dart';
+import 'package:akasha/models/proveedor.dart';
+import 'package:akasha/models/tipo_comprobante.dart';
+import 'package:akasha/models/ubicacion.dart';
+import 'package:akasha/services/compra_service.dart';
+import 'package:akasha/services/inventario_service.dart';
+import 'package:akasha/services/proveedor_service.dart';
+import 'package:akasha/services/tipo_comprobante_service.dart';
+import 'package:akasha/services/ubicacion_service.dart';
+import 'package:akasha/widgets/transacciones/forms/linea_compra_form.dart';
+import 'package:akasha/widgets/transacciones/logica/resumen_totales.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/session_manager.dart';
-
-import '../../models/producto.dart';
-import '../../models/ubicacion.dart';
-import '../../models/tipo_comprobante.dart';
-import '../../models/proveedor.dart';
-import '../../models/compra.dart';
-import '../../models/detalle_compra.dart';
-
-import '../../services/inventario_service.dart';
-import '../../services/ubicacion_service.dart';
-import '../../services/tipo_comprobante_service.dart';
-import '../../services/proveedor_service.dart';
-import '../../services/compra_service.dart';
-
-class ComprasPage extends StatefulWidget {
+class ComprasTab extends StatefulWidget {
   final SessionManager sessionManager;
 
-  const ComprasPage({super.key, required this.sessionManager});
+  const ComprasTab({super.key, required this.sessionManager});
 
   @override
-  State<ComprasPage> createState() => _ComprasPageState();
+  State<ComprasTab> createState() => ComprasTabState();
 }
 
-class _ComprasPageState extends State<ComprasPage> {
+class ComprasTabState extends State<ComprasTab> {
   final _formKey = GlobalKey<FormState>();
 
   final CompraService _compraService = CompraService();
@@ -44,7 +45,7 @@ class _ComprasPageState extends State<ComprasPage> {
   Proveedor? _proveedorSeleccionado;
   TipoComprobante? _tipoComprobanteSeleccionado;
 
-  final List<_LineaCompraForm> _lineas = <_LineaCompraForm>[];
+  final List<LineaCompraForm> _lineas = <LineaCompraForm>[];
 
   bool _cargandoInicial = true;
   bool _guardando = false;
@@ -63,54 +64,77 @@ class _ComprasPageState extends State<ComprasPage> {
     super.dispose();
   }
 
-Future<void> _cargarDatosIniciales() async {
-  setState(() => _cargandoInicial = true);
-
-  final Future<List<Compra>> comprasFuture = _compraService
-    .obtenerCompras()
-    .catchError((e) {
-     return <Compra>[]; 
-    });
-
-  try {
-   final resultados = await Future.wait([
-    comprasFuture, // Usamos el Future controlado
-    _proveedorService.obtenerProveedoresActivos(),
-    _inventarioService.obtenerProductos(),
-    _tipoComprobanteService.obtenerTiposComprobante(),
-    _ubicacionService.obtenerUbicacionesActivas(),
-   ]);
-
-   setState(() {
-    _compras = resultados[0] as List<Compra>;
-    _proveedores = resultados[1] as List<Proveedor>;
-    _productos = resultados[2] as List<Producto>;
-    _tiposComprobante = resultados[3] as List<TipoComprobante>;
-    _ubicaciones = resultados[4] as List<Ubicacion>;
-
-    if (_proveedores.isNotEmpty) {
-     _proveedorSeleccionado ??= _proveedores.first;
-    }
-    if (_tiposComprobante.isNotEmpty) {
-     _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
-    }
-
-    _inicializarLineas();
-   });
-  } catch (e) {
-   // Este catch ahora solo se activará por fallas en servicios esenciales (proveedores, productos, etc.)
-   _showMessage('Error cargando datos iniciales: $e');
-  } finally {
-   if (mounted) setState(() => _cargandoInicial = false);
+  Future<void> onFabPressed() async {
+    if (_guardando) return;
+    await _registrarCompra();
   }
- }
+
+  void _onLineaChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _watchLinea(LineaCompraForm linea) {
+    linea.cantidadCtrl.addListener(_onLineaChanged);
+  }
+
+  double _calcularSubtotal() {
+    double subtotal = 0.0;
+    for (final l in _lineas) {
+      final p = l.producto;
+      if (p == null) continue;
+      final cantidad = _parseInt(l.cantidadCtrl.text);
+      if (cantidad <= 0) continue;
+      subtotal += cantidad * p.precioCosto;
+    }
+    return subtotal;
+  }
+
+  Future<void> _cargarDatosIniciales() async {
+    setState(() => _cargandoInicial = true);
+
+    final Future<List<Compra>> comprasFuture = _compraService
+        .obtenerCompras()
+        .catchError((_) => <Compra>[]);
+
+    try {
+      final resultados = await Future.wait([
+        comprasFuture,
+        _proveedorService.obtenerProveedoresActivos(),
+        _inventarioService.obtenerProductos(),
+        _tipoComprobanteService.obtenerTiposComprobante(),
+        _ubicacionService.obtenerUbicacionesActivas(),
+      ]);
+
+      setState(() {
+        _compras = resultados[0] as List<Compra>;
+        _proveedores = resultados[1] as List<Proveedor>;
+        _productos = resultados[2] as List<Producto>;
+        _tiposComprobante = resultados[3] as List<TipoComprobante>;
+        _ubicaciones = resultados[4] as List<Ubicacion>;
+
+        if (_proveedores.isNotEmpty) {
+          _proveedorSeleccionado ??= _proveedores.first;
+        }
+        if (_tiposComprobante.isNotEmpty) {
+          _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
+        }
+
+        _inicializarLineas();
+      });
+    } catch (e) {
+      _showMessage('Error cargando datos iniciales: $e');
+    } finally {
+      if (mounted) setState(() => _cargandoInicial = false);
+    }
+  }
+
   void _inicializarLineas() {
     for (final l in _lineas) {
       l.dispose();
     }
     _lineas.clear();
 
-    final primera = _LineaCompraForm(
+    final primera = LineaCompraForm(
       producto: _productos.isNotEmpty ? _productos.first : null,
     );
 
@@ -118,11 +142,12 @@ Future<void> _cargarDatosIniciales() async {
       primera.ubicacionSeleccionada = _ubicaciones.first;
     }
 
+    _watchLinea(primera);
     _lineas.add(primera);
   }
 
   void _agregarLinea() {
-    final linea = _LineaCompraForm(
+    final linea = LineaCompraForm(
       producto: _productos.isNotEmpty ? _productos.first : null,
     );
 
@@ -130,6 +155,7 @@ Future<void> _cargarDatosIniciales() async {
       linea.ubicacionSeleccionada = _ubicaciones.first;
     }
 
+    _watchLinea(linea);
     setState(() => _lineas.add(linea));
   }
 
@@ -148,11 +174,6 @@ Future<void> _cargarDatosIniciales() async {
     } catch (e) {
       _showMessage('Error al refrescar compras: $e');
     }
-  }
-
-  double _parseDouble(String value) {
-    if (value.trim().isEmpty) return 0;
-    return double.tryParse(value.replaceAll(',', '.')) ?? 0;
   }
 
   int _parseInt(String value) {
@@ -219,6 +240,7 @@ Future<void> _cargarDatosIniciales() async {
         _showMessage('Cantidad inválida en una de las líneas.');
         return;
       }
+
       final double precio = producto!.precioCosto;
       if (precio <= 0) {
         _showMessage(
@@ -232,11 +254,11 @@ Future<void> _cargarDatosIniciales() async {
 
       detalles.add(
         DetalleCompra(
-          idProducto: producto!.idProducto!,
+          idProducto: producto.idProducto!,
           cantidad: cantidad,
           precioUnitario: precio,
           subtotal: subtotalLinea,
-          idUbicacion: ubicacion!.idUbicacion!, // requerido para stock +
+          idUbicacion: ubicacion!.idUbicacion!,
         ),
       );
     }
@@ -347,90 +369,159 @@ Future<void> _cargarDatosIniciales() async {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Compras')),
-      body: _cargandoInicial
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    if (_cargandoInicial) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final subtotal = _calcularSubtotal();
+    final impuesto = subtotal * 0.16;
+    final total = subtotal + impuesto;
+
+    final formSection = Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Factura de compra",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            color: Constants().background,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Constants().border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
                       children: [
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            _buildProveedorSelector(),
-                            _buildTipoComprobanteSelector(),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Productos de la compra',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            TextButton.icon(
-                              onPressed: _agregarLinea,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Agregar producto'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 200,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: List.generate(
-                                _lineas.length,
-                                (i) => _buildLineaDetalle(i, _lineas[i]),
-                              ),
-                            ),
-                          ),
+                        _buildProveedorSelector(),
+                        _buildTipoComprobanteSelector(),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _agregarLinea,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Agregar producto'),
                         ),
                       ],
                     ),
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: _compras.isEmpty
-                      ? const Center(child: Text('No hay compras registradas.'))
-                      : ListView.separated(
-                          itemCount: _compras.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
-                          itemBuilder: (_, i) {
-                            final c = _compras[i];
-                            return ListTile(
-                              title: Text(
-                                '${c.nroComprobante} · ${c.proveedor}',
-                              ),
-                              subtitle: Text(
-                                '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)} · ${c.tipoPago}',
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.receipt_long),
-                                tooltip: 'Ver detalle',
-                                onPressed: () => _verDetalleCompra(c),
-                              ),
-                            );
-                          },
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 250,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: List.generate(
+                            _lineas.length,
+                            (i) => _buildLineaDetalle(i, _lineas[i]),
+                          ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ResumenTotales(
+                      subtotal: subtotal,
+                      impuesto: impuesto,
+                      total: total,
+                      labelImpuesto: 'IVA (16%)',
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _guardando ? null : _registrarCompra,
-        tooltip: 'Añadir Producto',
-        child: const Icon(Icons.add),
+          ),
+        ],
       ),
+    );
+
+    final historialSection = Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Historial de compras",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+
+          Card(
+            color: Constants().background,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Constants().border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Builder(
+                builder: (context) {
+                  final screenH = MediaQuery.of(context).size.height;
+
+                  // 32% de la pantalla con límites
+                  final double historialHeight = min(
+                    420,
+                    max(220, screenH * 0.32),
+                  );
+
+                  return SizedBox(
+                    height: historialHeight,
+                    width: double.infinity,
+                    child: _compras.isEmpty
+                        ? const Center(
+                            child: Text('No hay compras registradas.'),
+                          )
+                        : SingleChildScrollView(
+                            child: Column(
+                              children: List.generate(_compras.length, (i) {
+                                final c = _compras[i];
+                                return Column(
+                                  children: [
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        '${c.nroComprobante} · ${c.proveedor}',
+                                      ),
+                                      subtitle: Text(
+                                        '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)} · ${c.tipoPago}',
+                                      ),
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.receipt_long),
+                                        tooltip: 'Ver detalle',
+                                        onPressed: () => _verDetalleCompra(c),
+                                      ),
+                                    ),
+                                    if (i != _compras.length - 1)
+                                      const Divider(height: 1),
+                                  ],
+                                );
+                              }),
+                            ),
+                          ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return SingleChildScrollView(
+      key: const PageStorageKey('compras_tab_scroll'),
+      child: Column(children: [formSection, historialSection]),
     );
   }
 
@@ -468,7 +559,7 @@ Future<void> _cargarDatosIniciales() async {
     );
   }
 
-  Widget _buildLineaDetalle(int index, _LineaCompraForm linea) {
+  Widget _buildLineaDetalle(int index, LineaCompraForm linea) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -498,7 +589,6 @@ Future<void> _cargarDatosIniciales() async {
                         }
                       });
                     },
-
                     validator: (_) => linea.producto == null
                         ? 'Selecciona un producto'
                         : null,
@@ -548,19 +638,6 @@ Future<void> _cargarDatosIniciales() async {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  flex: 1,
-                  child: TextFormField(
-                    controller: null,
-                    readOnly: true,
-                    enabled: false,
-                    decoration: const InputDecoration(
-                      labelText: 'Cantidad',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<Ubicacion>(
                     value: linea.ubicacionSeleccionada,
@@ -592,28 +669,5 @@ Future<void> _cargarDatosIniciales() async {
         ),
       ),
     );
-  }
-}
-
-class _LineaCompraForm {
-  Producto? producto;
-  Ubicacion? ubicacionSeleccionada;
-
-  final TextEditingController cantidadCtrl;
-  final TextEditingController precioCtrl;
-
-  _LineaCompraForm({this.producto, int cantidadInicial = 1})
-    : cantidadCtrl = TextEditingController(text: cantidadInicial.toString()),
-      precioCtrl = TextEditingController() {
-    if (producto != null) {
-      precioCtrl.text = producto!.precioCosto.toStringAsFixed(2);
-    } else {
-      precioCtrl.text = '0.00';
-    }
-  }
-
-  void dispose() {
-    cantidadCtrl.dispose();
-    precioCtrl.dispose();
   }
 }

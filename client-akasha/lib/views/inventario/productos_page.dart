@@ -11,8 +11,6 @@ import '../../services/proveedor_service.dart';
 import '../../services/categoria_service.dart';
 import '../../core/app_routes.dart';
 
-/// Pantalla que muestra la lista de productos del inventario.
-/// Desde aquí se pueden crear, editar y eliminar productos.
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
 
@@ -23,36 +21,65 @@ class ProductosPage extends StatefulWidget {
 }
 
 class _ProductosPageState extends State<ProductosPage> {
-  // Servicio que maneja la lógica de inventario (lista de productos en memoria).
   final InventarioService _inventarioService = InventarioService();
-
-  // Servicios para proveedores y categorías.
   final ProveedorService _proveedorService = ProveedorService();
   final CategoriaService _categoriaService = CategoriaService();
 
-  // Future que se usa para construir la lista de productos con FutureBuilder.
   late Future<List<Producto>> _futureProductos;
 
-  // Listas para los select boxes.
   List<Proveedor> _proveedores = <Proveedor>[];
   List<Categoria> _categorias = <Categoria>[];
-  // List<Ubicacion> _ubicaciones = <Ubicacion>[];
 
-  // Indica si todavía se están cargando proveedores y categorías.
+  List<Producto>? _cacheProductos;
+  List<Proveedor>? _cacheProveedores;
+  List<Categoria>? _cacheCategorias;
+
   bool _cargandoCombos = true;
 
   @override
   void initState() {
     super.initState();
-    _futureProductos = _inventarioService.obtenerProductos();
+    _futureProductos = _loadProductos();
     _cargarProveedoresYCategorias();
   }
 
-  /// Carga las listas de proveedores y categorías desde sus servicios.
-  Future<void> _cargarProveedoresYCategorias() async {
-    List<Proveedor> proveedores = await _proveedorService
-        .obtenerProveedoresActivos();
-    List<Categoria> categorias = await _categoriaService.obtenerCategorias();
+  Future<List<Producto>> _loadProductos({bool force = false}) async {
+    if (!force && _cacheProductos != null) {
+      return _cacheProductos!;
+    }
+
+    final list = await _inventarioService.obtenerProductos();
+    _cacheProductos = list;
+    return list;
+  }
+
+  Future<List<Proveedor>> _loadProveedores({bool force = false}) async {
+    if (!force && _cacheProveedores != null) {
+      return _cacheProveedores!;
+    }
+
+    final list = await _proveedorService.obtenerProveedoresActivos();
+    _cacheProveedores = list;
+    return list;
+  }
+
+  Future<List<Categoria>> _loadCategorias({bool force = false}) async {
+    if (!force && _cacheCategorias != null) {
+      return _cacheCategorias!;
+    }
+
+    final list = await _categoriaService.obtenerCategorias();
+    _cacheCategorias = list;
+    return list;
+  }
+
+  Future<void> _cargarProveedoresYCategorias({bool force = false}) async {
+    _cargandoCombos = true;
+
+    final proveedores = await _loadProveedores(force: force);
+    final categorias = await _loadCategorias(force: force);
+
+    if (!mounted) return;
 
     setState(() {
       _proveedores = proveedores;
@@ -61,40 +88,34 @@ class _ProductosPageState extends State<ProductosPage> {
     });
   }
 
-  /// Recarga los productos desde el servicio y reconstruye el FutureBuilder.
   void _recargarProductos() {
+    if (!mounted) return;
     setState(() {
-      _futureProductos = _inventarioService.obtenerProductos();
+      _futureProductos = _loadProductos(force: true);
     });
   }
 
-  /// Método unificado para crear o editar
   Future<void> _abrirFormularioProducto({Producto? productoEditar}) async {
-    // 1. Asegurar que tenemos los combos cargados
     if (_cargandoCombos) {
       await _cargarProveedoresYCategorias();
     }
 
-    // 2. Obtener lista actual para validación de SKU
-    final productosActuales = await _inventarioService.obtenerProductos();
+    final productosActuales = await _loadProductos();
 
     if (!mounted) return;
 
-    // 3. Mostrar el diálogo extraído
     final Producto? productoResultado = await showDialog<Producto>(
       context: context,
       builder: (context) => ProductoFormDialog(
-        producto: productoEditar, // Si es null, el diálogo sabe que es "Nuevo"
+        producto: productoEditar,
         proveedores: _proveedores,
         categorias: _categorias,
         productosExistentes: productosActuales,
       ),
     );
 
-    // 4. Si el usuario guardó (no es null), llamar al servicio
     if (productoResultado != null) {
       if (productoEditar == null) {
-        // Lógica de CREAR
         await _inventarioService.crearProducto(productoResultado);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +126,6 @@ class _ProductosPageState extends State<ProductosPage> {
           );
         }
       } else {
-        // Lógica de EDITAR
         await _inventarioService.actualizarProducto(productoResultado);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -117,7 +137,7 @@ class _ProductosPageState extends State<ProductosPage> {
         }
       }
 
-      // 5. Recargar la lista
+      _cacheProductos = null;
       _recargarProductos();
     }
   }
@@ -131,7 +151,6 @@ class _ProductosPageState extends State<ProductosPage> {
     );
   }
 
-  /// Muestra un modal para confirmar si realmente se desea eliminar el producto.
   void _confirmarEliminarProducto(Producto producto) {
     showDialog<void>(
       context: context,
@@ -144,7 +163,6 @@ class _ProductosPageState extends State<ProductosPage> {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                // Cierra el diálogo sin eliminar.
                 Navigator.of(context).pop();
               },
               child: const Text('Cancelar'),
@@ -153,11 +171,9 @@ class _ProductosPageState extends State<ProductosPage> {
               onPressed: () async {
                 if (producto.idProducto != null) {
                   await _eliminarProducto(producto.idProducto!);
-                  if (!mounted) {
-                    return;
-                  }
 
-                  // Muestra un SnackBar de éxito (sin emoji)
+                  if (!mounted) return;
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -168,11 +184,8 @@ class _ProductosPageState extends State<ProductosPage> {
                   );
                 }
 
-                if (!mounted) {
-                  return;
-                }
+                if (!mounted) return;
 
-                // Cierra el diálogo después de eliminar.
                 Navigator.of(context).pop();
               },
               child: const Text('Eliminar'),
@@ -183,9 +196,9 @@ class _ProductosPageState extends State<ProductosPage> {
     );
   }
 
-  /// Elimina (lógicamente) un producto llamando al servicio
   Future<void> _eliminarProducto(int idProducto) async {
     await _inventarioService.eliminarProducto(idProducto);
+    _cacheProductos = null;
     _recargarProductos();
   }
 
@@ -206,24 +219,21 @@ class _ProductosPageState extends State<ProductosPage> {
                         'Productos',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      Text("Gestión de productos"),
+                      const Text("Gestión de productos"),
                     ],
                   ),
                 ),
-                // Botón para ir a la pantalla de gestión de proveedores y categorías
                 ElevatedButton.icon(
                   onPressed: () async {
-                    await Navigator.of(
-                      context,
-                    ).pushNamed(AppRoutes.rutaGestionMaestros);
-                    // Recargar combos por si se crearon nuevos proveedores/categorías
-                    await _cargarProveedoresYCategorias();
+                    await Navigator.of(context)
+                        .pushNamed(AppRoutes.rutaGestionMaestros);
+
+                    await _cargarProveedoresYCategorias(force: true);
                   },
                   icon: const Icon(Icons.settings),
                   label: const Text('Configuración'),
                 ),
                 const SizedBox(width: 8.0),
-                // Botón para crear un nuevo producto
                 ElevatedButton.icon(
                   onPressed: () {
                     _abrirFormularioProducto();
@@ -244,79 +254,75 @@ class _ProductosPageState extends State<ProductosPage> {
                   ),
                   child: FutureBuilder<List<Producto>>(
                     future: _futureProductos,
-                    builder:
-                        (
-                          BuildContext context,
-                          AsyncSnapshot<List<Producto>> snapshot,
-                        ) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
+                    initialData: _cacheProductos,
+                    builder: (
+                      BuildContext context,
+                      AsyncSnapshot<List<Producto>> snapshot,
+                    ) {
+                      final data = snapshot.data ?? const <Producto>[];
 
-                          if (snapshot.hasError) {
-                            return Center(
-                              child: Text(
-                                'Error al cargar productos: ${snapshot.error}',
-                              ),
-                            );
-                          }
+                      if (snapshot.connectionState ==
+                              ConnectionState.waiting &&
+                          data.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                            return const Center(
-                              child: Text('No hay productos registrados.'),
-                            );
-                          }
+                      if (snapshot.hasError && data.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'Error al cargar productos: ${snapshot.error}',
+                          ),
+                        );
+                      }
 
-                          List<Producto> productos = snapshot.data!
-                              .where((producto) => producto.activo)
-                              .toList();
-                          return ListView.builder(
-                            itemCount: productos.length,
-                            itemBuilder: (BuildContext context, int index) {
-                              final Producto producto = productos[index];
+                      final productos = data
+                          .where((producto) => producto.activo)
+                          .toList();
 
-                              return ProductoListItem(
-                                producto: producto,
-                                inventarioService: _inventarioService,
+                      if (productos.isEmpty) {
+                        return const Center(
+                          child: Text('No hay productos registrados.'),
+                        );
+                      }
 
-                                // Acción 1: Ver Ubicaciones
-                                onVerUbicaciones: () {
-                                  if (producto.idProducto != null) {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            UbicacionesProductoPage(
-                                              producto: producto,
-                                            ),
-                                      ),
-                                    );
-                                  }
-                                },
+                      return ListView.builder(
+                        key: const PageStorageKey('productos_list'),
+                        itemCount: productos.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final Producto producto = productos[index];
 
-                                // Acción 2: Editar (Usando el método optimizado que creamos en el paso anterior)
-                                onEditar: () {
-                                  _abrirFormularioProducto(
-                                    productoEditar: producto,
-                                  );
-                                },
-
-                                // Acción 3: Eliminar
-                                onEliminar: () {
-                                  _confirmarEliminarProducto(producto);
-                                },
-
-                                // Acción 4: Ver Detalle (Opcional, si tienes una lógica para el "ojito")
-                                onVerDetalle: () {
-                                  // Aquí puedes poner un showDialog con detalles rápidos o navegar a detalle
-                                  _mostrarDetallesDeProducto(producto);
-                                },
+                          return ProductoListItem(
+                            producto: producto,
+                            inventarioService: _inventarioService,
+                            onVerUbicaciones: () {
+                              if (producto.idProducto != null) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        UbicacionesProductoPage(
+                                      producto: producto,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            onEditar: () {
+                              _abrirFormularioProducto(
+                                productoEditar: producto,
                               );
+                            },
+                            onEliminar: () {
+                              _confirmarEliminarProducto(producto);
+                            },
+                            onVerDetalle: () {
+                              _mostrarDetallesDeProducto(producto);
                             },
                           );
                         },
+                      );
+                    },
                   ),
                 ),
               ),
@@ -328,7 +334,6 @@ class _ProductosPageState extends State<ProductosPage> {
   }
 }
 
-// Extensión para simplificar la búsqueda de elementos iniciales en listas
 extension ListExtension<T> on List<T> {
   T? firstWhereOrNull(bool Function(T) test) {
     try {
