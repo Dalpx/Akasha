@@ -70,27 +70,21 @@ class _UsuarioFormDialogState extends State<UsuarioFormDialog> {
     super.dispose();
   }
 
-  // ============== LÓGICA DE VALIDACIÓN ==============
-
-  /// Valida que el email no esté duplicado con otro usuario.
-  /// Permite que el usuario actual (en edición) mantenga su propio email.
   bool _validarUnicidadEmail(String email) {
     final emailLimpio = email.trim().toLowerCase();
 
     for (final usuarioExistente in widget.usuariosExistentes) {
-      // Se añade el ? a usuarioExistente.email por si el campo es opcional en el modelo
+
       final emailExistenteLimpio = usuarioExistente.email?.trim().toLowerCase();
 
       if (emailExistenteLimpio == emailLimpio) {
         // Encontró una coincidencia
 
-        // Si estamos editando y el email pertenece al usuario actual, está permitido.
         if (widget.usuario != null &&
             usuarioExistente.idUsuario == widget.usuario!.idUsuario) {
           continue;
         }
 
-        // El email ya está registrado por otro usuario.
         return false;
       }
     }

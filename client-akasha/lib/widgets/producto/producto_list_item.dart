@@ -92,7 +92,7 @@ class ProductoListItem extends StatelessWidget {
                       value: 'eliminar',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, color: Colors.red),
+                          Icon(Icons.delete),
                           SizedBox(width: 8),
                           Text('Eliminar (Desactivar)'),
                         ],
