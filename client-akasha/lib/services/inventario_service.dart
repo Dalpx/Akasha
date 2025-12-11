@@ -74,7 +74,8 @@ class InventarioService {
   /// Actualiza un producto ya existente. (Mantenido - Ya usa HTTP)
   Future<void> actualizarProducto(Producto producto) async {
     final url = Uri.parse('$_productoUrl/${producto.idProducto}');
-
+    
+    print(producto.toString());
     try {
       final response = await http.put(
         url,

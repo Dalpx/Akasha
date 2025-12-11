@@ -26,7 +26,8 @@ class VentasTab extends StatefulWidget {
   State<VentasTab> createState() => VentasTabState();
 }
 
-class VentasTabState extends State<VentasTab> {
+class VentasTabState extends State<VentasTab>
+    with AutomaticKeepAliveClientMixin {
   final _formKey = GlobalKey<FormState>();
 
   final VentaService _ventaService = VentaService();
@@ -50,6 +51,11 @@ class VentasTabState extends State<VentasTab> {
   bool _cargandoInicial = true;
   bool _guardando = false;
 
+  static const double _iva = 0.16;
+
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +73,75 @@ class VentasTabState extends State<VentasTab> {
   Future<void> onFabPressed() async {
     if (_guardando) return;
     await _registrarVenta();
+  }
+
+  Future<void> refreshFromExternalChange() async {
+    try {
+      final results = await Future.wait([
+        _clienteService.obtenerClientesActivos(),
+        _inventarioService.obtenerProductos(),
+        _tipoComprobanteService.obtenerTiposComprobante(),
+        _ubicacionService.obtenerUbicacionesActivas(),
+        _ventaService.obtenerVentas().catchError((_) => <Venta>[]),
+      ]);
+
+      if (!mounted) return;
+
+      final clientes = results[0] as List<Cliente>;
+      final productos = results[1] as List<Producto>;
+      final tipos = results[2] as List<TipoComprobante>;
+      final ubicaciones = results[3] as List<Ubicacion>;
+      final ventas = results[4] as List<Venta>;
+
+      final prevClienteId = _clienteSeleccionado?.idCliente;
+      final prevTipoId = _tipoComprobanteSeleccionado?.idTipoComprobante;
+
+      setState(() {
+        _clientes = clientes;
+        _productos = productos;
+        _tiposComprobante = tipos;
+        _ubicaciones = ubicaciones;
+        _ventas = ventas;
+
+        _clienteSeleccionado = _clientes.isEmpty
+            ? null
+            : _clientes.firstWhereOrNull(
+                  (c) => c.idCliente == prevClienteId,
+                ) ??
+                _clientes.first;
+
+        _tipoComprobanteSeleccionado = _tiposComprobante.isEmpty
+            ? null
+            : _tiposComprobante.firstWhereOrNull(
+                  (t) => t.idTipoComprobante == prevTipoId,
+                ) ??
+                _tiposComprobante.first;
+
+        for (final l in _lineas) {
+          final pid = l.producto?.idProducto;
+          l.producto = _productos.isEmpty
+              ? null
+              : _productos.firstWhereOrNull((p) => p.idProducto == pid) ??
+                  _productos.first;
+
+          if (l.producto != null) {
+            l.precioCtrl.text = l.producto!.precioVenta.toStringAsFixed(2);
+          } else {
+            l.precioCtrl.text = '0.00';
+          }
+
+          final uid = l.ubicacionSeleccionada?.idUbicacion;
+          l.ubicacionSeleccionada = _ubicaciones.isEmpty
+              ? null
+              : _ubicaciones.firstWhereOrNull((u) => u.idUbicacion == uid) ??
+                  _ubicaciones.first;
+        }
+
+        if (_lineas.isEmpty) {
+          _inicializarLineas();
+        }
+      });
+    } catch (_) {}
   }
 
   void _onLineaChanged() {
@@ -90,11 +165,9 @@ class VentasTabState extends State<VentasTab> {
   }
 
   Future<void> _cargarDatosIniciales() async {
-    if (mounted) {
-      setState(() => _cargandoInicial = true);
-    }
+    setState(() => _cargandoInicial = true);
 
-    final Future<List<Venta>> ventasFuture =
+    final ventasFuture =
         _ventaService.obtenerVentas().catchError((_) => <Venta>[]);
 
     try {
@@ -115,12 +188,10 @@ class VentasTabState extends State<VentasTab> {
         _tiposComprobante = resultados[3] as List<TipoComprobante>;
         _ubicaciones = resultados[4] as List<Ubicacion>;
 
-        if (_clientes.isNotEmpty) {
-          _clienteSeleccionado ??= _clientes.first;
-        }
-        if (_tiposComprobante.isNotEmpty) {
-          _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
-        }
+        _clienteSeleccionado =
+            _clientes.isNotEmpty ? _clientes.first : null;
+        _tipoComprobanteSeleccionado =
+            _tiposComprobante.isNotEmpty ? _tiposComprobante.first : null;
 
         _inicializarLineas();
       });
@@ -145,6 +216,11 @@ class VentasTabState extends State<VentasTab> {
       primera.ubicacionSeleccionada = _ubicaciones.first;
     }
 
+    if (primera.producto != null) {
+      primera.precioCtrl.text =
+          primera.producto!.precioVenta.toStringAsFixed(2);
+    }
+
     _watchLinea(primera);
     _lineas.add(primera);
   }
@@ -156,6 +232,10 @@ class VentasTabState extends State<VentasTab> {
 
     if (_ubicaciones.isNotEmpty) {
       linea.ubicacionSeleccionada = _ubicaciones.first;
+    }
+
+    if (linea.producto != null) {
+      linea.precioCtrl.text = linea.producto!.precioVenta.toStringAsFixed(2);
     }
 
     _watchLinea(linea);
@@ -188,13 +268,10 @@ class VentasTabState extends State<VentasTab> {
   String _generarNroComprobante() {
     final ahora = DateTime.now();
     final random = Random();
-
     final parte1 = (ahora.millisecondsSinceEpoch ~/ 1000) % 10000;
     final parte2 = random.nextInt(100000);
-
     final s1 = parte1.toString().padLeft(4, '0');
     final s2 = parte2.toString().padLeft(5, '0');
-
     return 'VTA-$s1-$s2';
   }
 
@@ -258,7 +335,6 @@ class VentasTabState extends State<VentasTab> {
         return;
       }
 
-      final int idUbicacion = ubicacion!.idUbicacion!;
       final double subtotalLinea = cantidad * precio;
       subtotalTotal += subtotalLinea;
 
@@ -268,17 +344,12 @@ class VentasTabState extends State<VentasTab> {
           cantidad: cantidad,
           precioUnitario: precio,
           subtotal: subtotalLinea,
-          idUbicacion: idUbicacion,
+          idUbicacion: ubicacion!.idUbicacion!,
         ),
       );
     }
 
-    if (detalles.isEmpty) {
-      _showMessage('No hay productos válidos en la venta.');
-      return;
-    }
-
-    final double impuesto = subtotalTotal * 0.16;
+    final double impuesto = subtotalTotal * _iva;
     final double total = subtotalTotal + impuesto;
 
     final cabecera = VentaCreate(
@@ -298,8 +369,6 @@ class VentasTabState extends State<VentasTab> {
         cabecera: cabecera,
         detalles: detalles,
       );
-
-      if (!mounted) return;
 
       if (ok) {
         _showMessage('Venta registrada con éxito.');
@@ -349,9 +418,7 @@ class VentasTabState extends State<VentasTab> {
                       final d = detalles[i];
                       return ListTile(
                         dense: true,
-                        title: Text(
-                          d.nombreProducto ?? 'Producto ${d.idProducto}',
-                        ),
+                        title: Text(d.nombreProducto ?? 'Producto ${d.idProducto}'),
                         subtitle: Text(
                           'Cant: ${d.cantidad} · P.U.: ${d.precioUnitario.toStringAsFixed(2)}',
                         ),
@@ -383,179 +450,218 @@ class VentasTabState extends State<VentasTab> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  double _historialHeightFor(Size size) {
-    final h = size.height;
-    final base = h * 0.32;
-    final minH = h < 700 ? 200.0 : 240.0;
-    final maxH = h < 700 ? 280.0 : 380.0;
-    return base.clamp(minH, maxH);
+  double _historialHeight(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
+    return min(420, max(220, screenH * 0.32));
+  }
+
+  Widget _buildFacturaSection(double subtotal, double impuesto, double total) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Factura de venta",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          color: Constants().background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Constants().border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildClienteSelector(),
+                      _buildTipoComprobanteSelector(),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _productos.isEmpty ? null : _agregarLinea,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Agregar producto'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 250,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: List.generate(
+                          _lineas.length,
+                          (i) => _buildLineaDetalle(i, _lineas[i]),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ResumenTotales(
+                    subtotal: subtotal,
+                    impuesto: impuesto,
+                    total: total,
+                    labelImpuesto: 'IVA (16%)',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHistorialSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Historial de ventas",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          color: Constants().background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Constants().border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: SizedBox(
+              height: _historialHeight(context),
+              width: double.infinity,
+              child: _ventas.isEmpty
+                  ? const Center(child: Text('No hay ventas registradas.'))
+                  : ListView.separated(
+                      itemCount: _ventas.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (_, i) {
+                        final v = _ventas[i];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            '${v.numeroComprobante} · ${v.nombreCliente}',
+                          ),
+                          subtitle: Text(
+                            '${v.fecha} · Total: ${v.total.toStringAsFixed(2)} · ${v.metodoPago}',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.receipt_long),
+                            tooltip: 'Ver detalle',
+                            onPressed: () => _verDetalleVenta(v),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (_cargandoInicial) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final subtotal = _calcularSubtotal();
-    final impuesto = subtotal * 0.16;
+    final impuesto = subtotal * _iva;
     final total = subtotal + impuesto;
-
-    final size = MediaQuery.of(context).size;
-    final historialHeight = _historialHeightFor(size);
 
     return SingleChildScrollView(
       key: const PageStorageKey('ventas_tab_scroll'),
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.all(12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Factura de venta",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            color: Constants().background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: Constants().border),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _buildClienteSelector(),
-                        _buildTipoComprobanteSelector(),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _agregarLinea,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Agregar producto'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 250,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: List.generate(
-                            _lineas.length,
-                            (i) => _buildLineaDetalle(i, _lineas[i]),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ResumenTotales(
-                      subtotal: subtotal,
-                      impuesto: impuesto,
-                      total: total,
-                      labelImpuesto: 'IVA (16%)',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          _buildFacturaSection(subtotal, impuesto, total),
           const SizedBox(height: 16),
-          const Text(
-            "Historial de ventas",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            color: Constants().background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: Constants().border),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: historialHeight,
-                child: _ventas.isEmpty
-                    ? const Center(child: Text('No hay ventas registradas.'))
-                    : Scrollbar(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: [
-                              for (int i = 0; i < _ventas.length; i++) ...[
-                                ListTile(
-                                  title: Text(
-                                    '${_ventas[i].numeroComprobante} · ${_ventas[i].nombreCliente}',
-                                  ),
-                                  subtitle: Text(
-                                    '${_ventas[i].fecha} · Total: ${_ventas[i].total.toStringAsFixed(2)} · ${_ventas[i].metodoPago}',
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.receipt_long),
-                                    tooltip: 'Ver detalle',
-                                    onPressed: () => _verDetalleVenta(_ventas[i]),
-                                  ),
-                                ),
-                                if (i != _ventas.length - 1)
-                                  const Divider(height: 1),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-          ),
+          _buildHistorialSection(),
         ],
       ),
     );
   }
 
   Widget _buildClienteSelector() {
-    return DropdownButtonFormField<Cliente>(
-      value: _clienteSeleccionado,
-      decoration: const InputDecoration(
-        labelText: 'Cliente',
-        border: OutlineInputBorder(),
+    final selectedId = _clienteSeleccionado?.idCliente;
+    final safeValue = selectedId == null
+        ? null
+        : _clientes.firstWhereOrNull((c) => c.idCliente == selectedId);
+
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<Cliente>(
+        value: safeValue,
+        decoration: const InputDecoration(
+          labelText: 'Cliente',
+          border: OutlineInputBorder(),
+        ),
+        items: _clientes
+            .map((c) => DropdownMenuItem(value: c, child: Text(c.nombre)))
+            .toList(),
+        onChanged: (nuevo) => setState(() => _clienteSeleccionado = nuevo),
+        validator: (_) =>
+            _clienteSeleccionado == null ? 'Selecciona un cliente' : null,
       ),
-      items: _clientes.map((c) {
-        return DropdownMenuItem(value: c, child: Text(c.nombre));
-      }).toList(),
-      onChanged: (nuevo) => setState(() => _clienteSeleccionado = nuevo),
-      validator: (_) => _clienteSeleccionado == null ? 'Selecciona un cliente' : null,
     );
   }
 
   Widget _buildTipoComprobanteSelector() {
-    return DropdownButtonFormField<TipoComprobante>(
-      value: _tipoComprobanteSeleccionado,
-      decoration: const InputDecoration(
-        labelText: 'Tipo pago / comprobante',
-        border: OutlineInputBorder(),
+    final selectedId = _tipoComprobanteSeleccionado?.idTipoComprobante;
+    final safeValue = selectedId == null
+        ? null
+        : _tiposComprobante.firstWhereOrNull(
+            (t) => t.idTipoComprobante == selectedId,
+          );
+
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<TipoComprobante>(
+        value: safeValue,
+        decoration: const InputDecoration(
+          labelText: 'Tipo pago / comprobante',
+          border: OutlineInputBorder(),
+        ),
+        items: _tiposComprobante
+            .map((t) => DropdownMenuItem(value: t, child: Text(t.nombre)))
+            .toList(),
+        onChanged: (nuevo) =>
+            setState(() => _tipoComprobanteSeleccionado = nuevo),
+        validator: (_) => _tipoComprobanteSeleccionado == null
+            ? 'Selecciona un tipo de pago'
+            : null,
       ),
-      items: _tiposComprobante.map((t) {
-        return DropdownMenuItem(value: t, child: Text(t.nombre));
-      }).toList(),
-      onChanged: (nuevo) => setState(() => _tipoComprobanteSeleccionado = nuevo),
-      validator: (_) => _tipoComprobanteSeleccionado == null
-          ? 'Selecciona un tipo de pago'
-          : null,
     );
   }
 
   Widget _buildLineaDetalle(int index, LineaVentaForm linea) {
+    final productId = linea.producto?.idProducto;
+    final safeProducto = productId == null
+        ? null
+        : _productos.firstWhereOrNull((p) => p.idProducto == productId);
+
+    final ubicId = linea.ubicacionSeleccionada?.idUbicacion;
+    final safeUbicacion = ubicId == null
+        ? null
+        : _ubicaciones.firstWhereOrNull((u) => u.idUbicacion == ubicId);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -566,14 +672,15 @@ class VentasTabState extends State<VentasTab> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<Producto>(
-                    value: linea.producto,
+                    value: safeProducto,
                     decoration: const InputDecoration(
                       labelText: 'Producto',
                       border: OutlineInputBorder(),
                     ),
-                    items: _productos.map((p) {
-                      return DropdownMenuItem(value: p, child: Text(p.nombre));
-                    }).toList(),
+                    items: _productos
+                        .map((p) =>
+                            DropdownMenuItem(value: p, child: Text(p.nombre)))
+                        .toList(),
                     onChanged: (Producto? nuevo) {
                       setState(() {
                         linea.producto = nuevo;
@@ -591,7 +698,8 @@ class VentasTabState extends State<VentasTab> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed: _lineas.length > 1 ? () => _eliminarLinea(index) : null,
+                  onPressed:
+                      _lineas.length > 1 ? () => _eliminarLinea(index) : null,
                   icon: const Icon(Icons.delete),
                   tooltip: 'Quitar producto',
                 ),
@@ -633,17 +741,17 @@ class VentasTabState extends State<VentasTab> {
                 Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<Ubicacion>(
-                    value: linea.ubicacionSeleccionada,
+                    value: safeUbicacion,
                     decoration: const InputDecoration(
                       labelText: 'Ubicación',
                       border: OutlineInputBorder(),
                     ),
-                    items: _ubicaciones.map((u) {
-                      return DropdownMenuItem(
-                        value: u,
-                        child: Text(u.nombreAlmacen),
-                      );
-                    }).toList(),
+                    items: _ubicaciones
+                        .map((u) => DropdownMenuItem(
+                              value: u,
+                              child: Text(u.nombreAlmacen),
+                            ))
+                        .toList(),
                     onChanged: (Ubicacion? nueva) {
                       setState(() => linea.ubicacionSeleccionada = nueva);
                     },
@@ -662,5 +770,14 @@ class VentasTabState extends State<VentasTab> {
         ),
       ),
     );
+  }
+}
+
+extension ListX<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final e in this) {
+      if (test(e)) return e;
+    }
+    return null;
   }
 }

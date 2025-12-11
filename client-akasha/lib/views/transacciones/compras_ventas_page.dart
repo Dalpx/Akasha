@@ -1,7 +1,7 @@
+import 'package:akasha/core/session_manager.dart';
 import 'package:akasha/widgets/transacciones/tabs/compras_tab.dart';
 import 'package:akasha/widgets/transacciones/tabs/ventas_tab.dart';
 import 'package:flutter/material.dart';
-import 'package:akasha/core/session_manager.dart';
 
 class ComprasVentasPage extends StatefulWidget {
   final SessionManager sessionManager;
@@ -9,12 +9,19 @@ class ComprasVentasPage extends StatefulWidget {
   const ComprasVentasPage({super.key, required this.sessionManager});
 
   @override
-  State<ComprasVentasPage> createState() => _ComprasVentasPageState();
+  State<ComprasVentasPage> createState() => ComprasVentasPageState();
 }
 
-class _ComprasVentasPageState extends State<ComprasVentasPage> {
+class ComprasVentasPageState extends State<ComprasVentasPage> {
   final GlobalKey<ComprasTabState> _comprasKey = GlobalKey<ComprasTabState>();
   final GlobalKey<VentasTabState> _ventasKey = GlobalKey<VentasTabState>();
+
+  Future<void> refreshFromExternalChange() async {
+    await Future.wait([
+      _comprasKey.currentState?.refreshFromExternalChange() ?? Future.value(),
+      _ventasKey.currentState?.refreshFromExternalChange() ?? Future.value(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,56 +32,34 @@ class _ComprasVentasPageState extends State<ComprasVentasPage> {
           final controller = DefaultTabController.of(context);
 
           return Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Transacciones',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const Text("Gestión de transacciones"),
-
-                  const TabBar(
-                    tabs: [
-                      Tab(text: 'Compras'),
-                      Tab(text: 'Ventas'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _KeepAlivePage(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Card(
-                              child: ComprasTab(
-                                key: _comprasKey,
-                                sessionManager: widget.sessionManager,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Card(
-                            
-                            child: _KeepAlivePage(
-                              child: VentasTab(
-                                key: _ventasKey,
-                                sessionManager: widget.sessionManager,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            appBar: AppBar(
+              title: const Text('Compras y Ventas'),
+              bottom: const TabBar(
+                tabs: [
+                  Tab(text: 'Compras'),
+                  Tab(text: 'Ventas'),
                 ],
               ),
+              actions: [
+                IconButton(
+                  tooltip: 'Refrescar catálogos',
+                  onPressed: () => refreshFromExternalChange(),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
             ),
-
+            body: TabBarView(
+              children: [
+                ComprasTab(
+                  key: _comprasKey,
+                  sessionManager: widget.sessionManager,
+                ),
+                VentasTab(
+                  key: _ventasKey,
+                  sessionManager: widget.sessionManager,
+                ),
+              ],
+            ),
             floatingActionButton: AnimatedBuilder(
               animation: controller,
               builder: (_, __) {
@@ -99,26 +84,5 @@ class _ComprasVentasPageState extends State<ComprasVentasPage> {
         },
       ),
     );
-  }
-}
-
-class _KeepAlivePage extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAlivePage({required this.child});
-
-  @override
-  State<_KeepAlivePage> createState() => _KeepAlivePageState();
-}
-
-class _KeepAlivePageState extends State<_KeepAlivePage>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
   }
 }

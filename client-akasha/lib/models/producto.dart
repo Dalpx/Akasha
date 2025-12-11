@@ -55,9 +55,22 @@ class Producto {
       'descripcion': descripcion,
       'precio_costo': precioCosto,
       'precio_venta': precioVenta,
-      'id_proveedor': idProveedor,
-      'id_categoria': idCategoria,
-      'activo': activo ? 1 : 0,
+      'id_proveedor': int.parse(idProveedor!),
+      'id_categoria': int.parse(idCategoria!),
+      'activo': activo  ? 1 : 0,
     };
+  }
+  @override
+  String toString() {
+    return 'Producto(\n'
+        '  idProducto: $idProducto,\n'
+        '  nombre: $nombre,\n'
+        '  sku: $sku,\n'
+        '  precioCosto: $precioCosto,\n'
+        '  precioVenta: $precioVenta,\n'
+        '  idProveedor: $idProveedor,\n'
+        '  idCategoria: $idCategoria,\n'
+        '  activo: $activo\n'
+        ')';
   }
 }
