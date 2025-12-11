@@ -10,10 +10,7 @@ import 'package:akasha/views/inventario/productos_page.dart';
 import 'package:akasha/views/reportes/reportes_page.dart';
 import 'package:akasha/views/seguridad/usuarios_page.dart';
 import 'package:akasha/views/transacciones/compras_ventas_page.dart';
-import 'package:akasha/widgets/app-shell/appShell_loading_view.dart';
 import 'package:flutter/material.dart';
-
-
 
 class _NavOption {
   final int index;
@@ -87,24 +84,24 @@ class _AppShellState extends State<AppShell> {
   late final VentaService _ventaService;
   late final CompraService _compraService;
 
-  late final List<Widget> _pages;
+  final GlobalKey<ComprasVentasPageState> _comprasVentasPageKey =
+      GlobalKey<ComprasVentasPageState>();
 
-  late final Future<void> _bootFuture;
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
 
-    _bootFuture = _boot();
-  }
-
-  Future<void> _boot() async {
     _ventaService = VentaService();
     _compraService = CompraService();
 
     _pages = [
       const ProductosPage(),
-      ComprasVentasPage(sessionManager: widget.sessionManager),
+      ComprasVentasPage(
+        key: _comprasVentasPageKey,
+        sessionManager: widget.sessionManager,
+      ),
       MovimientoInventarioPage(sessionManager: widget.sessionManager),
       const UsuariosPage(),
       ReportesPage(
@@ -113,19 +110,20 @@ class _AppShellState extends State<AppShell> {
       ),
       const ClientesPage(),
     ];
-
-    await Future.wait([
-      Future.delayed(const Duration(milliseconds: 700)),
-      WidgetsBinding.instance.endOfFrame,
-    ]);
-
   }
 
   void _onItemTapped(int index) {
     if (_indiceSeleccionado == index) return;
+
     setState(() {
       _indiceSeleccionado = index;
     });
+
+    if (index == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _comprasVentasPageKey.currentState?.refreshFromExternalChange();
+      });
+    }
   }
 
   void _cerrarSesion(BuildContext context) {
@@ -172,22 +170,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<void>(
-      future: _bootFuture,
-      builder: (context, snapshot) {
-        final bool listo = snapshot.connectionState == ConnectionState.done;
-
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: !listo
-              ? const AppShellLoadingView()
-              : _buildShell(context),
-        );
-      },
-    );
-  }
-
-  Widget _buildShell(BuildContext context) {
     final bool esDesktop = ResponsiveLayout.isDesktop(context);
     final List<_NavOption> opcionesPermitidas = _getOpcionesPermitidas();
     final int safeIndex = _indiceSeguro(opcionesPermitidas);
@@ -260,9 +242,8 @@ class _AppShellState extends State<AppShell> {
         ),
       );
     } else {
-      final int indiceVisible = opcionesPermitidas.indexWhere(
-        (option) => option.index == safeIndex,
-      );
+      final int indiceVisible =
+          opcionesPermitidas.indexWhere((option) => option.index == safeIndex);
 
       return Scaffold(
         appBar: AppBar(

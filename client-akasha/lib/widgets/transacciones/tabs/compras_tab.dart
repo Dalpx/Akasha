@@ -26,7 +26,8 @@ class ComprasTab extends StatefulWidget {
   State<ComprasTab> createState() => ComprasTabState();
 }
 
-class ComprasTabState extends State<ComprasTab> {
+class ComprasTabState extends State<ComprasTab>
+    with AutomaticKeepAliveClientMixin {
   final _formKey = GlobalKey<FormState>();
 
   final CompraService _compraService = CompraService();
@@ -50,6 +51,11 @@ class ComprasTabState extends State<ComprasTab> {
   bool _cargandoInicial = true;
   bool _guardando = false;
 
+  static const double _iva = 0.16;
+
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +73,75 @@ class ComprasTabState extends State<ComprasTab> {
   Future<void> onFabPressed() async {
     if (_guardando) return;
     await _registrarCompra();
+  }
+
+  Future<void> refreshFromExternalChange() async {
+    try {
+      final results = await Future.wait([
+        _proveedorService.obtenerProveedoresActivos(),
+        _inventarioService.obtenerProductos(),
+        _tipoComprobanteService.obtenerTiposComprobante(),
+        _ubicacionService.obtenerUbicacionesActivas(),
+        _compraService.obtenerCompras().catchError((_) => <Compra>[]),
+      ]);
+
+      if (!mounted) return;
+
+      final proveedores = results[0] as List<Proveedor>;
+      final productos = results[1] as List<Producto>;
+      final tipos = results[2] as List<TipoComprobante>;
+      final ubicaciones = results[3] as List<Ubicacion>;
+      final compras = results[4] as List<Compra>;
+
+      final prevProveedorId = _proveedorSeleccionado?.idProveedor;
+      final prevTipoId = _tipoComprobanteSeleccionado?.idTipoComprobante;
+
+      setState(() {
+        _proveedores = proveedores;
+        _productos = productos;
+        _tiposComprobante = tipos;
+        _ubicaciones = ubicaciones;
+        _compras = compras;
+
+        _proveedorSeleccionado = _proveedores.isEmpty
+            ? null
+            : _proveedores.firstWhereOrNull(
+                  (p) => p.idProveedor == prevProveedorId,
+                ) ??
+                _proveedores.first;
+
+        _tipoComprobanteSeleccionado = _tiposComprobante.isEmpty
+            ? null
+            : _tiposComprobante.firstWhereOrNull(
+                  (t) => t.idTipoComprobante == prevTipoId,
+                ) ??
+                _tiposComprobante.first;
+
+        for (final l in _lineas) {
+          final pid = l.producto?.idProducto;
+          l.producto = _productos.isEmpty
+              ? null
+              : _productos.firstWhereOrNull((p) => p.idProducto == pid) ??
+                  _productos.first;
+
+          if (l.producto != null) {
+            l.precioCtrl.text = l.producto!.precioCosto.toStringAsFixed(2);
+          } else {
+            l.precioCtrl.text = '0.00';
+          }
+
+          final uid = l.ubicacionSeleccionada?.idUbicacion;
+          l.ubicacionSeleccionada = _ubicaciones.isEmpty
+              ? null
+              : _ubicaciones.firstWhereOrNull((u) => u.idUbicacion == uid) ??
+                  _ubicaciones.first;
+        }
+
+        if (_lineas.isEmpty) {
+          _inicializarLineas();
+        }
+      });
+    } catch (_) {}
   }
 
   void _onLineaChanged() {
@@ -92,9 +167,8 @@ class ComprasTabState extends State<ComprasTab> {
   Future<void> _cargarDatosIniciales() async {
     setState(() => _cargandoInicial = true);
 
-    final Future<List<Compra>> comprasFuture = _compraService
-        .obtenerCompras()
-        .catchError((_) => <Compra>[]);
+    final comprasFuture =
+        _compraService.obtenerCompras().catchError((_) => <Compra>[]);
 
     try {
       final resultados = await Future.wait([
@@ -105,6 +179,8 @@ class ComprasTabState extends State<ComprasTab> {
         _ubicacionService.obtenerUbicacionesActivas(),
       ]);
 
+      if (!mounted) return;
+
       setState(() {
         _compras = resultados[0] as List<Compra>;
         _proveedores = resultados[1] as List<Proveedor>;
@@ -112,12 +188,10 @@ class ComprasTabState extends State<ComprasTab> {
         _tiposComprobante = resultados[3] as List<TipoComprobante>;
         _ubicaciones = resultados[4] as List<Ubicacion>;
 
-        if (_proveedores.isNotEmpty) {
-          _proveedorSeleccionado ??= _proveedores.first;
-        }
-        if (_tiposComprobante.isNotEmpty) {
-          _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
-        }
+        _proveedorSeleccionado =
+            _proveedores.isNotEmpty ? _proveedores.first : null;
+        _tipoComprobanteSeleccionado =
+            _tiposComprobante.isNotEmpty ? _tiposComprobante.first : null;
 
         _inicializarLineas();
       });
@@ -142,6 +216,11 @@ class ComprasTabState extends State<ComprasTab> {
       primera.ubicacionSeleccionada = _ubicaciones.first;
     }
 
+    if (primera.producto != null) {
+      primera.precioCtrl.text =
+          primera.producto!.precioCosto.toStringAsFixed(2);
+    }
+
     _watchLinea(primera);
     _lineas.add(primera);
   }
@@ -153,6 +232,10 @@ class ComprasTabState extends State<ComprasTab> {
 
     if (_ubicaciones.isNotEmpty) {
       linea.ubicacionSeleccionada = _ubicaciones.first;
+    }
+
+    if (linea.producto != null) {
+      linea.precioCtrl.text = linea.producto!.precioCosto.toStringAsFixed(2);
     }
 
     _watchLinea(linea);
@@ -170,6 +253,7 @@ class ComprasTabState extends State<ComprasTab> {
   Future<void> _refrescarCompras() async {
     try {
       final compras = await _compraService.obtenerCompras();
+      if (!mounted) return;
       setState(() => _compras = compras);
     } catch (e) {
       _showMessage('Error al refrescar compras: $e');
@@ -263,7 +347,7 @@ class ComprasTabState extends State<ComprasTab> {
       );
     }
 
-    final double impuesto = subtotalTotal * 0.16;
+    final double impuesto = subtotalTotal * _iva;
     final double total = subtotalTotal + impuesto;
 
     final cabecera = CompraCreate(
@@ -333,9 +417,7 @@ class ComprasTabState extends State<ComprasTab> {
                       final d = detalles[i];
                       return ListTile(
                         dense: true,
-                        title: Text(
-                          d.nombreProducto ?? 'Producto ${d.idProducto}',
-                        ),
+                        title: Text(d.nombreProducto ?? 'Producto ${d.idProducto}'),
                         subtitle: Text(
                           'Cant: ${d.cantidad} · P.U.: ${d.precioUnitario.toStringAsFixed(2)}',
                         ),
@@ -367,199 +449,216 @@ class ComprasTabState extends State<ComprasTab> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  double _historialHeight(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
+    return min(420, max(220, screenH * 0.32));
+  }
+
+  Widget _buildFacturaSection(double subtotal, double impuesto, double total) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Factura de compra",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          color: Constants().background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Constants().border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildProveedorSelector(),
+                      _buildTipoComprobanteSelector(),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _productos.isEmpty ? null : _agregarLinea,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Agregar producto'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 250,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: List.generate(
+                          _lineas.length,
+                          (i) => _buildLineaDetalle(i, _lineas[i]),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ResumenTotales(
+                    subtotal: subtotal,
+                    impuesto: impuesto,
+                    total: total,
+                    labelImpuesto: 'IVA (16%)',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHistorialSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Historial de compras",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          color: Constants().background,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Constants().border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: SizedBox(
+              height: _historialHeight(context),
+              width: double.infinity,
+              child: _compras.isEmpty
+                  ? const Center(child: Text('No hay compras registradas.'))
+                  : ListView.separated(
+                      itemCount: _compras.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (_, i) {
+                        final c = _compras[i];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('${c.nroComprobante} · ${c.proveedor}'),
+                          subtitle: Text(
+                            '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)} · ${c.tipoPago}',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.receipt_long),
+                            tooltip: 'Ver detalle',
+                            onPressed: () => _verDetalleCompra(c),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     if (_cargandoInicial) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final subtotal = _calcularSubtotal();
-    final impuesto = subtotal * 0.16;
+    final impuesto = subtotal * _iva;
     final total = subtotal + impuesto;
-
-    final formSection = Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Factura de compra",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            color: Constants().background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: Constants().border),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _buildProveedorSelector(),
-                        _buildTipoComprobanteSelector(),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _agregarLinea,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Agregar producto'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 250,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: List.generate(
-                            _lineas.length,
-                            (i) => _buildLineaDetalle(i, _lineas[i]),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ResumenTotales(
-                      subtotal: subtotal,
-                      impuesto: impuesto,
-                      total: total,
-                      labelImpuesto: 'IVA (16%)',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    final historialSection = Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Historial de compras",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-
-          Card(
-            color: Constants().background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: Constants().border),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Builder(
-                builder: (context) {
-                  final screenH = MediaQuery.of(context).size.height;
-
-                  // 32% de la pantalla con límites
-                  final double historialHeight = min(
-                    420,
-                    max(220, screenH * 0.32),
-                  );
-
-                  return SizedBox(
-                    height: historialHeight,
-                    width: double.infinity,
-                    child: _compras.isEmpty
-                        ? const Center(
-                            child: Text('No hay compras registradas.'),
-                          )
-                        : SingleChildScrollView(
-                            child: Column(
-                              children: List.generate(_compras.length, (i) {
-                                final c = _compras[i];
-                                return Column(
-                                  children: [
-                                    ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text(
-                                        '${c.nroComprobante} · ${c.proveedor}',
-                                      ),
-                                      subtitle: Text(
-                                        '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)} · ${c.tipoPago}',
-                                      ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.receipt_long),
-                                        tooltip: 'Ver detalle',
-                                        onPressed: () => _verDetalleCompra(c),
-                                      ),
-                                    ),
-                                    if (i != _compras.length - 1)
-                                      const Divider(height: 1),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
 
     return SingleChildScrollView(
       key: const PageStorageKey('compras_tab_scroll'),
-      child: Column(children: [formSection, historialSection]),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          _buildFacturaSection(subtotal, impuesto, total),
+          const SizedBox(height: 16),
+          _buildHistorialSection(),
+        ],
+      ),
     );
   }
 
   Widget _buildProveedorSelector() {
-    return DropdownButtonFormField<Proveedor>(
-      value: _proveedorSeleccionado,
-      decoration: const InputDecoration(
-        labelText: 'Proveedor',
-        border: OutlineInputBorder(),
+    final selectedId = _proveedorSeleccionado?.idProveedor;
+    final safeValue = selectedId == null
+        ? null
+        : _proveedores.firstWhereOrNull((p) => p.idProveedor == selectedId);
+
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<Proveedor>(
+        value: safeValue,
+        decoration: const InputDecoration(
+          labelText: 'Proveedor',
+          border: OutlineInputBorder(),
+        ),
+        items: _proveedores
+            .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
+            .toList(),
+        onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
+        validator: (_) =>
+            _proveedorSeleccionado == null ? 'Selecciona un proveedor' : null,
       ),
-      items: _proveedores.map((p) {
-        return DropdownMenuItem(value: p, child: Text(p.nombre));
-      }).toList(),
-      onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
-      validator: (_) =>
-          _proveedorSeleccionado == null ? 'Selecciona un proveedor' : null,
     );
   }
 
   Widget _buildTipoComprobanteSelector() {
-    return DropdownButtonFormField<TipoComprobante>(
-      value: _tipoComprobanteSeleccionado,
-      decoration: const InputDecoration(
-        labelText: 'Tipo pago / comprobante',
-        border: OutlineInputBorder(),
+    final selectedId = _tipoComprobanteSeleccionado?.idTipoComprobante;
+    final safeValue = selectedId == null
+        ? null
+        : _tiposComprobante.firstWhereOrNull(
+            (t) => t.idTipoComprobante == selectedId,
+          );
+
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<TipoComprobante>(
+        value: safeValue,
+        decoration: const InputDecoration(
+          labelText: 'Tipo pago / comprobante',
+          border: OutlineInputBorder(),
+        ),
+        items: _tiposComprobante
+            .map((t) => DropdownMenuItem(value: t, child: Text(t.nombre)))
+            .toList(),
+        onChanged: (nuevo) =>
+            setState(() => _tipoComprobanteSeleccionado = nuevo),
+        validator: (_) => _tipoComprobanteSeleccionado == null
+            ? 'Selecciona un tipo de pago'
+            : null,
       ),
-      items: _tiposComprobante.map((t) {
-        return DropdownMenuItem(value: t, child: Text(t.nombre));
-      }).toList(),
-      onChanged: (nuevo) =>
-          setState(() => _tipoComprobanteSeleccionado = nuevo),
-      validator: (_) => _tipoComprobanteSeleccionado == null
-          ? 'Selecciona un tipo de pago'
-          : null,
     );
   }
 
   Widget _buildLineaDetalle(int index, LineaCompraForm linea) {
+    final productId = linea.producto?.idProducto;
+    final safeProducto = productId == null
+        ? null
+        : _productos.firstWhereOrNull((p) => p.idProducto == productId);
+
+    final ubicId = linea.ubicacionSeleccionada?.idUbicacion;
+    final safeUbicacion = ubicId == null
+        ? null
+        : _ubicaciones.firstWhereOrNull((u) => u.idUbicacion == ubicId);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -570,35 +669,34 @@ class ComprasTabState extends State<ComprasTab> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<Producto>(
-                    value: linea.producto,
+                    value: safeProducto,
                     decoration: const InputDecoration(
                       labelText: 'Producto',
                       border: OutlineInputBorder(),
                     ),
-                    items: _productos.map((p) {
-                      return DropdownMenuItem(value: p, child: Text(p.nombre));
-                    }).toList(),
+                    items: _productos
+                        .map((p) =>
+                            DropdownMenuItem(value: p, child: Text(p.nombre)))
+                        .toList(),
                     onChanged: (Producto? nuevo) {
                       setState(() {
                         linea.producto = nuevo;
                         if (nuevo != null) {
-                          linea.precioCtrl.text = nuevo.precioCosto
-                              .toStringAsFixed(2);
+                          linea.precioCtrl.text =
+                              nuevo.precioCosto.toStringAsFixed(2);
                         } else {
                           linea.precioCtrl.text = '0.00';
                         }
                       });
                     },
-                    validator: (_) => linea.producto == null
-                        ? 'Selecciona un producto'
-                        : null,
+                    validator: (_) =>
+                        linea.producto == null ? 'Selecciona un producto' : null,
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed: _lineas.length > 1
-                      ? () => _eliminarLinea(index)
-                      : null,
+                  onPressed:
+                      _lineas.length > 1 ? () => _eliminarLinea(index) : null,
                   icon: const Icon(Icons.delete),
                   tooltip: 'Quitar producto',
                 ),
@@ -640,17 +738,17 @@ class ComprasTabState extends State<ComprasTab> {
                 Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<Ubicacion>(
-                    value: linea.ubicacionSeleccionada,
+                    value: safeUbicacion,
                     decoration: const InputDecoration(
                       labelText: 'Ubicación',
                       border: OutlineInputBorder(),
                     ),
-                    items: _ubicaciones.map((u) {
-                      return DropdownMenuItem(
-                        value: u,
-                        child: Text(u.nombreAlmacen),
-                      );
-                    }).toList(),
+                    items: _ubicaciones
+                        .map((u) => DropdownMenuItem(
+                              value: u,
+                              child: Text(u.nombreAlmacen),
+                            ))
+                        .toList(),
                     onChanged: (Ubicacion? nueva) {
                       setState(() => linea.ubicacionSeleccionada = nueva);
                     },
@@ -669,5 +767,14 @@ class ComprasTabState extends State<ComprasTab> {
         ),
       ),
     );
+  }
+}
+
+extension ListX<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final e in this) {
+      if (test(e)) return e;
+    }
+    return null;
   }
 }
