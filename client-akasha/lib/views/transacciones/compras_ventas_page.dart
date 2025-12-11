@@ -1,4 +1,5 @@
 import 'package:akasha/core/session_manager.dart';
+import 'package:akasha/services/inventario_service.dart';
 import 'package:akasha/widgets/transacciones/tabs/compras_tab.dart';
 import 'package:akasha/widgets/transacciones/tabs/ventas_tab.dart';
 import 'package:flutter/material.dart';
@@ -9,18 +10,32 @@ class ComprasVentasPage extends StatefulWidget {
   const ComprasVentasPage({super.key, required this.sessionManager});
 
   @override
-  State<ComprasVentasPage> createState() => ComprasVentasPageState();
+  State<ComprasVentasPage> createState() => _ComprasVentasPageState();
 }
 
-class ComprasVentasPageState extends State<ComprasVentasPage> {
+class _ComprasVentasPageState extends State<ComprasVentasPage> {
   final GlobalKey<ComprasTabState> _comprasKey = GlobalKey<ComprasTabState>();
   final GlobalKey<VentasTabState> _ventasKey = GlobalKey<VentasTabState>();
 
-  Future<void> refreshFromExternalChange() async {
-    await Future.wait([
-      _comprasKey.currentState?.refreshFromExternalChange() ?? Future.value(),
-      _ventasKey.currentState?.refreshFromExternalChange() ?? Future.value(),
-    ]);
+  Future<void> _notificarCambioInventario() async {
+
+    try {
+      InventarioService.productosRevision.value++;
+    } catch (_) {
+
+    }
+  }
+
+  Future<void> _postCompra() async {
+    // Tras compra, refrescamos el tab opuesto para que tome nuevos
+    // productos/stock/proveedores/tipos/ubicaciones si aplica
+    await _ventasKey.currentState?.refreshFromExternalChange();
+    await _notificarCambioInventario();
+  }
+
+  Future<void> _postVenta() async {
+    await _comprasKey.currentState?.refreshFromExternalChange();
+    await _notificarCambioInventario();
   }
 
   @override
@@ -40,13 +55,6 @@ class ComprasVentasPageState extends State<ComprasVentasPage> {
                   Tab(text: 'Ventas'),
                 ],
               ),
-              actions: [
-                IconButton(
-                  tooltip: 'Refrescar catálogos',
-                  onPressed: () => refreshFromExternalChange(),
-                  icon: const Icon(Icons.refresh),
-                ),
-              ],
             ),
             body: TabBarView(
               children: [
@@ -66,11 +74,15 @@ class ComprasVentasPageState extends State<ComprasVentasPage> {
                 final isCompras = controller.index == 0;
 
                 return FloatingActionButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (isCompras) {
-                      _comprasKey.currentState?.onFabPressed();
+                      await _comprasKey.currentState?.onFabPressed();
+                      if (!mounted) return;
+                      await _postCompra();
                     } else {
-                      _ventasKey.currentState?.onFabPressed();
+                      await _ventasKey.currentState?.onFabPressed();
+                      if (!mounted) return;
+                      await _postVenta();
                     }
                   },
                   tooltip: isCompras ? 'Registrar compra' : 'Registrar venta',
