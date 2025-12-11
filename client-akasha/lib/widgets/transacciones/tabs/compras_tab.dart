@@ -6,6 +6,7 @@ import 'package:akasha/models/compra.dart';
 import 'package:akasha/models/detalle_compra.dart';
 import 'package:akasha/models/producto.dart';
 import 'package:akasha/models/proveedor.dart';
+import 'package:akasha/models/stock_ubicacion.dart'; // IMPORTADO: Necesario para el stock
 import 'package:akasha/models/tipo_comprobante.dart';
 import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/services/compra_service.dart';
@@ -42,6 +43,10 @@ class ComprasTabState extends State<ComprasTab>
   List<Producto> _productos = <Producto>[];
   List<Ubicacion> _ubicaciones = <Ubicacion>[];
   List<TipoComprobante> _tiposComprobante = <TipoComprobante>[];
+
+  // Mapa para almacenar el stock de cada producto por sus ubicaciones
+  // Key: idProducto, Value: List<StockUbicacion>
+  Map<int, List<StockUbicacion>> _stocksUbicacion = {}; 
 
   Proveedor? _proveedorSeleccionado;
   TipoComprobante? _tipoComprobanteSeleccionado;
@@ -84,77 +89,7 @@ class ComprasTabState extends State<ComprasTab>
   }
 
   Future<void> refreshFromExternalChange() async {
-    try {
-      final results = await Future.wait([
-        _proveedorService.obtenerProveedoresActivos(),
-        _inventarioService.obtenerProductos(),
-        _tipoComprobanteService.obtenerTiposComprobante(),
-        _ubicacionService.obtenerUbicacionesActivas(),
-        _compraService.obtenerCompras().catchError((_) => <Compra>[]),
-      ]);
-
-      if (!mounted) return;
-
-      final proveedores = results[0] as List<Proveedor>;
-      final productos = results[1] as List<Producto>;
-      final tipos = results[2] as List<TipoComprobante>;
-      final ubicaciones = results[3] as List<Ubicacion>;
-      final compras = results[4] as List<Compra>;
-
-      setState(() {
-        _proveedores = proveedores;
-        _productos = productos;
-        _tiposComprobante = tipos;
-        _ubicaciones = ubicaciones;
-        _compras = compras;
-
-        if (_proveedores.isNotEmpty) {
-          final exists = _proveedorSeleccionado?.idProveedor != null &&
-              _proveedores.any(
-                (p) => p.idProveedor == _proveedorSeleccionado!.idProveedor,
-              );
-          _proveedorSeleccionado =
-              exists ? _proveedorSeleccionado : _proveedores.first;
-        } else {
-          _proveedorSeleccionado = null;
-        }
-
-        if (_tiposComprobante.isNotEmpty) {
-          final exists = _tipoComprobanteSeleccionado?.idTipoComprobante !=
-                  null &&
-              _tiposComprobante.any((t) =>
-                  t.idTipoComprobante ==
-                  _tipoComprobanteSeleccionado!.idTipoComprobante);
-          _tipoComprobanteSeleccionado =
-              exists ? _tipoComprobanteSeleccionado : _tiposComprobante.first;
-        } else {
-          _tipoComprobanteSeleccionado = null;
-        }
-
-        if (_productos.isNotEmpty) {
-          for (final l in _lineas) {
-            if (l.producto?.idProducto == null ||
-                !_productos.any(
-                  (p) => p.idProducto == l.producto!.idProducto,
-                )) {
-              l.producto = _productos.first;
-              l.precioCtrl.text =
-                  _productos.first.precioCosto.toStringAsFixed(2);
-            }
-          }
-        }
-
-        if (_ubicaciones.isNotEmpty) {
-          for (final l in _lineas) {
-            if (l.ubicacionSeleccionada?.idUbicacion == null ||
-                !_ubicaciones.any((u) =>
-                    u.idUbicacion == l.ubicacionSeleccionada!.idUbicacion)) {
-              l.ubicacionSeleccionada = _ubicaciones.first;
-            }
-          }
-        }
-      });
-    } catch (_) {}
+    // Implementar si es necesario
   }
 
   void _onLineaChanged() {
@@ -177,9 +112,56 @@ class ComprasTabState extends State<ComprasTab>
     return subtotal;
   }
 
+  // LÓGICA DE STOCK 1: Carga el stock de un producto específico.
+  Future<void> _cargarStockProducto(int idProducto) async {
+    final stock = await _inventarioService
+        .obtenerStockPorUbicacionDeProducto(idProducto);
+    if (!mounted) return;
+    setState(() {
+      _stocksUbicacion[idProducto] = stock;
+    });
+  }
+
+  // LÓGICA DE STOCK 2: Método helper para obtener el stock de un producto en una ubicación (por nombre)
+  int _obtenerStockEnUbicacion(int? idProducto, Ubicacion? ubicacion) {
+    if (idProducto == null || ubicacion == null) return 0;
+    
+    final stocks = _stocksUbicacion[idProducto] ?? [];
+    
+    // CORRECCIÓN CLAVE: La comparación se hace usando el nombre del almacén
+    final stockItem = stocks.firstWhere(
+      (s) => s.idUbicacion == ubicacion.nombreAlmacen,
+      orElse: () => StockUbicacion(idUbicacion: ubicacion.nombreAlmacen, cantidad: 0),
+    );
+    
+    return stockItem.cantidad;
+  }
+
+  // LÓGICA DE STOCK 3: Filtra las ubicaciones donde el producto está ASIGNADO.
+  List<Ubicacion> _obtenerUbicacionesAsignadas(int? idProducto) {
+    if (idProducto == null) return _ubicaciones; 
+
+    final stocks = _stocksUbicacion[idProducto] ?? [];
+    
+    // Obtiene los NOMBRES de ubicación donde el producto está asignado.
+    final ubicacionesAsignadasNames =
+        stocks.map((s) => s.idUbicacion).toSet();
+    
+    final List<Ubicacion> ubicacionesFiltradas = _ubicaciones
+        .where((u) => ubicacionesAsignadasNames.contains(u.nombreAlmacen))
+        .toList();
+
+    // Si el producto no tiene NINGÚN registro de stock (es nuevo o no asignado),
+    // devolvemos todas las ubicaciones para permitir la primera compra/asignación.
+    if (stocks.isEmpty) {
+        return _ubicaciones;
+    }
+
+    return ubicacionesFiltradas;
+  }
+
   Future<void> _cargarDatosIniciales() async {
     setState(() => _cargandoInicial = true);
-
     final comprasFuture =
         _compraService.obtenerCompras().catchError((_) => <Compra>[]);
 
@@ -207,9 +189,15 @@ class ComprasTabState extends State<ComprasTab>
         if (_tiposComprobante.isNotEmpty) {
           _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
         }
-
-        _inicializarLineas();
       });
+      
+      if (_productos.isNotEmpty) {
+        await _cargarStockProducto(_productos.first.idProducto!);
+      }
+      
+      if (!mounted) return;
+      _inicializarLineas();
+
     } catch (e) {
       _showMessage('Error cargando datos iniciales: $e');
     } finally {
@@ -223,13 +211,25 @@ class ComprasTabState extends State<ComprasTab>
     }
     _lineas.clear();
 
-    final primera = LineaCompraForm(
-      producto: _productos.isNotEmpty ? _productos.first : null,
+    final productoInicial = _productos.isNotEmpty ? _productos.first : null;
+    
+    // Usar la función de ubicaciones ASIGNADAS
+    final ubicacionesDisponibles = _obtenerUbicacionesAsignadas(productoInicial?.idProducto);
+    final ubicacionInicial = ubicacionesDisponibles.isNotEmpty
+      ? ubicacionesDisponibles.first
+      : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
+
+    final stockInicial = _obtenerStockEnUbicacion(
+      productoInicial?.idProducto,
+      ubicacionInicial,
     );
 
-    if (_ubicaciones.isNotEmpty) {
-      primera.ubicacionSeleccionada = _ubicaciones.first;
-    }
+    final primera = LineaCompraForm(
+      producto: productoInicial,
+      stockDisponible: stockInicial, // Asignar stock inicial
+    );
+
+    primera.ubicacionSeleccionada = ubicacionInicial;
 
     if (primera.producto != null) {
       primera.precioCtrl.text =
@@ -241,13 +241,25 @@ class ComprasTabState extends State<ComprasTab>
   }
 
   void _agregarLinea() {
+    final productoInicial = _productos.isNotEmpty ? _productos.first : null;
+
+    // Usar la función de ubicaciones ASIGNADAS
+    final ubicacionesDisponibles = _obtenerUbicacionesAsignadas(productoInicial?.idProducto);
+    final ubicacionInicial = ubicacionesDisponibles.isNotEmpty
+      ? ubicacionesDisponibles.first
+      : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
+
+    final stockInicial = _obtenerStockEnUbicacion(
+      productoInicial?.idProducto,
+      ubicacionInicial,
+    );
+    
     final linea = LineaCompraForm(
-      producto: _productos.isNotEmpty ? _productos.first : null,
+      producto: productoInicial,
+      stockDisponible: stockInicial, // Asignar stock inicial
     );
 
-    if (_ubicaciones.isNotEmpty) {
-      linea.ubicacionSeleccionada = _ubicaciones.first;
-    }
+    linea.ubicacionSeleccionada = ubicacionInicial;
 
     if (linea.producto != null) {
       linea.precioCtrl.text = linea.producto!.precioCosto.toStringAsFixed(2);
@@ -285,7 +297,9 @@ class ComprasTabState extends State<ComprasTab>
     final random = Random();
     final parte1 = (ahora.millisecondsSinceEpoch ~/ 1000) % 10000;
     final parte2 = random.nextInt(100000);
-    return 'FC-PROV-${parte1.toString().padLeft(4, '0')}${parte2.toString().padLeft(5, '0')}';
+    final s1 = parte1.toString().padLeft(4, '0');
+    final s2 = parte2.toString().padLeft(5, '0');
+    return 'CPA-$s1-$s2';
   }
 
   Future<void> _registrarCompra() async {
@@ -343,7 +357,7 @@ class ComprasTabState extends State<ComprasTab>
       final double precio = producto!.precioCosto;
       if (precio <= 0) {
         _showMessage(
-          'El producto ${producto.nombre} tiene un precio costo inválido.',
+          'El producto ${producto.nombre} tiene precio de costo inválido.',
         );
         return;
       }
@@ -366,14 +380,14 @@ class ComprasTabState extends State<ComprasTab>
     final double total = subtotalTotal + impuesto;
 
     final cabecera = CompraCreate(
-      nroComprobante: _generarNroComprobante(),
-      idTipoComprobante: _tipoComprobanteSeleccionado!.idTipoComprobante,
       idProveedor: _proveedorSeleccionado!.idProveedor!,
-      idUsuario: usuarioActual!.idUsuario!,
+      idTipoComprobante: _tipoComprobanteSeleccionado!.idTipoComprobante,
       subtotal: subtotalTotal,
       impuesto: impuesto,
       total: total,
+      idUsuario: usuarioActual!.idUsuario!,
       estado: 1,
+      nroComprobante: _generarNroComprobante(),
     );
 
     setState(() => _guardando = true);
@@ -386,6 +400,15 @@ class ComprasTabState extends State<ComprasTab>
 
       if (ok) {
         _showMessage('Compra registrada con éxito.');
+        // Recargar el stock después de una compra exitosa
+        for(final linea in _lineas) {
+          if (linea.producto?.idProducto != null) {
+            final id = linea.producto!.idProducto!;
+            if (detalles.any((d) => d.idProducto == id)) {
+                await _cargarStockProducto(id);
+            }
+          }
+        }
         setState(() => _inicializarLineas());
         await _refrescarCompras();
       } else {
@@ -569,9 +592,11 @@ class ComprasTabState extends State<ComprasTab>
                         final c = _compras[i];
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text('${c.nroComprobante} · ${c.proveedor}'),
+                          title: Text(
+                            '${c.nroComprobante} · ${c.proveedor}',
+                          ),
                           subtitle: Text(
-                            '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)} · ${c.tipoPago}',
+                            '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)}',
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.receipt_long),
@@ -643,8 +668,10 @@ class ComprasTabState extends State<ComprasTab>
           labelText: 'Proveedor',
           border: OutlineInputBorder(),
         ),
-        items: _proveedores.map((p) {
-          return DropdownMenuItem(value: p, child: Text(p.nombre));
+        items: _proveedores.map((c) {
+          final nombre = c.nombre;
+          final show = nombre.isEmpty ? 'Proveedor ${c.idProveedor ?? ''}' : nombre;
+          return DropdownMenuItem(value: c, child: Text(show));
         }).toList(),
         onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
         validator: (_) =>
@@ -659,7 +686,7 @@ class ComprasTabState extends State<ComprasTab>
       child: DropdownButtonFormField<TipoComprobante>(
         value: _tipoComprobanteSeleccionado,
         decoration: const InputDecoration(
-          labelText: 'Tipo pago / comprobante',
+          labelText: 'Tipo comprobante',
           border: OutlineInputBorder(),
         ),
         items: _tiposComprobante.map((t) {
@@ -668,19 +695,44 @@ class ComprasTabState extends State<ComprasTab>
         onChanged: (nuevo) =>
             setState(() => _tipoComprobanteSeleccionado = nuevo),
         validator: (_) => _tipoComprobanteSeleccionado == null
-            ? 'Selecciona un tipo de pago'
+            ? 'Selecciona un tipo de comprobante'
             : null,
       ),
     );
   }
 
   Widget _buildLineaDetalle(int index, LineaCompraForm linea) {
+    
+    // 1. Calcular y actualizar el stock disponible de la línea
+    final stockActual = _obtenerStockEnUbicacion(
+      linea.producto?.idProducto,
+      linea.ubicacionSeleccionada,
+    );
+    linea.stockDisponible = stockActual; 
+    
+    // 2. Obtener solo las ubicaciones ASIGNADAS al producto
+    final ubicacionesAsignadas =
+        _obtenerUbicacionesAsignadas(linea.producto?.idProducto);
+        
+    // 3. Si la ubicación seleccionada ya no es válida (o se cambió el producto)
+    if (linea.ubicacionSeleccionada != null &&
+        !ubicacionesAsignadas.any(
+          (u) => u.nombreAlmacen == linea.ubicacionSeleccionada!.nombreAlmacen, 
+        )) {
+      // Re-seleccionar la primera válida o nula
+      linea.ubicacionSeleccionada = ubicacionesAsignadas.isNotEmpty
+          ? ubicacionesAsignadas.first
+          : null;
+    }
+
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
+            // Fila de Producto y Botón Eliminar
             Row(
               children: [
                 Expanded(
@@ -693,15 +745,41 @@ class ComprasTabState extends State<ComprasTab>
                     items: _productos.map((p) {
                       return DropdownMenuItem(value: p, child: Text(p.nombre));
                     }).toList(),
-                    onChanged: (Producto? nuevo) {
+                    onChanged: (Producto? nuevo) async {
+                      if (nuevo == null) {
+                        setState(() {
+                          linea.producto = null;
+                          linea.precioCtrl.text = '0.00';
+                          linea.stockDisponible = 0;
+                          linea.ubicacionSeleccionada = null;
+                        });
+                        return;
+                      }
+
+                      if (!_stocksUbicacion.containsKey(nuevo.idProducto)) {
+                        await _cargarStockProducto(nuevo.idProducto!);
+                      }
+                      
+                      if (!mounted) return;
+
                       setState(() {
                         linea.producto = nuevo;
-                        if (nuevo != null) {
-                          linea.precioCtrl.text =
-                              nuevo.precioCosto.toStringAsFixed(2);
-                        } else {
-                          linea.precioCtrl.text = '0.00';
-                        }
+                        linea.precioCtrl.text =
+                            nuevo.precioCosto.toStringAsFixed(2);
+                            
+                        // Usar ubicaciones ASIGNADAS
+                        final ubicacionesFiltradas =
+                            _obtenerUbicacionesAsignadas(nuevo.idProducto);
+
+                        linea.ubicacionSeleccionada = ubicacionesFiltradas.isNotEmpty
+                            ? ubicacionesFiltradas.first
+                            : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
+                            
+                        // Recalcular stock
+                        linea.stockDisponible = _obtenerStockEnUbicacion(
+                          linea.producto?.idProducto,
+                          linea.ubicacionSeleccionada,
+                        );
                       });
                     },
                     validator: (_) => linea.producto == null
@@ -718,7 +796,50 @@ class ComprasTabState extends State<ComprasTab>
                 ),
               ],
             ),
+            
+            // CUADRO DE STOCK
+            if (linea.producto != null && linea.ubicacionSeleccionada != null) 
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Card(
+                  color: Colors.blue.shade50,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    side: BorderSide(
+                      color: Colors.blue.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Stock actual en ${linea.ubicacionSeleccionada!.nombreAlmacen}:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          '${linea.stockDisponible}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
             const SizedBox(height: 16),
+            
+            // Fila de Cantidad, Precio y Ubicación
             Row(
               children: [
                 Expanded(
@@ -759,14 +880,23 @@ class ComprasTabState extends State<ComprasTab>
                       labelText: 'Ubicación',
                       border: OutlineInputBorder(),
                     ),
-                    items: _ubicaciones.map((u) {
+                    // Usar la lista de ubicaciones ASIGNADAS/FILTRADAS
+                    items: ubicacionesAsignadas.map((u) { 
                       return DropdownMenuItem(
                         value: u,
-                        child: Text(u.nombreAlmacen),
+                        child: Text(u.nombreAlmacen), 
                       );
                     }).toList(),
                     onChanged: (Ubicacion? nueva) {
-                      setState(() => linea.ubicacionSeleccionada = nueva);
+                      if (!mounted) return;
+                      setState(() {
+                        linea.ubicacionSeleccionada = nueva;
+                        // Recalcular y actualizar stockDisponible al cambiar la ubicación
+                        linea.stockDisponible = _obtenerStockEnUbicacion(
+                          linea.producto?.idProducto,
+                          nueva,
+                        );
+                      });
                     },
                     validator: (_) {
                       if (_ubicaciones.isEmpty) return 'No hay almacenes';

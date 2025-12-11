@@ -5,6 +5,7 @@ import 'package:akasha/core/session_manager.dart';
 import 'package:akasha/models/cliente.dart';
 import 'package:akasha/models/detalle_venta.dart';
 import 'package:akasha/models/producto.dart';
+import 'package:akasha/models/stock_ubicacion.dart'; // <--- NUEVO IMPORT
 import 'package:akasha/models/tipo_comprobante.dart';
 import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/models/venta.dart';
@@ -42,6 +43,9 @@ class VentasTabState extends State<VentasTab>
   List<Producto> _productos = <Producto>[];
   List<Ubicacion> _ubicaciones = <Ubicacion>[];
   List<TipoComprobante> _tiposComprobante = <TipoComprobante>[];
+
+  // AÑADIDO: Mapa para almacenar el stock de cada producto por sus ubicaciones
+  Map<int, List<StockUbicacion>> _stocksUbicacion = {}; 
 
   Cliente? _clienteSeleccionado;
   TipoComprobante? _tipoComprobanteSeleccionado;
@@ -158,6 +162,7 @@ class VentasTabState extends State<VentasTab>
   }
 
   void _onLineaChanged() {
+    // Al cambiar la cantidad, necesitamos refrescar los totales
     if (mounted) setState(() {});
   }
 
@@ -175,6 +180,16 @@ class VentasTabState extends State<VentasTab>
       subtotal += cantidad * p.precioVenta;
     }
     return subtotal;
+  }
+
+  // LÓGICA DE STOCK 1: Carga el stock de un producto específico.
+  Future<void> _cargarStockProducto(int idProducto) async {
+    final stock = await _inventarioService
+        .obtenerStockPorUbicacionDeProducto(idProducto);
+    if (!mounted) return;
+    setState(() {
+      _stocksUbicacion[idProducto] = stock;
+    });
   }
 
   Future<void> _cargarDatosIniciales() async {
@@ -207,9 +222,16 @@ class VentasTabState extends State<VentasTab>
         if (_tiposComprobante.isNotEmpty) {
           _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
         }
-
-        _inicializarLineas();
       });
+      
+      // Cargar el stock por ubicación para el primer producto ANTES de inicializar líneas
+      if (_productos.isNotEmpty) {
+        await _cargarStockProducto(_productos.first.idProducto!);
+      }
+      
+      if (!mounted) return;
+      _inicializarLineas();
+
     } catch (e) {
       _showMessage('Error cargando datos iniciales: $e');
     } finally {
@@ -217,19 +239,65 @@ class VentasTabState extends State<VentasTab>
     }
   }
 
+  // LÓGICA DE STOCK 2: Método helper para obtener el stock de un producto en una ubicación
+  int _obtenerStockEnUbicacion(int? idProducto, Ubicacion? ubicacion) {
+    // Si no hay producto o ubicación seleccionados, el stock es 0.
+    if (idProducto == null || ubicacion == null) return 0;
+    
+    final stocks = _stocksUbicacion[idProducto] ?? [];
+    
+    // NOTA: La comparación se hace usando el nombre del almacén
+    final stockItem = stocks.firstWhere(
+      (s) => s.idUbicacion == ubicacion.nombreAlmacen,
+      orElse: () => StockUbicacion(idUbicacion: ubicacion.nombreAlmacen, cantidad: 0),
+    );
+    
+    return stockItem.cantidad;
+  }
+  
+  // LÓGICA DE STOCK 3: Filtra las ubicaciones donde el producto tiene stock > 0
+  List<Ubicacion> _obtenerUbicacionesConStock(int? idProducto) {
+    if (idProducto == null) return const <Ubicacion>[];
+
+    final stocks = _stocksUbicacion[idProducto] ?? [];
+    
+    // Obtiene los NOMBRES de ubicación con stock > 0.
+    final ubicacionesConStockNames =
+        stocks.where((s) => s.cantidad > 0).map((s) => s.idUbicacion).toSet();
+    
+    // Filtra la lista maestra de ubicaciones por el nombre del almacén (String).
+    return _ubicaciones
+        .where((u) => ubicacionesConStockNames.contains(u.nombreAlmacen))
+        .toList();
+  }
+
+
   void _inicializarLineas() {
     for (final l in _lineas) {
       l.dispose();
     }
     _lineas.clear();
 
-    final primera = LineaVentaForm(
-      producto: _productos.isNotEmpty ? _productos.first : null,
+    final productoInicial = _productos.isNotEmpty ? _productos.first : null;
+    
+    // Obtener la lista de ubicaciones con stock
+    final ubicacionesDisponibles = _obtenerUbicacionesConStock(productoInicial?.idProducto);
+    final ubicacionInicial = ubicacionesDisponibles.isNotEmpty
+      ? ubicacionesDisponibles.first
+      : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
+
+    final stockInicial = _obtenerStockEnUbicacion(
+      productoInicial?.idProducto,
+      ubicacionInicial,
     );
 
-    if (_ubicaciones.isNotEmpty) {
-      primera.ubicacionSeleccionada = _ubicaciones.first;
-    }
+    final primera = LineaVentaForm(
+      producto: productoInicial,
+      stockDisponible: stockInicial, // Asignar stock inicial
+      cantidadInicial: stockInicial > 0 ? 1 : 0, // Inicia en 1 solo si hay stock
+    );
+
+    primera.ubicacionSeleccionada = ubicacionInicial;
 
     if (primera.producto != null) {
       primera.precioCtrl.text =
@@ -241,13 +309,26 @@ class VentasTabState extends State<VentasTab>
   }
 
   void _agregarLinea() {
+    final productoInicial = _productos.isNotEmpty ? _productos.first : null;
+
+    // Obtener la lista de ubicaciones con stock
+    final ubicacionesDisponibles = _obtenerUbicacionesConStock(productoInicial?.idProducto);
+    final ubicacionInicial = ubicacionesDisponibles.isNotEmpty
+      ? ubicacionesDisponibles.first
+      : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
+
+    final stockInicial = _obtenerStockEnUbicacion(
+      productoInicial?.idProducto,
+      ubicacionInicial,
+    );
+    
     final linea = LineaVentaForm(
-      producto: _productos.isNotEmpty ? _productos.first : null,
+      producto: productoInicial,
+      stockDisponible: stockInicial, // Asignar stock inicial
+      cantidadInicial: stockInicial > 0 ? 1 : 0, // Inicia en 1 solo si hay stock
     );
 
-    if (_ubicaciones.isNotEmpty) {
-      linea.ubicacionSeleccionada = _ubicaciones.first;
-    }
+    linea.ubicacionSeleccionada = ubicacionInicial;
 
     if (linea.producto != null) {
       linea.precioCtrl.text = linea.producto!.precioVenta.toStringAsFixed(2);
@@ -342,6 +423,16 @@ class VentasTabState extends State<VentasTab>
         return;
       }
 
+      // VALIDACIÓN FINAL DE STOCK
+      final stockActual = _obtenerStockEnUbicacion(
+        producto?.idProducto,
+        ubicacion,
+      );
+      if (cantidad > stockActual) {
+         _showMessage('Stock insuficiente para ${producto?.nombre} en ${ubicacion?.nombreAlmacen}. Solo hay $stockActual unidades.');
+         return;
+      }
+
       final double precio = producto!.precioVenta;
       if (precio <= 0) {
         _showMessage(
@@ -387,6 +478,16 @@ class VentasTabState extends State<VentasTab>
 
       if (ok) {
         _showMessage('Venta registrada con éxito.');
+        // Recargar el stock después de una venta exitosa
+        for(final linea in _lineas) {
+          if (linea.producto?.idProducto != null) {
+            // Recargar solo si el producto estaba en la venta
+            final id = linea.producto!.idProducto!;
+            if (detalles.any((d) => d.idProducto == id)) {
+                await _cargarStockProducto(id);
+            }
+          }
+        }
         setState(() => _inicializarLineas());
         await _refrescarVentas();
       } else {
@@ -680,12 +781,42 @@ class VentasTabState extends State<VentasTab>
   }
 
   Widget _buildLineaDetalle(int index, LineaVentaForm linea) {
+    
+    // 1. Recalcular y actualizar el stock disponible de la línea
+    final stockActual = _obtenerStockEnUbicacion(
+      linea.producto?.idProducto,
+      linea.ubicacionSeleccionada,
+    );
+    linea.stockDisponible = stockActual; 
+    
+    // 2. Filtrar ubicaciones para solo mostrar aquellas con stock > 0 del producto
+    final ubicacionesConStock =
+        _obtenerUbicacionesConStock(linea.producto?.idProducto);
+        
+    // 3. Si la ubicación seleccionada ya no tiene stock, forzar la re-selección
+    if (linea.ubicacionSeleccionada != null &&
+        !ubicacionesConStock.any(
+          (u) => u.nombreAlmacen == linea.ubicacionSeleccionada!.nombreAlmacen, 
+        )) {
+      // Re-seleccionar la primera con stock, o anular si no hay ninguna
+      linea.ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
+          ? ubicacionesConStock.first
+          : null;
+      // Actualizar el stock disponible después de la posible re-selección
+      linea.stockDisponible = _obtenerStockEnUbicacion(
+        linea.producto?.idProducto,
+        linea.ubicacionSeleccionada,
+      );
+    }
+
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
+            // Fila de Producto y Botón Eliminar
             Row(
               children: [
                 Expanded(
@@ -698,14 +829,49 @@ class VentasTabState extends State<VentasTab>
                     items: _productos.map((p) {
                       return DropdownMenuItem(value: p, child: Text(p.nombre));
                     }).toList(),
-                    onChanged: (Producto? nuevo) {
+                    onChanged: (Producto? nuevo) async {
+                      if (nuevo == null) {
+                        setState(() {
+                          linea.producto = null;
+                          linea.precioCtrl.text = '0.00';
+                          linea.stockDisponible = 0;
+                          linea.ubicacionSeleccionada = null;
+                        });
+                        return;
+                      }
+
+                      // Cargar stock si no lo hemos hecho
+                      if (!_stocksUbicacion.containsKey(nuevo.idProducto)) {
+                        await _cargarStockProducto(nuevo.idProducto!);
+                      }
+                      
+                      if (!mounted) return;
+
                       setState(() {
                         linea.producto = nuevo;
-                        if (nuevo != null) {
-                          linea.precioCtrl.text =
-                              nuevo.precioVenta.toStringAsFixed(2);
-                        } else {
-                          linea.precioCtrl.text = '0.00';
+                        linea.precioCtrl.text =
+                            nuevo.precioVenta.toStringAsFixed(2);
+                            
+                        // 1. Obtener ubicaciones con stock para el nuevo producto
+                        final ubicacionesFiltradas =
+                            _obtenerUbicacionesConStock(nuevo.idProducto);
+
+                        // 2. Seleccionar la primera ubicación con stock o null
+                        linea.ubicacionSeleccionada = ubicacionesFiltradas.isNotEmpty
+                            ? ubicacionesFiltradas.first
+                            : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
+                            
+                        // 3. Recalcular y asignar stock
+                        linea.stockDisponible = _obtenerStockEnUbicacion(
+                          linea.producto?.idProducto,
+                          linea.ubicacionSeleccionada,
+                        );
+                        
+                        // 4. Asegurar que la cantidad se ajuste al stock (si no hay stock, cantidad = 0)
+                        if (linea.stockDisponible <= 0) {
+                            linea.cantidadCtrl.text = '0';
+                        } else if (_parseInt(linea.cantidadCtrl.text) <= 0) {
+                            linea.cantidadCtrl.text = '1';
                         }
                       });
                     },
@@ -723,7 +889,50 @@ class VentasTabState extends State<VentasTab>
                 ),
               ],
             ),
+            
+            // CUADRO DE STOCK VISIBLE
+            if (linea.producto != null && linea.ubicacionSeleccionada != null) 
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Card(
+                  color: linea.stockDisponible > 0 ? Colors.green.shade50 : Colors.red.shade50,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    side: BorderSide(
+                      color: linea.stockDisponible > 0 ? Colors.green.shade300 : Colors.red.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Stock en ${linea.ubicacionSeleccionada!.nombreAlmacen}:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          '${linea.stockDisponible}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: linea.stockDisponible > 0 ? Colors.green.shade700 : Colors.red.shade700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
             const SizedBox(height: 16),
+            
+            // Fila de Cantidad, Precio y Ubicación
             Row(
               children: [
                 Expanded(
@@ -738,6 +947,10 @@ class VentasTabState extends State<VentasTab>
                     validator: (value) {
                       final c = _parseInt(value ?? '');
                       if (c <= 0) return 'Cantidad inválida';
+                      // Validación de stock
+                      if (c > linea.stockDisponible) {
+                        return 'Stock insuficiente (${linea.stockDisponible})';
+                      }
                       return null;
                     },
                   ),
@@ -764,17 +977,33 @@ class VentasTabState extends State<VentasTab>
                       labelText: 'Ubicación',
                       border: OutlineInputBorder(),
                     ),
-                    items: _ubicaciones.map((u) {
+                    // Usar la lista de ubicaciones filtradas por stock
+                    items: ubicacionesConStock.map((u) { 
                       return DropdownMenuItem(
                         value: u,
-                        child: Text(u.nombreAlmacen),
+                        child: Text(u.nombreAlmacen), 
                       );
                     }).toList(),
                     onChanged: (Ubicacion? nueva) {
-                      setState(() => linea.ubicacionSeleccionada = nueva);
+                      if (!mounted) return;
+                      setState(() {
+                        linea.ubicacionSeleccionada = nueva;
+                        // Recalcular y actualizar stockDisponible al cambiar la ubicación
+                        linea.stockDisponible = _obtenerStockEnUbicacion(
+                          linea.producto?.idProducto,
+                          nueva,
+                        );
+                         // Asegurar que la cantidad se resetee si el nuevo stock es 0 o menor
+                        if (linea.stockDisponible <= 0) {
+                            linea.cantidadCtrl.text = '0';
+                        }
+                      });
                     },
                     validator: (_) {
                       if (_ubicaciones.isEmpty) return 'No hay almacenes';
+                      if (ubicacionesConStock.isEmpty && _ubicaciones.isNotEmpty) {
+                          return 'Sin stock en almacenes';
+                      }
                       if (linea.ubicacionSeleccionada == null) {
                         return 'Selecciona una ubicación';
                       }

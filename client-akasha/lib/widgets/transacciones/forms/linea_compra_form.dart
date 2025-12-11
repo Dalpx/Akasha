@@ -5,11 +5,17 @@ import 'package:flutter/material.dart';
 class LineaCompraForm {
   Producto? producto;
   Ubicacion? ubicacionSeleccionada;
+  // NUEVO: Stock disponible en la ubicacionSeleccionada
+  int stockDisponible;
 
   final TextEditingController cantidadCtrl;
   final TextEditingController precioCtrl;
 
-  LineaCompraForm({this.producto, int cantidadInicial = 1})
+  LineaCompraForm({
+    this.producto,
+    int cantidadInicial = 1,
+    this.stockDisponible = 0, // Inicializado a 0
+  })
       : cantidadCtrl =
             TextEditingController(text: cantidadInicial.toString()),
         precioCtrl = TextEditingController() {
