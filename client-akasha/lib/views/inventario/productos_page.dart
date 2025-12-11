@@ -15,12 +15,11 @@ class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
 
   @override
-  State<ProductosPage> createState() {
-    return _ProductosPageState();
-  }
+  State<ProductosPage> createState() => _ProductosPageState();
 }
 
-class _ProductosPageState extends State<ProductosPage> {
+class _ProductosPageState extends State<ProductosPage>
+    with AutomaticKeepAliveClientMixin {
   final InventarioService _inventarioService = InventarioService();
   final ProveedorService _proveedorService = ProveedorService();
   final CategoriaService _categoriaService = CategoriaService();
@@ -30,69 +29,72 @@ class _ProductosPageState extends State<ProductosPage> {
   List<Proveedor> _proveedores = <Proveedor>[];
   List<Categoria> _categorias = <Categoria>[];
 
-  List<Producto>? _cacheProductos;
-  List<Proveedor>? _cacheProveedores;
-  List<Categoria>? _cacheCategorias;
-
   bool _cargandoCombos = true;
+
+  List<Producto>? _cacheProductos;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _futureProductos = _loadProductos();
+    _futureProductos = _cargarProductosConCache();
     _cargarProveedoresYCategorias();
+
+    InventarioService.productosRevision.addListener(_onProductosChanged);
   }
 
-  Future<List<Producto>> _loadProductos({bool force = false}) async {
-    if (!force && _cacheProductos != null) {
-      return _cacheProductos!;
-    }
-
-    final list = await _inventarioService.obtenerProductos();
-    _cacheProductos = list;
-    return list;
+  @override
+  void dispose() {
+    InventarioService.productosRevision.removeListener(_onProductosChanged);
+    super.dispose();
   }
 
-  Future<List<Proveedor>> _loadProveedores({bool force = false}) async {
-    if (!force && _cacheProveedores != null) {
-      return _cacheProveedores!;
-    }
-
-    final list = await _proveedorService.obtenerProveedoresActivos();
-    _cacheProveedores = list;
-    return list;
-  }
-
-  Future<List<Categoria>> _loadCategorias({bool force = false}) async {
-    if (!force && _cacheCategorias != null) {
-      return _cacheCategorias!;
-    }
-
-    final list = await _categoriaService.obtenerCategorias();
-    _cacheCategorias = list;
-    return list;
-  }
-
-  Future<void> _cargarProveedoresYCategorias({bool force = false}) async {
-    _cargandoCombos = true;
-
-    final proveedores = await _loadProveedores(force: force);
-    final categorias = await _loadCategorias(force: force);
-
+  void _onProductosChanged() {
     if (!mounted) return;
+    _cacheProductos = null;
+    _recargarProductos();
+  }
 
-    setState(() {
-      _proveedores = proveedores;
-      _categorias = categorias;
-      _cargandoCombos = false;
-    });
+  Future<List<Producto>> _cargarProductosConCache() async {
+    if (_cacheProductos != null) return _cacheProductos!;
+    final productos = await _inventarioService.obtenerProductos();
+    _cacheProductos = productos;
+    return productos;
+  }
+
+  Future<void> _cargarProveedoresYCategorias() async {
+    try {
+      final proveedoresFuture = _proveedorService.obtenerProveedoresActivos();
+      final categoriasFuture = _categoriaService.obtenerCategorias();
+
+      final results = await Future.wait([proveedoresFuture, categoriasFuture]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _proveedores = results[0] as List<Proveedor>;
+        _categorias = results[1] as List<Categoria>;
+        _cargandoCombos = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cargandoCombos = false);
+    }
   }
 
   void _recargarProductos() {
     if (!mounted) return;
     setState(() {
-      _futureProductos = _loadProductos(force: true);
+      _futureProductos = _cargarProductosConCache();
     });
+  }
+
+  Future<void> refreshFromExternalChange() async {
+    _cacheProductos = null;
+    await _cargarProveedoresYCategorias();
+    _recargarProductos();
   }
 
   Future<void> _abrirFormularioProducto({Producto? productoEditar}) async {
@@ -100,7 +102,7 @@ class _ProductosPageState extends State<ProductosPage> {
       await _cargarProveedoresYCategorias();
     }
 
-    final productosActuales = await _loadProductos();
+    final productosActuales = await _inventarioService.obtenerProductos();
 
     if (!mounted) return;
 
@@ -162,16 +164,13 @@ class _ProductosPageState extends State<ProductosPage> {
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (producto.idProducto != null) {
                   await _eliminarProducto(producto.idProducto!);
-
                   if (!mounted) return;
 
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -185,7 +184,6 @@ class _ProductosPageState extends State<ProductosPage> {
                 }
 
                 if (!mounted) return;
-
                 Navigator.of(context).pop();
               },
               child: const Text('Eliminar'),
@@ -204,6 +202,8 @@ class _ProductosPageState extends State<ProductosPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -228,16 +228,16 @@ class _ProductosPageState extends State<ProductosPage> {
                     await Navigator.of(context)
                         .pushNamed(AppRoutes.rutaGestionMaestros);
 
-                    await _cargarProveedoresYCategorias(force: true);
+                    await _cargarProveedoresYCategorias();
+                    _cacheProductos = null;
+                    _recargarProductos();
                   },
                   icon: const Icon(Icons.settings),
                   label: const Text('Configuración'),
                 ),
                 const SizedBox(width: 8.0),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    _abrirFormularioProducto();
-                  },
+                  onPressed: () => _abrirFormularioProducto(),
                   icon: const Icon(Icons.add),
                   label: const Text('Nuevo'),
                 ),
@@ -259,17 +259,12 @@ class _ProductosPageState extends State<ProductosPage> {
                       BuildContext context,
                       AsyncSnapshot<List<Producto>> snapshot,
                     ) {
-                      final data = snapshot.data ?? const <Producto>[];
-
-                      if (snapshot.connectionState ==
-                              ConnectionState.waiting &&
-                          data.isEmpty) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          (snapshot.data == null || snapshot.data!.isEmpty)) {
+                        return const Center(child: CircularProgressIndicator());
                       }
 
-                      if (snapshot.hasError && data.isEmpty) {
+                      if (snapshot.hasError) {
                         return Center(
                           child: Text(
                             'Error al cargar productos: ${snapshot.error}',
@@ -277,6 +272,7 @@ class _ProductosPageState extends State<ProductosPage> {
                         );
                       }
 
+                      final data = snapshot.data ?? <Producto>[];
                       final productos = data
                           .where((producto) => producto.activo)
                           .toList();
@@ -338,7 +334,7 @@ extension ListExtension<T> on List<T> {
   T? firstWhereOrNull(bool Function(T) test) {
     try {
       return firstWhere(test);
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }

@@ -84,10 +84,8 @@ class _AppShellState extends State<AppShell> {
   late final VentaService _ventaService;
   late final CompraService _compraService;
 
-  final GlobalKey<ComprasVentasPageState> _comprasVentasPageKey =
-      GlobalKey<ComprasVentasPageState>();
-
-  late final List<Widget> _pages;
+  /// Contador por página para forzar refresh al re-seleccionar.
+  final Map<int, int> _refreshTick = <int, int>{};
 
   @override
   void initState() {
@@ -96,34 +94,46 @@ class _AppShellState extends State<AppShell> {
     _ventaService = VentaService();
     _compraService = CompraService();
 
-    _pages = [
-      const ProductosPage(),
+    // Inicializa ticks para todos los índices base.
+    for (final option in _opcionesBase) {
+      _refreshTick[option.index] = 0;
+    }
+  }
+
+  List<Widget> _buildPages() {
+    // Usa ?? 0 por seguridad si en algún futuro cambia la lista de opciones.
+    final int t0 = _refreshTick[0] ?? 0;
+    final int t1 = _refreshTick[1] ?? 0;
+    final int t2 = _refreshTick[2] ?? 0;
+    final int t3 = _refreshTick[3] ?? 0;
+    final int t4 = _refreshTick[4] ?? 0;
+    final int t5 = _refreshTick[5] ?? 0;
+
+    return [
+      ProductosPage(key: ValueKey('productos_$t0')),
       ComprasVentasPage(
-        key: _comprasVentasPageKey,
+        key: ValueKey('transacciones_$t1'),
         sessionManager: widget.sessionManager,
       ),
-      MovimientoInventarioPage(sessionManager: widget.sessionManager),
-      const UsuariosPage(),
+      MovimientoInventarioPage(
+        key: ValueKey('movimientos_$t2'),
+        sessionManager: widget.sessionManager,
+      ),
+      UsuariosPage(key: ValueKey('usuarios_$t3')),
       ReportesPage(
+        key: ValueKey('reportes_$t4'),
         ventaService: _ventaService,
         compraService: _compraService,
       ),
-      const ClientesPage(),
+      ClientesPage(key: ValueKey('clientes_$t5')),
     ];
   }
 
   void _onItemTapped(int index) {
-    if (_indiceSeleccionado == index) return;
-
     setState(() {
       _indiceSeleccionado = index;
+      _refreshTick[index] = (_refreshTick[index] ?? 0) + 1;
     });
-
-    if (index == 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _comprasVentasPageKey.currentState?.refreshFromExternalChange();
-      });
-    }
   }
 
   void _cerrarSesion(BuildContext context) {
@@ -162,9 +172,11 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildBodyConCache(int safeIndex) {
+    // Mantiene IndexedStack para no romper tu patrón,
+    // pero ahora cada child puede "reiniciarse" por Key.
     return IndexedStack(
       index: safeIndex,
-      children: _pages,
+      children: _buildPages(),
     );
   }
 
@@ -179,6 +191,8 @@ class _AppShellState extends State<AppShell> {
         if (!mounted) return;
         setState(() {
           _indiceSeleccionado = safeIndex;
+          // Nota: no incrementamos tick aquí para evitar refresh inesperado
+          // al cambiar permisos/rol.
         });
       });
     }

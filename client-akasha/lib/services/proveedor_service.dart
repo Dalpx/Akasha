@@ -26,7 +26,7 @@ class ProveedorService {
             .map(
               (proveedor) =>
                   Proveedor.fromJson(proveedor as Map<String, dynamic>),
-            )
+            ).where((proveedor) => proveedor.activo)
             .toList();
 
         return proovedor;

@@ -51,10 +51,18 @@ class ComprasTabState extends State<ComprasTab>
   bool _cargandoInicial = true;
   bool _guardando = false;
 
+  ScaffoldMessengerState? _messenger;
+
   static const double _iva = 0.16;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger ??= ScaffoldMessenger.maybeOf(context);
+  }
 
   @override
   void initState() {
@@ -93,9 +101,6 @@ class ComprasTabState extends State<ComprasTab>
       final ubicaciones = results[3] as List<Ubicacion>;
       final compras = results[4] as List<Compra>;
 
-      final prevProveedorId = _proveedorSeleccionado?.idProveedor;
-      final prevTipoId = _tipoComprobanteSeleccionado?.idTipoComprobante;
-
       setState(() {
         _proveedores = proveedores;
         _productos = productos;
@@ -103,42 +108,50 @@ class ComprasTabState extends State<ComprasTab>
         _ubicaciones = ubicaciones;
         _compras = compras;
 
-        _proveedorSeleccionado = _proveedores.isEmpty
-            ? null
-            : _proveedores.firstWhereOrNull(
-                  (p) => p.idProveedor == prevProveedorId,
-                ) ??
-                _proveedores.first;
-
-        _tipoComprobanteSeleccionado = _tiposComprobante.isEmpty
-            ? null
-            : _tiposComprobante.firstWhereOrNull(
-                  (t) => t.idTipoComprobante == prevTipoId,
-                ) ??
-                _tiposComprobante.first;
-
-        for (final l in _lineas) {
-          final pid = l.producto?.idProducto;
-          l.producto = _productos.isEmpty
-              ? null
-              : _productos.firstWhereOrNull((p) => p.idProducto == pid) ??
-                  _productos.first;
-
-          if (l.producto != null) {
-            l.precioCtrl.text = l.producto!.precioCosto.toStringAsFixed(2);
-          } else {
-            l.precioCtrl.text = '0.00';
-          }
-
-          final uid = l.ubicacionSeleccionada?.idUbicacion;
-          l.ubicacionSeleccionada = _ubicaciones.isEmpty
-              ? null
-              : _ubicaciones.firstWhereOrNull((u) => u.idUbicacion == uid) ??
-                  _ubicaciones.first;
+        if (_proveedores.isNotEmpty) {
+          final exists = _proveedorSeleccionado?.idProveedor != null &&
+              _proveedores.any(
+                (p) => p.idProveedor == _proveedorSeleccionado!.idProveedor,
+              );
+          _proveedorSeleccionado =
+              exists ? _proveedorSeleccionado : _proveedores.first;
+        } else {
+          _proveedorSeleccionado = null;
         }
 
-        if (_lineas.isEmpty) {
-          _inicializarLineas();
+        if (_tiposComprobante.isNotEmpty) {
+          final exists = _tipoComprobanteSeleccionado?.idTipoComprobante !=
+                  null &&
+              _tiposComprobante.any((t) =>
+                  t.idTipoComprobante ==
+                  _tipoComprobanteSeleccionado!.idTipoComprobante);
+          _tipoComprobanteSeleccionado =
+              exists ? _tipoComprobanteSeleccionado : _tiposComprobante.first;
+        } else {
+          _tipoComprobanteSeleccionado = null;
+        }
+
+        if (_productos.isNotEmpty) {
+          for (final l in _lineas) {
+            if (l.producto?.idProducto == null ||
+                !_productos.any(
+                  (p) => p.idProducto == l.producto!.idProducto,
+                )) {
+              l.producto = _productos.first;
+              l.precioCtrl.text =
+                  _productos.first.precioCosto.toStringAsFixed(2);
+            }
+          }
+        }
+
+        if (_ubicaciones.isNotEmpty) {
+          for (final l in _lineas) {
+            if (l.ubicacionSeleccionada?.idUbicacion == null ||
+                !_ubicaciones.any((u) =>
+                    u.idUbicacion == l.ubicacionSeleccionada!.idUbicacion)) {
+              l.ubicacionSeleccionada = _ubicaciones.first;
+            }
+          }
         }
       });
     } catch (_) {}
@@ -188,10 +201,12 @@ class ComprasTabState extends State<ComprasTab>
         _tiposComprobante = resultados[3] as List<TipoComprobante>;
         _ubicaciones = resultados[4] as List<Ubicacion>;
 
-        _proveedorSeleccionado =
-            _proveedores.isNotEmpty ? _proveedores.first : null;
-        _tipoComprobanteSeleccionado =
-            _tiposComprobante.isNotEmpty ? _tiposComprobante.first : null;
+        if (_proveedores.isNotEmpty) {
+          _proveedorSeleccionado ??= _proveedores.first;
+        }
+        if (_tiposComprobante.isNotEmpty) {
+          _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
+        }
 
         _inicializarLineas();
       });
@@ -446,7 +461,8 @@ class ComprasTabState extends State<ComprasTab>
 
   void _showMessage(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    final messenger = _messenger ?? ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(SnackBar(content: Text(msg)));
   }
 
   double _historialHeight(BuildContext context) {
@@ -546,6 +562,7 @@ class ComprasTabState extends State<ComprasTab>
               child: _compras.isEmpty
                   ? const Center(child: Text('No hay compras registradas.'))
                   : ListView.separated(
+                      key: const PageStorageKey('compras_historial_list'),
                       itemCount: _compras.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (_, i) {
@@ -583,36 +600,52 @@ class ComprasTabState extends State<ComprasTab>
     final impuesto = subtotal * _iva;
     final total = subtotal + impuesto;
 
+    final w = MediaQuery.of(context).size.width;
+    final bool twoColumns = w >= 1100;
+
+    final factura = _buildFacturaSection(subtotal, impuesto, total);
+    final historial = _buildHistorialSection();
+
+    if (twoColumns) {
+      return SingleChildScrollView(
+        key: const PageStorageKey('compras_tab_scroll'),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: factura),
+            const SizedBox(width: 16),
+            Expanded(child: historial),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       key: const PageStorageKey('compras_tab_scroll'),
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          _buildFacturaSection(subtotal, impuesto, total),
+          factura,
           const SizedBox(height: 16),
-          _buildHistorialSection(),
+          historial,
         ],
       ),
     );
   }
 
   Widget _buildProveedorSelector() {
-    final selectedId = _proveedorSeleccionado?.idProveedor;
-    final safeValue = selectedId == null
-        ? null
-        : _proveedores.firstWhereOrNull((p) => p.idProveedor == selectedId);
-
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<Proveedor>(
-        value: safeValue,
+        value: _proveedorSeleccionado,
         decoration: const InputDecoration(
           labelText: 'Proveedor',
           border: OutlineInputBorder(),
         ),
-        items: _proveedores
-            .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
-            .toList(),
+        items: _proveedores.map((p) {
+          return DropdownMenuItem(value: p, child: Text(p.nombre));
+        }).toList(),
         onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
         validator: (_) =>
             _proveedorSeleccionado == null ? 'Selecciona un proveedor' : null,
@@ -621,24 +654,17 @@ class ComprasTabState extends State<ComprasTab>
   }
 
   Widget _buildTipoComprobanteSelector() {
-    final selectedId = _tipoComprobanteSeleccionado?.idTipoComprobante;
-    final safeValue = selectedId == null
-        ? null
-        : _tiposComprobante.firstWhereOrNull(
-            (t) => t.idTipoComprobante == selectedId,
-          );
-
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<TipoComprobante>(
-        value: safeValue,
+        value: _tipoComprobanteSeleccionado,
         decoration: const InputDecoration(
           labelText: 'Tipo pago / comprobante',
           border: OutlineInputBorder(),
         ),
-        items: _tiposComprobante
-            .map((t) => DropdownMenuItem(value: t, child: Text(t.nombre)))
-            .toList(),
+        items: _tiposComprobante.map((t) {
+          return DropdownMenuItem(value: t, child: Text(t.nombre));
+        }).toList(),
         onChanged: (nuevo) =>
             setState(() => _tipoComprobanteSeleccionado = nuevo),
         validator: (_) => _tipoComprobanteSeleccionado == null
@@ -649,16 +675,6 @@ class ComprasTabState extends State<ComprasTab>
   }
 
   Widget _buildLineaDetalle(int index, LineaCompraForm linea) {
-    final productId = linea.producto?.idProducto;
-    final safeProducto = productId == null
-        ? null
-        : _productos.firstWhereOrNull((p) => p.idProducto == productId);
-
-    final ubicId = linea.ubicacionSeleccionada?.idUbicacion;
-    final safeUbicacion = ubicId == null
-        ? null
-        : _ubicaciones.firstWhereOrNull((u) => u.idUbicacion == ubicId);
-
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -669,15 +685,14 @@ class ComprasTabState extends State<ComprasTab>
               children: [
                 Expanded(
                   child: DropdownButtonFormField<Producto>(
-                    value: safeProducto,
+                    value: linea.producto,
                     decoration: const InputDecoration(
                       labelText: 'Producto',
                       border: OutlineInputBorder(),
                     ),
-                    items: _productos
-                        .map((p) =>
-                            DropdownMenuItem(value: p, child: Text(p.nombre)))
-                        .toList(),
+                    items: _productos.map((p) {
+                      return DropdownMenuItem(value: p, child: Text(p.nombre));
+                    }).toList(),
                     onChanged: (Producto? nuevo) {
                       setState(() {
                         linea.producto = nuevo;
@@ -689,8 +704,9 @@ class ComprasTabState extends State<ComprasTab>
                         }
                       });
                     },
-                    validator: (_) =>
-                        linea.producto == null ? 'Selecciona un producto' : null,
+                    validator: (_) => linea.producto == null
+                        ? 'Selecciona un producto'
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -738,17 +754,17 @@ class ComprasTabState extends State<ComprasTab>
                 Expanded(
                   flex: 3,
                   child: DropdownButtonFormField<Ubicacion>(
-                    value: safeUbicacion,
+                    value: linea.ubicacionSeleccionada,
                     decoration: const InputDecoration(
                       labelText: 'Ubicación',
                       border: OutlineInputBorder(),
                     ),
-                    items: _ubicaciones
-                        .map((u) => DropdownMenuItem(
-                              value: u,
-                              child: Text(u.nombreAlmacen),
-                            ))
-                        .toList(),
+                    items: _ubicaciones.map((u) {
+                      return DropdownMenuItem(
+                        value: u,
+                        child: Text(u.nombreAlmacen),
+                      );
+                    }).toList(),
                     onChanged: (Ubicacion? nueva) {
                       setState(() => linea.ubicacionSeleccionada = nueva);
                     },
@@ -767,14 +783,5 @@ class ComprasTabState extends State<ComprasTab>
         ),
       ),
     );
-  }
-}
-
-extension ListX<T> on List<T> {
-  T? firstWhereOrNull(bool Function(T) test) {
-    for (final e in this) {
-      if (test(e)) return e;
-    }
-    return null;
   }
 }
