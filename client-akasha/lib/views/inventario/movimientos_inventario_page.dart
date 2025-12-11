@@ -6,6 +6,7 @@ import '../../models/producto.dart';
 import '../../models/ubicacion.dart';
 import '../../models/proveedor.dart';
 import '../../models/movimiento_inventario.dart';
+import '../../models/stock_ubicacion.dart'; // <--- NUEVO IMPORT
 
 import '../../services/inventario_service.dart';
 import '../../services/ubicacion_service.dart';
@@ -34,6 +35,9 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
   List<Producto> _productos = [];
   List<Ubicacion> _ubicaciones = [];
   List<Proveedor> _proveedores = [];
+  
+  // AÑADIDO: Mapa para almacenar el stock de cada producto por sus ubicaciones
+  Map<int, List<StockUbicacion>> _stocksUbicacion = {};
 
   Producto? _productoSeleccionado;
   Ubicacion? _ubicacionSeleccionada;
@@ -60,49 +64,106 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
     _descripcionCtrl.dispose();
     super.dispose();
   }
-
-Future<void> _cargarDatos() async {
-  setState(() => _cargandoInicial = true);
-
-  // 1. Manejamos el future de movimientos por separado. Si falla (por ejemplo, 404 porque no hay registros),
-  // se captura el error y se devuelve una lista vacía para no detener el Future.wait.
-  final Future<List<MovimientoInventario>> movimientosFuture = _movService
-    .obtenerMovimientos()
-    .catchError((e) {
-     // Opcional: imprimir el error para debug
-     print('ADVERTENCIA: Error controlado al obtener movimientos (posible 404 por lista vacía): $e'); 
-     // Devolvemos una lista vacía de forma segura
-     return <MovimientoInventario>[]; 
+  
+  // LÓGICA DE STOCK 1: Carga el stock de un producto específico.
+  Future<void> _cargarStockProducto(int idProducto) async {
+    // Asume que este método existe en InventarioService y devuelve List<StockUbicacion>
+    final stock = await _inventarioService
+        .obtenerStockPorUbicacionDeProducto(idProducto);
+    if (!mounted) return;
+    setState(() {
+      _stocksUbicacion[idProducto] = stock;
     });
-
-  try {
-   final results = await Future.wait([
-    movimientosFuture, // Usamos el Future controlado
-    _inventarioService.obtenerProductos(),
-    _ubicacionService.obtenerUbicacionesActivas(),
-    _proveedorService.obtenerProveedoresActivos(),
-   ]);
-
-   setState(() {
-    _movimientos = results[0] as List<MovimientoInventario>;
-    _productos = results[1] as List<Producto>;
-    _ubicaciones = results[2] as List<Ubicacion>;
-    _proveedores = results[3] as List<Proveedor>;
-
-    if (_productos.isNotEmpty) {
-     _productoSeleccionado ??= _productos.first;
-    }
-    if (_ubicaciones.isNotEmpty) {
-     _ubicacionSeleccionada ??= _ubicaciones.first;
-    }
-   });
-  } catch (e) {
-   // Este catch ahora solo se activará por fallas en servicios esenciales (productos, ubicaciones, etc.)
-   _showMessage('Error cargando datos: $e');
-  } finally {
-   if (mounted) setState(() => _cargandoInicial = false);
   }
- }
+
+  // LÓGICA DE STOCK 2: Método helper para obtener el stock de un producto en una ubicación
+  int _obtenerStockEnUbicacion(int? idProducto, Ubicacion? ubicacion) {
+    if (idProducto == null || ubicacion == null) return 0;
+    
+    final stocks = _stocksUbicacion[idProducto] ?? [];
+    
+    // NOTA: La comparación se hace usando el nombre del almacén
+    final stockItem = stocks.firstWhere(
+      (s) => s.idUbicacion == ubicacion.nombreAlmacen,
+      orElse: () => StockUbicacion(idUbicacion: ubicacion.nombreAlmacen, cantidad: 0),
+    );
+    
+    return stockItem.cantidad;
+  }
+  
+  // LÓGICA DE STOCK 3: Filtra las ubicaciones donde el producto tiene stock > 0
+  List<Ubicacion> _obtenerUbicacionesConStock(int? idProducto) {
+    if (idProducto == null) return const <Ubicacion>[];
+
+    final stocks = _stocksUbicacion[idProducto] ?? [];
+    
+    // Obtiene los NOMBRES de ubicación con stock > 0.
+    final ubicacionesConStockNames =
+        stocks.where((s) => s.cantidad > 0).map((s) => s.idUbicacion).toSet();
+    
+    // Filtra la lista maestra de ubicaciones por el nombre del almacén (String).
+    return _ubicaciones
+        .where((u) => ubicacionesConStockNames.contains(u.nombreAlmacen))
+        .toList();
+  }
+
+  Future<void> _cargarDatos() async {
+    setState(() => _cargandoInicial = true);
+
+    final Future<List<MovimientoInventario>> movimientosFuture = _movService
+      .obtenerMovimientos()
+      .catchError((e) {
+       print('ADVERTENCIA: Error controlado al obtener movimientos (posible 404 por lista vacía): $e'); 
+       return <MovimientoInventario>[]; 
+      });
+
+    try {
+     final results = await Future.wait([
+      movimientosFuture,
+      _inventarioService.obtenerProductos(),
+      _ubicacionService.obtenerUbicacionesActivas(),
+      _proveedorService.obtenerProveedoresActivos(),
+     ]);
+
+     setState(() {
+      _movimientos = results[0] as List<MovimientoInventario>;
+      _productos = results[1] as List<Producto>;
+      _ubicaciones = results[2] as List<Ubicacion>;
+      _proveedores = results[3] as List<Proveedor>;
+
+      if (_productos.isNotEmpty) {
+       _productoSeleccionado ??= _productos.first;
+      }
+      if (_ubicaciones.isNotEmpty) {
+       _ubicacionSeleccionada ??= _ubicaciones.first;
+      }
+     });
+     
+     // NUEVO: Cargar stock inicial
+     if (_productos.isNotEmpty && _productoSeleccionado != null) {
+        await _cargarStockProducto(_productoSeleccionado!.idProducto!);
+        
+        // Ajustar ubicación inicial si es Salida y la primera ubicación no tiene stock
+        if (_tipoMovimiento == 0) { // Salida
+            final ubicacionesConStock = _obtenerUbicacionesConStock(_productoSeleccionado!.idProducto);
+            // Si la ubicación seleccionada no está en la lista con stock, seleccionar la primera con stock.
+            if (_ubicacionSeleccionada == null || 
+                !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
+                _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
+                    ? ubicacionesConStock.first
+                    : null;
+                // Si aún es nulo, el validador lo manejará.
+            }
+        }
+     }
+
+    } catch (e) {
+     _showMessage('Error cargando datos: $e');
+    } finally {
+     if (mounted) setState(() => _cargandoInicial = false);
+    }
+   }
+  
   int _parseInt(String s) => int.tryParse(s.trim()) ?? 0;
 
   Future<void> _refrescar() async {
@@ -140,6 +201,19 @@ Future<void> _cargarDatos() async {
       _showMessage('Cantidad inválida.');
       return;
     }
+    
+    // NUEVA VALIDACIÓN DE STOCK (SOLO PARA SALIDA)
+    if (_tipoMovimiento == 0) { // Salida
+        final stockActual = _obtenerStockEnUbicacion(
+          producto!.idProducto,
+          ubicacion,
+        );
+        
+        if (cantidad > stockActual) {
+           _showMessage('Stock insuficiente en ${ubicacion!.nombreAlmacen}. Solo hay $stockActual unidades.');
+           return;
+        }
+    }
 
     final mov = MovimientoCreate(
       tipoMovimiento: _tipoMovimiento,
@@ -158,6 +232,11 @@ Future<void> _cargarDatos() async {
         _cantidadCtrl.text = '1';
         _descripcionCtrl.clear();
         await _refrescar();
+        
+        // NUEVO: Recargar el stock del producto que se movió.
+        if (producto?.idProducto != null) {
+             await _cargarStockProducto(producto!.idProducto!);
+        }
       }
     } catch (e) {
       _showMessage('Error al registrar movimiento: $e');
@@ -195,6 +274,13 @@ Future<void> _cargarDatos() async {
                             _buildUbicacionSelector(),
                           ],
                         ),
+                        // NUEVO: Mostrar el stock actual de la ubicación seleccionada
+                        if (_productoSeleccionado != null && _ubicacionSeleccionada != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: _buildStockDisplay(),
+                          ),
+                          
                         const SizedBox(height: 18),
                         Row(
                           children: [
@@ -209,6 +295,17 @@ Future<void> _cargarDatos() async {
                                 validator: (v) {
                                   final c = _parseInt(v ?? '');
                                   if (c <= 0) return 'Cantidad inválida';
+                                  
+                                  // NUEVA VALIDACIÓN: Si es salida, validar contra el stock actual
+                                  if (_tipoMovimiento == 0) {
+                                      final stock = _obtenerStockEnUbicacion(
+                                        _productoSeleccionado!.idProducto, 
+                                        _ubicacionSeleccionada
+                                      );
+                                      if (c > stock) {
+                                          return 'Stock insuficiente ($stock)';
+                                      }
+                                  }
                                   return null;
                                 },
                               ),
@@ -291,7 +388,27 @@ Future<void> _cargarDatos() async {
         DropdownMenuItem(value: 1, child: Text('Entrada')),
         DropdownMenuItem(value: 0, child: Text('Salida')),
       ],
-      onChanged: (v) => setState(() => _tipoMovimiento = v ?? 1),
+      onChanged: (v) {
+        if (!mounted) return;
+        setState(() {
+          _tipoMovimiento = v ?? 1;
+          
+          // NUEVO: Ajustar la ubicación seleccionada si cambiamos a Salida
+          if (_tipoMovimiento == 0 && _productoSeleccionado != null) {
+              final ubicacionesConStock = _obtenerUbicacionesConStock(_productoSeleccionado!.idProducto);
+              // Si la ubicación seleccionada ya no tiene stock, selecciona la primera con stock
+              if (_ubicacionSeleccionada == null || 
+                  !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
+                  _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
+                      ? ubicacionesConStock.first
+                      : null;
+              }
+          } else if (_tipoMovimiento == 1 && _ubicacionSeleccionada == null) {
+             // Si volvemos a Entrada, y no había ubicación seleccionada, seleccionamos la primera de la lista
+             _ubicacionSeleccionada = _ubicaciones.isNotEmpty ? _ubicaciones.first : null;
+          }
+        });
+      },
     );
   }
 
@@ -314,25 +431,91 @@ Future<void> _cargarDatos() async {
             ),
           )
           .toList(),
-      onChanged: (v) => setState(() => _productoSeleccionado = v),
+      onChanged: (Producto? v) async {
+        if (v == null) {
+            setState(() {
+                _productoSeleccionado = null;
+                _ubicacionSeleccionada = null;
+            });
+            return;
+        }
+        
+        // NUEVO: Cargar stock si no lo hemos hecho
+        if (v.idProducto != null && !_stocksUbicacion.containsKey(v.idProducto)) {
+          await _cargarStockProducto(v.idProducto!);
+        }
+
+        if (!mounted) return;
+        
+        setState(() {
+          _productoSeleccionado = v;
+          
+          // NUEVO: Ajustar la ubicación seleccionada basada en stock si es Salida
+          if (_tipoMovimiento == 0) { // Salida
+            final ubicacionesConStock = _obtenerUbicacionesConStock(v.idProducto);
+            
+            // Si la ubicación seleccionada no está en la lista con stock, seleccionar la primera con stock.
+            if (_ubicacionSeleccionada == null || 
+                !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
+              _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
+                  ? ubicacionesConStock.first
+                  : null;
+            }
+          } else {
+             // Si Entrada, asegurar que una ubicación esté seleccionada
+             if (_ubicacionSeleccionada == null && _ubicaciones.isNotEmpty) {
+                 _ubicacionSeleccionada = _ubicaciones.first;
+             }
+          }
+        });
+      },
       validator: (_) =>
           _productoSeleccionado == null ? 'Selecciona un producto' : null,
     );
   }
 
   Widget _buildUbicacionSelector() {
+    final isSalida = _tipoMovimiento == 0;
+    final idProducto = _productoSeleccionado?.idProducto;
+    
+    // Obtener la lista de ubicaciones:
+    // - Si es Salida y hay un producto, se filtra por stock > 0.
+    // - Si es Entrada o no hay producto, se muestran todas.
+    final List<Ubicacion> ubicacionesDisponibles = isSalida && idProducto != null
+        ? _obtenerUbicacionesConStock(idProducto)
+        : _ubicaciones;
+        
+    // Mostrar el stock en el dropdown solo si estamos en modo Salida y tenemos producto
+    final bool showStockInDropdown = isSalida && idProducto != null;
+    
     return DropdownButtonFormField<Ubicacion>(
       value: _ubicacionSeleccionada,
       decoration: const InputDecoration(
         labelText: 'Ubicación',
         border: OutlineInputBorder(),
       ),
-      items: _ubicaciones
-          .map((u) => DropdownMenuItem(value: u, child: Text(u.nombreAlmacen)))
+      // Usar la lista filtrada o la lista completa
+      items: ubicacionesDisponibles
+          .map((u) {
+             String displayText = u.nombreAlmacen;
+             if (showStockInDropdown) {
+                 final stock = _obtenerStockEnUbicacion(idProducto, u);
+                 displayText = u.nombreAlmacen;
+             }
+             return DropdownMenuItem(value: u, child: Text(displayText));
+          })
           .toList(),
       onChanged: (v) => setState(() => _ubicacionSeleccionada = v),
-      validator: (_) =>
-          _ubicacionSeleccionada == null ? 'Selecciona una ubicación' : null,
+      validator: (_) {
+        if (_ubicacionSeleccionada == null) {
+            if (_ubicaciones.isEmpty) return 'No hay almacenes';
+            if (isSalida && idProducto != null && ubicacionesDisponibles.isEmpty) {
+                return 'Sin stock en almacenes';
+            }
+            return 'Selecciona una ubicación';
+        }
+        return null;
+      },
     );
   }
 
@@ -353,6 +536,63 @@ Future<void> _cargarDatos() async {
         ),
       ],
       onChanged: (v) => setState(() => _proveedorSeleccionado = v),
+    );
+  }
+  
+  // NUEVO: Widget para mostrar el stock de forma destacada
+  Widget _buildStockDisplay() {
+    final stock = _obtenerStockEnUbicacion(
+      _productoSeleccionado!.idProducto,
+      _ubicacionSeleccionada,
+    );
+    final isSalida = _tipoMovimiento == 0;
+    
+    // El color es de advertencia solo para Salida si el stock es 0 o menor.
+    final color = stock > 0
+        ? Colors.green.shade50
+        : (isSalida ? Colors.red.shade50 : Colors.blue.shade50);
+        
+    final borderColor = stock > 0
+        ? Colors.green.shade300
+        : (isSalida ? Colors.red.shade300 : Colors.blue.shade300);
+        
+    final textColor = stock > 0
+        ? Colors.green.shade700
+        : (isSalida ? Colors.red.shade700 : Colors.blue.shade700);
+
+    return Card(
+      color: color,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(
+          color: borderColor,
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Stock actual en ${_ubicacionSeleccionada!.nombreAlmacen}:',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            Text(
+              '$stock',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: textColor,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
