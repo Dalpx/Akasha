@@ -34,14 +34,12 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
   List<MovimientoInventario> _movimientos = [];
   List<Producto> _productos = [];
   List<Ubicacion> _ubicaciones = [];
-  List<Proveedor> _proveedores = [];
-  
+
   // AÑADIDO: Mapa para almacenar el stock de cada producto por sus ubicaciones
   Map<int, List<StockUbicacion>> _stocksUbicacion = {};
 
   Producto? _productoSeleccionado;
   Ubicacion? _ubicacionSeleccionada;
-  Proveedor? _proveedorSeleccionado;
 
   // 1 = entrada, 0 = salida
   int _tipoMovimiento = 1;
@@ -64,12 +62,13 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
     _descripcionCtrl.dispose();
     super.dispose();
   }
-  
+
   // LÓGICA DE STOCK 1: Carga el stock de un producto específico.
   Future<void> _cargarStockProducto(int idProducto) async {
     // Asume que este método existe en InventarioService y devuelve List<StockUbicacion>
-    final stock = await _inventarioService
-        .obtenerStockPorUbicacionDeProducto(idProducto);
+    final stock = await _inventarioService.obtenerStockPorUbicacionDeProducto(
+      idProducto,
+    );
     if (!mounted) return;
     setState(() {
       _stocksUbicacion[idProducto] = stock;
@@ -79,28 +78,31 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
   // LÓGICA DE STOCK 2: Método helper para obtener el stock de un producto en una ubicación
   int _obtenerStockEnUbicacion(int? idProducto, Ubicacion? ubicacion) {
     if (idProducto == null || ubicacion == null) return 0;
-    
+
     final stocks = _stocksUbicacion[idProducto] ?? [];
-    
+
     // NOTA: La comparación se hace usando el nombre del almacén
     final stockItem = stocks.firstWhere(
       (s) => s.idUbicacion == ubicacion.nombreAlmacen,
-      orElse: () => StockUbicacion(idUbicacion: ubicacion.nombreAlmacen, cantidad: 0),
+      orElse: () =>
+          StockUbicacion(idUbicacion: ubicacion.nombreAlmacen, cantidad: 0),
     );
-    
+
     return stockItem.cantidad;
   }
-  
+
   // LÓGICA DE STOCK 3: Filtra las ubicaciones donde el producto tiene stock > 0
   List<Ubicacion> _obtenerUbicacionesConStock(int? idProducto) {
     if (idProducto == null) return const <Ubicacion>[];
 
     final stocks = _stocksUbicacion[idProducto] ?? [];
-    
+
     // Obtiene los NOMBRES de ubicación con stock > 0.
-    final ubicacionesConStockNames =
-        stocks.where((s) => s.cantidad > 0).map((s) => s.idUbicacion).toSet();
-    
+    final ubicacionesConStockNames = stocks
+        .where((s) => s.cantidad > 0)
+        .map((s) => s.idUbicacion)
+        .toSet();
+
     // Filtra la lista maestra de ubicaciones por el nombre del almacén (String).
     return _ubicaciones
         .where((u) => ubicacionesConStockNames.contains(u.nombreAlmacen))
@@ -110,60 +112,64 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
   Future<void> _cargarDatos() async {
     setState(() => _cargandoInicial = true);
 
-    final Future<List<MovimientoInventario>> movimientosFuture = _movService
-      .obtenerMovimientos()
-      .catchError((e) {
-       print('ADVERTENCIA: Error controlado al obtener movimientos (posible 404 por lista vacía): $e'); 
-       return <MovimientoInventario>[]; 
-      });
+    final Future<List<MovimientoInventario>>
+    movimientosFuture = _movService.obtenerMovimientos().catchError((e) {
+      print(
+        'ADVERTENCIA: Error controlado al obtener movimientos (posible 404 por lista vacía): $e',
+      );
+      return <MovimientoInventario>[];
+    });
 
     try {
-     final results = await Future.wait([
-      movimientosFuture,
-      _inventarioService.obtenerProductos(),
-      _ubicacionService.obtenerUbicacionesActivas(),
-      _proveedorService.obtenerProveedoresActivos(),
-     ]);
+      final results = await Future.wait([
+        movimientosFuture,
+        _inventarioService.obtenerProductos(),
+        _ubicacionService.obtenerUbicacionesActivas(),
+        _proveedorService.obtenerProveedoresActivos(),
+      ]);
 
-     setState(() {
-      _movimientos = results[0] as List<MovimientoInventario>;
-      _productos = results[1] as List<Producto>;
-      _ubicaciones = results[2] as List<Ubicacion>;
-      _proveedores = results[3] as List<Proveedor>;
+      setState(() {
+        _movimientos = results[0] as List<MovimientoInventario>;
+        _productos = results[1] as List<Producto>;
+        _ubicaciones = results[2] as List<Ubicacion>;
 
-      if (_productos.isNotEmpty) {
-       _productoSeleccionado ??= _productos.first;
-      }
-      if (_ubicaciones.isNotEmpty) {
-       _ubicacionSeleccionada ??= _ubicaciones.first;
-      }
-     });
-     
-     // NUEVO: Cargar stock inicial
-     if (_productos.isNotEmpty && _productoSeleccionado != null) {
-        await _cargarStockProducto(_productoSeleccionado!.idProducto!);
-        
-        // Ajustar ubicación inicial si es Salida y la primera ubicación no tiene stock
-        if (_tipoMovimiento == 0) { // Salida
-            final ubicacionesConStock = _obtenerUbicacionesConStock(_productoSeleccionado!.idProducto);
-            // Si la ubicación seleccionada no está en la lista con stock, seleccionar la primera con stock.
-            if (_ubicacionSeleccionada == null || 
-                !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
-                _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
-                    ? ubicacionesConStock.first
-                    : null;
-                // Si aún es nulo, el validador lo manejará.
-            }
+        if (_productos.isNotEmpty) {
+          _productoSeleccionado ??= _productos.first;
         }
-     }
+        if (_ubicaciones.isNotEmpty) {
+          _ubicacionSeleccionada ??= _ubicaciones.first;
+        }
+      });
 
+      // NUEVO: Cargar stock inicial
+      if (_productos.isNotEmpty && _productoSeleccionado != null) {
+        await _cargarStockProducto(_productoSeleccionado!.idProducto!);
+
+        // Ajustar ubicación inicial si es Salida y la primera ubicación no tiene stock
+        if (_tipoMovimiento == 0) {
+          // Salida
+          final ubicacionesConStock = _obtenerUbicacionesConStock(
+            _productoSeleccionado!.idProducto,
+          );
+          // Si la ubicación seleccionada no está en la lista con stock, seleccionar la primera con stock.
+          if (_ubicacionSeleccionada == null ||
+              !ubicacionesConStock.any(
+                (u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion,
+              )) {
+            _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
+                ? ubicacionesConStock.first
+                : null;
+            // Si aún es nulo, el validador lo manejará.
+          }
+        }
+      }
     } catch (e) {
-     _showMessage('Error cargando datos: $e');
+      _showMessage('Error cargando datos: $e');
     } finally {
-     if (mounted) setState(() => _cargandoInicial = false);
+      if (mounted) setState(() => _cargandoInicial = false);
     }
-   }
-  
+  }
+
   int _parseInt(String s) => int.tryParse(s.trim()) ?? 0;
 
   Future<void> _refrescar() async {
@@ -201,18 +207,21 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
       _showMessage('Cantidad inválida.');
       return;
     }
-    
+
     // NUEVA VALIDACIÓN DE STOCK (SOLO PARA SALIDA)
-    if (_tipoMovimiento == 0) { // Salida
-        final stockActual = _obtenerStockEnUbicacion(
-          producto!.idProducto,
-          ubicacion,
+    if (_tipoMovimiento == 0) {
+      // Salida
+      final stockActual = _obtenerStockEnUbicacion(
+        producto!.idProducto,
+        ubicacion,
+      );
+
+      if (cantidad > stockActual) {
+        _showMessage(
+          'Stock insuficiente en ${ubicacion!.nombreAlmacen}. Solo hay $stockActual unidades.',
         );
-        
-        if (cantidad > stockActual) {
-           _showMessage('Stock insuficiente en ${ubicacion!.nombreAlmacen}. Solo hay $stockActual unidades.');
-           return;
-        }
+        return;
+      }
     }
 
     final mov = MovimientoCreate(
@@ -232,10 +241,10 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
         _cantidadCtrl.text = '1';
         _descripcionCtrl.clear();
         await _refrescar();
-        
+
         // NUEVO: Recargar el stock del producto que se movió.
-        if (producto?.idProducto != null) {
-             await _cargarStockProducto(producto!.idProducto!);
+        if (producto.idProducto != null) {
+          await _cargarStockProducto(producto.idProducto!);
         }
       }
     } catch (e) {
@@ -275,12 +284,13 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
                           ],
                         ),
                         // NUEVO: Mostrar el stock actual de la ubicación seleccionada
-                        if (_productoSeleccionado != null && _ubicacionSeleccionada != null)
+                        if (_productoSeleccionado != null &&
+                            _ubicacionSeleccionada != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: _buildStockDisplay(),
                           ),
-                          
+
                         const SizedBox(height: 18),
                         Row(
                           children: [
@@ -295,16 +305,16 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
                                 validator: (v) {
                                   final c = _parseInt(v ?? '');
                                   if (c <= 0) return 'Cantidad inválida';
-                                  
+
                                   // NUEVA VALIDACIÓN: Si es salida, validar contra el stock actual
                                   if (_tipoMovimiento == 0) {
-                                      final stock = _obtenerStockEnUbicacion(
-                                        _productoSeleccionado!.idProducto, 
-                                        _ubicacionSeleccionada
-                                      );
-                                      if (c > stock) {
-                                          return 'Stock insuficiente ($stock)';
-                                      }
+                                    final stock = _obtenerStockEnUbicacion(
+                                      _productoSeleccionado!.idProducto,
+                                      _ubicacionSeleccionada,
+                                    );
+                                    if (c > stock) {
+                                      return 'Stock insuficiente ($stock)';
+                                    }
                                   }
                                   return null;
                                 },
@@ -350,7 +360,7 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
                                 isEntrada
                                     ? Icons.arrow_upward
                                     : Icons.arrow_downward,
-                                color:  isEntrada ? Colors.green: Colors.red,
+                                color: isEntrada ? Colors.green : Colors.red,
                               ),
                               title: Text(
                                 '${m.nombreProducto ?? "Producto"} · ${m.tipoMovimiento}',
@@ -392,20 +402,26 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
         if (!mounted) return;
         setState(() {
           _tipoMovimiento = v ?? 1;
-          
+
           // NUEVO: Ajustar la ubicación seleccionada si cambiamos a Salida
           if (_tipoMovimiento == 0 && _productoSeleccionado != null) {
-              final ubicacionesConStock = _obtenerUbicacionesConStock(_productoSeleccionado!.idProducto);
-              // Si la ubicación seleccionada ya no tiene stock, selecciona la primera con stock
-              if (_ubicacionSeleccionada == null || 
-                  !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
-                  _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
-                      ? ubicacionesConStock.first
-                      : null;
-              }
+            final ubicacionesConStock = _obtenerUbicacionesConStock(
+              _productoSeleccionado!.idProducto,
+            );
+            // Si la ubicación seleccionada ya no tiene stock, selecciona la primera con stock
+            if (_ubicacionSeleccionada == null ||
+                !ubicacionesConStock.any(
+                  (u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion,
+                )) {
+              _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
+                  ? ubicacionesConStock.first
+                  : null;
+            }
           } else if (_tipoMovimiento == 1 && _ubicacionSeleccionada == null) {
-             // Si volvemos a Entrada, y no había ubicación seleccionada, seleccionamos la primera de la lista
-             _ubicacionSeleccionada = _ubicaciones.isNotEmpty ? _ubicaciones.first : null;
+            // Si volvemos a Entrada, y no había ubicación seleccionada, seleccionamos la primera de la lista
+            _ubicacionSeleccionada = _ubicaciones.isNotEmpty
+                ? _ubicaciones.first
+                : null;
           }
         });
       },
@@ -433,39 +449,45 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
           .toList(),
       onChanged: (Producto? v) async {
         if (v == null) {
-            setState(() {
-                _productoSeleccionado = null;
-                _ubicacionSeleccionada = null;
-            });
-            return;
+          setState(() {
+            _productoSeleccionado = null;
+            _ubicacionSeleccionada = null;
+          });
+          return;
         }
-        
+
         // NUEVO: Cargar stock si no lo hemos hecho
-        if (v.idProducto != null && !_stocksUbicacion.containsKey(v.idProducto)) {
+        if (v.idProducto != null &&
+            !_stocksUbicacion.containsKey(v.idProducto)) {
           await _cargarStockProducto(v.idProducto!);
         }
 
         if (!mounted) return;
-        
+
         setState(() {
           _productoSeleccionado = v;
-          
+
           // NUEVO: Ajustar la ubicación seleccionada basada en stock si es Salida
-          if (_tipoMovimiento == 0) { // Salida
-            final ubicacionesConStock = _obtenerUbicacionesConStock(v.idProducto);
-            
+          if (_tipoMovimiento == 0) {
+            // Salida
+            final ubicacionesConStock = _obtenerUbicacionesConStock(
+              v.idProducto,
+            );
+
             // Si la ubicación seleccionada no está en la lista con stock, seleccionar la primera con stock.
-            if (_ubicacionSeleccionada == null || 
-                !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
+            if (_ubicacionSeleccionada == null ||
+                !ubicacionesConStock.any(
+                  (u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion,
+                )) {
               _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
                   ? ubicacionesConStock.first
                   : null;
             }
           } else {
-             // Si Entrada, asegurar que una ubicación esté seleccionada
-             if (_ubicacionSeleccionada == null && _ubicaciones.isNotEmpty) {
-                 _ubicacionSeleccionada = _ubicaciones.first;
-             }
+            // Si Entrada, asegurar que una ubicación esté seleccionada
+            if (_ubicacionSeleccionada == null && _ubicaciones.isNotEmpty) {
+              _ubicacionSeleccionada = _ubicaciones.first;
+            }
           }
         });
       },
@@ -477,68 +499,52 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
   Widget _buildUbicacionSelector() {
     final isSalida = _tipoMovimiento == 0;
     final idProducto = _productoSeleccionado?.idProducto;
-    
-    // Obtener la lista de ubicaciones:
-    // - Si es Salida y hay un producto, se filtra por stock > 0.
-    // - Si es Entrada o no hay producto, se muestran todas.
-    final List<Ubicacion> ubicacionesDisponibles = isSalida && idProducto != null
+
+    // 1. Determinar las ubicaciones disponibles (filtradas o todas)
+    final List<Ubicacion> ubicacionesDisponibles =
+        isSalida && idProducto != null
         ? _obtenerUbicacionesConStock(idProducto)
         : _ubicaciones;
-        
-    // Mostrar el stock en el dropdown solo si estamos en modo Salida y tenemos producto
+
+    Ubicacion? valorSeleccionadoAjustado = _ubicacionSeleccionada;
+    if (_ubicacionSeleccionada != null &&
+        !ubicacionesDisponibles.contains(_ubicacionSeleccionada)) {
+      valorSeleccionadoAjustado = null;
+    }
+
+    if (valorSeleccionadoAjustado == null &&
+        ubicacionesDisponibles.isNotEmpty) {
+      if (!isSalida || (isSalida && ubicacionesDisponibles.isNotEmpty)) {
+      }
+    }
+
     final bool showStockInDropdown = isSalida && idProducto != null;
-    
+
     return DropdownButtonFormField<Ubicacion>(
-      value: _ubicacionSeleccionada,
+      value: valorSeleccionadoAjustado,
       decoration: const InputDecoration(
         labelText: 'Ubicación',
         border: OutlineInputBorder(),
       ),
-      // Usar la lista filtrada o la lista completa
-      items: ubicacionesDisponibles
-          .map((u) {
-             String displayText = u.nombreAlmacen;
-             if (showStockInDropdown) {
-                 final stock = _obtenerStockEnUbicacion(idProducto, u);
-                 displayText = u.nombreAlmacen;
-             }
-             return DropdownMenuItem(value: u, child: Text(displayText));
-          })
-          .toList(),
-      onChanged: (v) => setState(() => _ubicacionSeleccionada = v),
-      validator: (_) {
-        if (_ubicacionSeleccionada == null) {
-            if (_ubicaciones.isEmpty) return 'No hay almacenes';
-            if (isSalida && idProducto != null && ubicacionesDisponibles.isEmpty) {
-                return 'Sin stock en almacenes';
-            }
-            return 'Selecciona una ubicación';
+      items: ubicacionesDisponibles.map((u) {
+        String displayText = u.nombreAlmacen;
+        if (showStockInDropdown) {
+          final stock = _obtenerStockEnUbicacion(idProducto, u);
+
+          displayText = '${u.nombreAlmacen} (Stock: $stock)';
         }
-        return null;
+        return DropdownMenuItem(value: u, child: Text(displayText));
+      }).toList(),
+      onChanged: (v) {
+        if (!mounted) return;
+        setState(() {
+          _ubicacionSeleccionada = v;
+        });
       },
+
     );
   }
 
-  Widget _buildProveedorSelector() {
-    return DropdownButtonFormField<Proveedor>(
-      value: _proveedorSeleccionado,
-      decoration: const InputDecoration(
-        labelText: 'Proveedor (opcional)',
-        border: OutlineInputBorder(),
-      ),
-      items: [
-        const DropdownMenuItem<Proveedor>(
-          value: null,
-          child: Text('Sin proveedor'),
-        ),
-        ..._proveedores.map(
-          (p) => DropdownMenuItem(value: p, child: Text(p.nombre)),
-        ),
-      ],
-      onChanged: (v) => setState(() => _proveedorSeleccionado = v),
-    );
-  }
-  
   // NUEVO: Widget para mostrar el stock de forma destacada
   Widget _buildStockDisplay() {
     final stock = _obtenerStockEnUbicacion(
@@ -546,16 +552,16 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
       _ubicacionSeleccionada,
     );
     final isSalida = _tipoMovimiento == 0;
-    
+
     // El color es de advertencia solo para Salida si el stock es 0 o menor.
     final color = stock > 0
         ? Colors.green.shade50
         : (isSalida ? Colors.red.shade50 : Colors.blue.shade50);
-        
+
     final borderColor = stock > 0
         ? Colors.green.shade300
         : (isSalida ? Colors.red.shade300 : Colors.blue.shade300);
-        
+
     final textColor = stock > 0
         ? Colors.green.shade700
         : (isSalida ? Colors.red.shade700 : Colors.blue.shade700);
@@ -565,10 +571,7 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        side: BorderSide(
-          color: borderColor,
-          width: 1,
-        ),
+        side: BorderSide(color: borderColor, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(8.0),

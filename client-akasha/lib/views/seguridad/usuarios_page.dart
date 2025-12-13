@@ -1,6 +1,7 @@
-import 'package:akasha/widgets/usuario/usuario_detalles.dart';
-import 'package:akasha/widgets/usuario/usuario_form_dialog.dart';
-import 'package:akasha/widgets/usuario/usuario_list_item.dart';
+
+import 'package:akasha/views/seguridad/widgets/usuario_detalles.dart';
+import 'package:akasha/views/seguridad/widgets/usuario_form_dialog.dart';
+import 'package:akasha/views/seguridad/widgets/usuario_list_item.dart';
 import 'package:flutter/material.dart';
 import '../../models/usuario.dart';
 import '../../services/usuario_service.dart';

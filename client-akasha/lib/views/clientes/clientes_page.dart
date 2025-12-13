@@ -1,8 +1,8 @@
 import 'package:akasha/models/cliente.dart';
 import 'package:akasha/services/cliente_service.dart';
-import 'package:akasha/widgets/cliente/cliente_detalles.dart';
-import 'package:akasha/widgets/cliente/cliente_form_dialog.dart';
-import 'package:akasha/widgets/cliente/cliente_list_item.dart';
+import 'package:akasha/views/clientes/widgets/cliente_detalles.dart';
+import 'package:akasha/views/clientes/widgets/cliente_form_dialog.dart';
+import 'package:akasha/views/clientes/widgets/cliente_list_item.dart';
 import 'package:flutter/material.dart';
 
 class ClientesPage extends StatefulWidget {

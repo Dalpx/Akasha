@@ -1,7 +1,7 @@
 import 'package:akasha/views/inventario/ubicaciones_productos_page.dart';
-import 'package:akasha/widgets/producto/producto_detalles.dart';
-import 'package:akasha/widgets/producto/producto_form_dialog.dart';
-import 'package:akasha/widgets/producto/producto_list_item.dart';
+import 'package:akasha/views/inventario/widgets/producto_detalles.dart';
+import 'package:akasha/views/inventario/widgets/producto_form_dialog.dart';
+import 'package:akasha/views/inventario/widgets/producto_list_item.dart';
 import 'package:flutter/material.dart';
 import '../../models/producto.dart';
 import '../../models/proveedor.dart';
