@@ -1,31 +1,30 @@
 import 'package:akasha/common/custom_card.dart';
-import 'package:akasha/models/cliente.dart';
-import 'package:akasha/services/cliente_service.dart';
-import 'package:akasha/views/clientes/widgets/cliente_detalles.dart';
-import 'package:akasha/views/clientes/widgets/cliente_form_dialog.dart';
-import 'package:akasha/views/clientes/widgets/cliente_list_item.dart';
+import 'package:akasha/views/usuarios/widgets/usuario_detalles.dart';
+import 'package:akasha/views/usuarios/widgets/usuario_form_dialog.dart';
+import 'package:akasha/views/usuarios/widgets/usuario_list_item.dart';
 import 'package:flutter/material.dart';
+import '../../models/usuario.dart';
+import '../../services/usuario_service.dart';
 
-class ClientesPage extends StatefulWidget {
-  const ClientesPage({super.key});
+class UsuariosPage extends StatefulWidget {
+  const UsuariosPage({super.key});
 
   @override
-  State<ClientesPage> createState() => _ClientesPageState();
+  State<UsuariosPage> createState() => _UsuariosPageState();
 }
 
-class _ClientesPageState extends State<ClientesPage>
+class _UsuariosPageState extends State<UsuariosPage>
     with AutomaticKeepAliveClientMixin {
-  final ClienteService _clienteService = ClienteService();
+  final UsuarioService _usuarioService = UsuarioService();
 
-  late Future<List<Cliente>> _futureClientes;
-  List<Cliente>? _cacheClientes;
+  late Future<List<Usuario>> _futureUsuarios;
+  List<Usuario>? _cacheUsuarios;
 
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchText = '';
 
-  String? _filtroTipoDocumento;
+  String? _filtroTipoUsuario;
   bool _soloConEmail = false;
-  bool _soloConDireccion = false;
 
   int _conteoFiltrado = 0;
 
@@ -35,7 +34,7 @@ class _ClientesPageState extends State<ClientesPage>
   @override
   void initState() {
     super.initState();
-    _futureClientes = _cargarClientesConCache();
+    _futureUsuarios = _cargarUsuariosConCache();
   }
 
   @override
@@ -44,80 +43,71 @@ class _ClientesPageState extends State<ClientesPage>
     super.dispose();
   }
 
-  Future<List<Cliente>> _cargarClientesConCache() async {
-    if (_cacheClientes != null) return _cacheClientes!;
-    final clientes = await _clienteService.obtenerClientesActivos();
-    _cacheClientes = clientes;
-    return clientes;
+  Future<List<Usuario>> _cargarUsuariosConCache() async {
+    if (_cacheUsuarios != null) return _cacheUsuarios!;
+    final usuarios = await _usuarioService.obtenerUsuarios();
+    _cacheUsuarios = usuarios;
+    return usuarios;
   }
 
-  void _recargarClientes() {
+  void _recargarUsuarios() {
     if (!mounted) return;
     setState(() {
-      _futureClientes = _cargarClientesConCache();
+      _futureUsuarios = _cargarUsuariosConCache();
     });
   }
 
-  Future<void> _abrirFormularioCliente({Cliente? clienteEditar}) async {
-    final List<Cliente> clientesActuales =
-        await _clienteService.obtenerClientesActivos();
+  Future<void> _abrirFormularioUsuario({Usuario? usuarioEditar}) async {
+    final List<Usuario> usuariosActuales = await _usuarioService
+        .obtenerUsuarios();
 
     if (!mounted) return;
 
-    final Cliente? clienteResultado = await showDialog<Cliente>(
+    final Usuario? usuarioResultado = await showDialog<Usuario>(
       context: context,
-      builder: (context) => ClienteFormDialog(
-        cliente: clienteEditar,
-        clientesExistentes: clientesActuales,
+      builder: (context) => UsuarioFormDialog(
+        usuario: usuarioEditar,
+        usuariosExistentes: usuariosActuales,
       ),
     );
 
-    if (clienteResultado != null) {
-      if (clienteEditar == null) {
-        await _clienteService.crearCliente(clienteResultado);
+    if (usuarioResultado != null) {
+      if (usuarioEditar == null) {
+        await _usuarioService.crearUsuario(usuarioResultado);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Cliente creado exitosamente.'),
+              content: Text('Usuario creado exitosamente.'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        await _clienteService.actualizarCliente(clienteResultado);
+        await _usuarioService.actualizarUsuario(usuarioResultado);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Cliente actualizado exitosamente.'),
+              content: Text('Usuario actualizado exitosamente.'),
               backgroundColor: Colors.green,
             ),
           );
         }
       }
 
-      _cacheClientes = null;
-      _recargarClientes();
+      _cacheUsuarios = null;
+      _recargarUsuarios();
     }
   }
 
-  void _mostrarDetallesDeClientes(Cliente cliente) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return ClienteDetalles(cliente: cliente);
-      },
-    );
-  }
-
-  Future<void> _confirmarEliminarCliente(Cliente cliente) async {
+  Future<void> _confirmarEliminarUsuario(Usuario usuario) async {
     final bool? confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(cliente.activo ? 'Desactivar Cliente' : 'Reactivar Cliente'),
+        title: Text(usuario.activo ? 'Desactivar Usuario' : 'Reactivar Usuario'),
         content: Text(
-          cliente.activo
-              ? '¿Está seguro de que desea desactivar al cliente ${cliente.nombre} ${cliente.apellido}? Esto lo inhabilitará para nuevas ventas.'
-              : '¿Está seguro de que desea reactivar al cliente ${cliente.nombre} ${cliente.apellido}?',
+          usuario.activo
+              ? '¿Está seguro de que desea desactivar al usuario ${usuario.nombreCompleto ?? usuario.nombreUsuario}? Esto inhabilitará su acceso.'
+              : '¿Está seguro de que desea reactivar al usuario ${usuario.nombreCompleto ?? usuario.nombreUsuario}?',
         ),
         actions: <Widget>[
           TextButton(
@@ -127,9 +117,9 @@ class _ClientesPageState extends State<ClientesPage>
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(
-              cliente.activo ? 'Desactivar' : 'Reactivar',
+              usuario.activo ? 'Desactivar' : 'Reactivar',
               style: TextStyle(
-                color: cliente.activo ? Colors.red : Colors.green,
+                color: usuario.activo ? Colors.red : Colors.green,
               ),
             ),
           ),
@@ -138,22 +128,32 @@ class _ClientesPageState extends State<ClientesPage>
     );
 
     if (confirmar == true) {
-      if (cliente.activo) {
-        await _clienteService.eliminarCliente(cliente.idCliente!);
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Cliente ${cliente.activo ? 'desactivado' : 'reactivado'} correctamente.',
+      if (usuario.activo) {
+        await _usuarioService.eliminarUsuario(usuario.idUsuario!);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Usuario ${usuario.activo ? 'desactivado' : 'reactivado'} correctamente.',
+              ),
+              backgroundColor: usuario.activo ? Colors.red : Colors.green,
             ),
-            backgroundColor: cliente.activo ? Colors.red : Colors.green,
-          ),
-        );
+          );
+        }
+        _cacheUsuarios = null;
+        _recargarUsuarios();
       }
-      _cacheClientes = null;
-      _recargarClientes();
     }
+  }
+
+  void _mostrarDetallesDeUsuario(Usuario usuario) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return UsuarioDetalles(usuario: usuario);
+      },
+    );
   }
 
   void _syncConteo(int value) {
@@ -170,56 +170,46 @@ class _ClientesPageState extends State<ClientesPage>
   }
 
   bool _hasActiveFilters() {
-    if ((_filtroTipoDocumento ?? '').trim().isNotEmpty) return true;
+    if ((_filtroTipoUsuario ?? '').trim().isNotEmpty) return true;
     if (_soloConEmail) return true;
-    if (_soloConDireccion) return true;
     return false;
   }
 
-  List<String> _valoresUnicosTipoDocumento(List<Cliente> clientes) {
+  List<String> _valoresUnicosTipoUsuario(List<Usuario> usuarios) {
     final set = <String>{};
-    for (final c in clientes) {
-      final v = c.tipoDocumento.trim();
+    for (final u in usuarios) {
+      final v = (u.tipoUsuario ?? '').trim();
       if (v.isNotEmpty) set.add(v);
     }
     final list = set.toList()..sort();
     return list;
   }
 
-  List<Cliente> _filtrarClientes(List<Cliente> clientes) {
-    Iterable<Cliente> res = clientes;
+  List<Usuario> _filtrarUsuarios(List<Usuario> usuarios) {
+    Iterable<Usuario> res = usuarios;
 
-    res = res.where((c) => c.activo);
+    res = res.where((u) => u.activo);
 
-    if ((_filtroTipoDocumento ?? '').trim().isNotEmpty) {
-      final ft = _filtroTipoDocumento!.trim();
-      res = res.where((c) => c.tipoDocumento.trim() == ft);
+    if ((_filtroTipoUsuario ?? '').trim().isNotEmpty) {
+      final ft = _filtroTipoUsuario!.trim();
+      res = res.where((u) => (u.tipoUsuario ?? '').trim() == ft);
     }
 
     if (_soloConEmail) {
-      res = res.where((c) => (c.email ?? '').trim().isNotEmpty);
-    }
-
-    if (_soloConDireccion) {
-      res = res.where((c) => (c.direccion ?? '').trim().isNotEmpty);
+      res = res.where((u) => (u.email ?? '').trim().isNotEmpty);
     }
 
     final q = _searchText.trim().toLowerCase();
     if (q.isNotEmpty) {
-      res = res.where((c) {
-        final nombre = c.nombre.toLowerCase();
-        final apellido = c.apellido.toLowerCase();
-        final doc = c.nroDocumento.toLowerCase();
-        final tel = c.telefono.toLowerCase();
-        final email = (c.email ?? '').toLowerCase();
-        final dir = (c.direccion ?? '').toLowerCase();
-        return nombre.contains(q) ||
-            apellido.contains(q) ||
-            ('$nombre $apellido').contains(q) ||
-            doc.contains(q) ||
-            tel.contains(q) ||
+      res = res.where((u) {
+        final nombreUsuario = u.nombreUsuario.toLowerCase();
+        final nombreCompleto = (u.nombreCompleto ?? '').toLowerCase();
+        final email = (u.email ?? '').toLowerCase();
+        final tipo = (u.tipoUsuario ?? '').toLowerCase();
+        return nombreUsuario.contains(q) ||
+            nombreCompleto.contains(q) ||
             email.contains(q) ||
-            dir.contains(q);
+            tipo.contains(q);
       });
     }
 
@@ -227,14 +217,13 @@ class _ClientesPageState extends State<ClientesPage>
   }
 
   Future<void> _abrirFiltros() async {
-    final clientes = _cacheClientes ?? await _cargarClientesConCache();
+    final usuarios = _cacheUsuarios ?? await _cargarUsuariosConCache();
     if (!mounted) return;
 
-    final tipos = _valoresUnicosTipoDocumento(clientes);
+    final tipos = _valoresUnicosTipoUsuario(usuarios);
 
-    String? tipoLocal = _filtroTipoDocumento;
+    String? tipoLocal = _filtroTipoUsuario;
     bool soloConEmailLocal = _soloConEmail;
-    bool soloConDireccionLocal = _soloConDireccion;
 
     await showDialog<void>(
       context: context,
@@ -255,7 +244,7 @@ class _ClientesPageState extends State<ClientesPage>
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
-                          child: Text('Todos los tipos de documento'),
+                          child: Text('Todos los tipos de usuario'),
                         ),
                         ...tipos.map(
                           (t) => DropdownMenuItem<String?>(
@@ -266,11 +255,10 @@ class _ClientesPageState extends State<ClientesPage>
                       ],
                       onChanged: (v) => setDialogState(() => tipoLocal = v),
                       decoration: const InputDecoration(
-                        labelText: 'Tipo de documento',
+                        labelText: 'Tipo de usuario',
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -280,7 +268,6 @@ class _ClientesPageState extends State<ClientesPage>
                     setDialogState(() {
                       tipoLocal = null;
                       soloConEmailLocal = false;
-                      soloConDireccionLocal = false;
                     });
                   },
                   child: const Text('Limpiar'),
@@ -292,9 +279,8 @@ class _ClientesPageState extends State<ClientesPage>
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
-                      _filtroTipoDocumento = tipoLocal;
+                      _filtroTipoUsuario = tipoLocal;
                       _soloConEmail = soloConEmailLocal;
-                      _soloConDireccion = soloConDireccionLocal;
                     });
                     Navigator.of(context).pop();
                   },
@@ -324,16 +310,16 @@ class _ClientesPageState extends State<ClientesPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Clientes',
+                        'Usuario',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      const Text('Gestión de clientes'),
+                      const Text('Gestión de usuarios'),
                     ],
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    _abrirFormularioCliente();
+                    _abrirFormularioUsuario();
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Nuevo'),
@@ -347,7 +333,7 @@ class _ClientesPageState extends State<ClientesPage>
                   width: 400,
                   child: SearchBar(
                     controller: _searchCtrl,
-                    hintText: 'Buscar clientes...',
+                    hintText: 'Buscar usuarios...',
                     onChanged: (String value) {
                       setState(() => _searchText = value);
                     },
@@ -403,9 +389,9 @@ class _ClientesPageState extends State<ClientesPage>
             const SizedBox(height: 16.0),
             Expanded(
               child: CustomCard(
-                content: FutureBuilder<List<Cliente>>(
-                  future: _futureClientes,
-                  initialData: _cacheClientes,
+                content: FutureBuilder<List<Usuario>>(
+                  future: _futureUsuarios,
+                  initialData: _cacheUsuarios,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         (snapshot.data == null || snapshot.data!.isEmpty)) {
@@ -417,39 +403,39 @@ class _ClientesPageState extends State<ClientesPage>
                       _syncConteo(0);
                       return Center(
                         child: Text(
-                          'Error al cargar clientes: ${snapshot.error}',
+                          'Error al cargar usuarios: ${snapshot.error}',
                         ),
                       );
                     }
 
-                    final data = snapshot.data ?? <Cliente>[];
-                    final clientes = _filtrarClientes(data);
+                    final data = snapshot.data ?? <Usuario>[];
+                    final usuarios = _filtrarUsuarios(data);
 
-                    _syncConteo(clientes.length);
+                    _syncConteo(usuarios.length);
 
-                    if (clientes.isEmpty) {
+                    if (usuarios.isEmpty) {
                       return const Center(
-                        child: Text('No hay clientes para los filtros actuales.'),
+                        child: Text('No hay usuarios para los filtros actuales.'),
                       );
                     }
 
                     return ListView.builder(
-                      key: const PageStorageKey('clientes_list'),
-                      itemCount: clientes.length,
+                      key: const PageStorageKey('usuarios_list'),
+                      itemCount: usuarios.length,
                       itemBuilder: (BuildContext context, int index) {
-                        final Cliente cliente = clientes[index];
+                        final Usuario usuario = usuarios[index];
 
-                        return ClienteListItem(
+                        return UsuarioListItem(
                           index: index + 1,
-                          cliente: cliente,
+                          usuario: usuario,
                           onEditar: () {
-                            _abrirFormularioCliente(clienteEditar: cliente);
+                            _abrirFormularioUsuario(usuarioEditar: usuario);
                           },
                           onDesactivar: () {
-                            _confirmarEliminarCliente(cliente);
+                            _confirmarEliminarUsuario(usuario);
                           },
                           onVerDetalle: () {
-                            _mostrarDetallesDeClientes(cliente);
+                            _mostrarDetallesDeUsuario(usuario);
                           },
                         );
                       },
@@ -459,7 +445,7 @@ class _ClientesPageState extends State<ClientesPage>
               ),
             ),
             const SizedBox(height: 16.0),
-            Text('Clientes encontrados ( $_conteoFiltrado )'),
+            Text('Usuarios encontrados ( $_conteoFiltrado )'),
           ],
         ),
       ),

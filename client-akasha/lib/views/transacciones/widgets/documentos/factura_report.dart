@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Asegúrate de tener intl en pubspec.yaml
 import 'package:akasha/models/compra.dart';
 import 'package:akasha/models/detalle_compra.dart';
-import 'package:printing/printing.dart'; // Para lanzar la impresión
-import 'package:akasha/services/pdf_service.dart'; // Tu nuevo servicio
 class FacturaReport extends StatelessWidget {
   final Compra compra;
   final List<DetalleCompra> detalles;

@@ -1,9 +1,10 @@
-import 'package:akasha/widgets/custom_tile.dart';
+import 'package:akasha/common/custom_tile.dart';
 import 'package:flutter/material.dart';
 import '../../../../../models/producto.dart';
 import '../../../../../services/inventario_service.dart';
 
 class ProductoListItem extends StatelessWidget {
+  final int index;
   final Producto producto;
   final InventarioService inventarioService;
 
@@ -21,6 +22,7 @@ class ProductoListItem extends StatelessWidget {
     required this.onEditar,
     required this.onEliminar,
     this.onVerDetalle,
+    required this.index,
   });
 
   @override
@@ -35,6 +37,10 @@ class ProductoListItem extends StatelessWidget {
 
         return CustomTile(
           listTile: ListTile(
+            leading: Text(
+              index.toString(),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             title: Text(
               producto.nombre,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

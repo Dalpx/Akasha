@@ -99,6 +99,9 @@ class productoController
         if ($validator->skuLength()) {
             throw new Exception('La longitud del SKU debe estar entre 8 y 12 caracteres', 400);
         }
+        if ($validator->entityAlreadyExists('producto', $body['id_producto'])) {
+            throw new Exception('Otro producto ya utiliza este SKU.', 409);
+        }
 
         // VALIDACIÓN DE 'id_producto' ES CRUCIAL, ya que es el WHERE
         if (!isset($body['id_producto'])) {

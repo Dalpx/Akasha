@@ -1,10 +1,10 @@
-import 'package:akasha/widgets/custom_tile.dart';
+import 'package:akasha/common/custom_tile.dart';
 import 'package:flutter/material.dart';
 import '../../../models/cliente.dart';
 
 class ClienteListItem extends StatelessWidget {
+  final int index;
   final Cliente cliente;
-  // Callbacks para que la página padre maneje la navegación y la lógica de negocio.
   final VoidCallback onEditar;
   final VoidCallback onDesactivar;
   final VoidCallback onVerDetalle;
@@ -15,6 +15,7 @@ class ClienteListItem extends StatelessWidget {
     required this.onEditar,
     required this.onDesactivar,
     required this.onVerDetalle,
+    required this.index,
   });
 
   String _textoTipoDocumento(String tipoDocumento) {
@@ -27,6 +28,10 @@ class ClienteListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomTile(
       listTile: ListTile(
+        leading: Text(
+          index.toString(),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         title: Text(
           '${cliente.nombre} ${cliente.apellido}',
           style: TextStyle(fontWeight: FontWeight.bold),

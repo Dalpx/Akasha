@@ -1,3 +1,4 @@
+import 'package:akasha/common/custom_card.dart';
 import 'package:akasha/views/inventario/ubicaciones_productos_page.dart';
 import 'package:akasha/views/inventario/widgets/producto_detalles.dart';
 import 'package:akasha/views/inventario/widgets/producto_form_dialog.dart';
@@ -10,7 +11,7 @@ import '../../services/inventario_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../services/categoria_service.dart';
 import '../../core/app_routes.dart';
-import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart'; // Importante
+import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart';
 
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
@@ -31,8 +32,18 @@ class _ProductosPageState extends State<ProductosPage>
   List<Categoria> _categorias = <Categoria>[];
 
   bool _cargandoCombos = true;
-
   List<Producto>? _cacheProductos;
+
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchText = '';
+
+  bool _soloActivos = true;
+  String? _filtroProveedor;
+  String? _filtroCategoria;
+  double? _minPrecioVenta;
+  double? _maxPrecioVenta;
+
+  int _conteoFiltrado = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -42,13 +53,13 @@ class _ProductosPageState extends State<ProductosPage>
     super.initState();
     _futureProductos = _cargarProductosConCache();
     _cargarProveedoresYCategorias();
-
     InventarioService.productosRevision.addListener(_onProductosChanged);
   }
 
   @override
   void dispose() {
     InventarioService.productosRevision.removeListener(_onProductosChanged);
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -69,7 +80,6 @@ class _ProductosPageState extends State<ProductosPage>
     try {
       final proveedoresFuture = _proveedorService.obtenerProveedoresActivos();
       final categoriasFuture = _categoriaService.obtenerCategorias();
-
       final results = await Future.wait([proveedoresFuture, categoriasFuture]);
 
       if (!mounted) return;
@@ -96,89 +106,6 @@ class _ProductosPageState extends State<ProductosPage>
     _cacheProductos = null;
     await _cargarProveedoresYCategorias();
     _recargarProductos();
-  }
-
-  // --- REPORTE VALORACIÓN ---
-  Future<void> _abrirReporteInventario() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      final inventario = await _inventarioService.obtenerReporteValorado();
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      double valorTotal = inventario.fold(
-          0.0, (sum, item) => sum + (item['valor_total'] as num).toDouble());
-
-      final listaMapeada = inventario.map((item) => {
-        'ref': item['sku'],
-        'fecha': item['nombre'], 
-        'entidad': "${item['cantidad']} unds.",
-        'total': item['valor_total'],
-      }).toList();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VistaReporteDetallado(
-            titulo: 'Inventario Valorado',
-            datos: listaMapeada,
-            totalGeneral: valorTotal,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar reporte: $e')),
-      );
-    }
-  }
-
-  // --- REPORTE SIN STOCK (NUEVO) ---
-  Future<void> _abrirReporteSinStock() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      final inventarioSinStock = await _inventarioService.obtenerReporteSinStock();
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      final listaMapeada = inventarioSinStock.map((item) => {
-        'ref': item['sku'],
-        'fecha': item['nombre'], 
-        'entidad': "${item['cantidad']} unds.",
-        'total': 0.0, // Irrelevante
-      }).toList();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VistaReporteDetallado(
-            titulo: 'Productos Sin Stock',
-            datos: listaMapeada,
-            totalGeneral: inventarioSinStock.length.toDouble(), // Conteo
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar reporte: $e')),
-      );
-    }
   }
 
   Future<void> _abrirFormularioProducto({Producto? productoEditar}) async {
@@ -284,6 +211,245 @@ class _ProductosPageState extends State<ProductosPage>
     _recargarProductos();
   }
 
+  void _syncConteo(int value) {
+    if (_conteoFiltrado == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _conteoFiltrado = value);
+    });
+  }
+
+  bool _hasActiveFilters() {
+    if ((_filtroProveedor ?? '').trim().isNotEmpty) return true;
+    if ((_filtroCategoria ?? '').trim().isNotEmpty) return true;
+    if (_minPrecioVenta != null) return true;
+    if (_maxPrecioVenta != null) return true;
+    return false;
+  }
+
+  List<String> _valoresUnicosProveedor(List<Producto> productos) {
+    final set = <String>{};
+    for (final p in productos) {
+      final v = (p.idProveedor ?? '').trim();
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<String> _valoresUnicosCategoria(List<Producto> productos) {
+    final set = <String>{};
+    for (final p in productos) {
+      final v = (p.idCategoria ?? '').trim();
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<Producto> _filtrarProductos(List<Producto> productos) {
+    Iterable<Producto> res = productos;
+
+    if (_soloActivos) {
+      res = res.where((p) => p.activo);
+    }
+
+    if ((_filtroProveedor ?? '').trim().isNotEmpty) {
+      final fp = _filtroProveedor!.trim();
+      res = res.where((p) => (p.idProveedor ?? '').trim() == fp);
+    }
+
+    if ((_filtroCategoria ?? '').trim().isNotEmpty) {
+      final fc = _filtroCategoria!.trim();
+      res = res.where((p) => (p.idCategoria ?? '').trim() == fc);
+    }
+
+    if (_minPrecioVenta != null) {
+      final min = _minPrecioVenta!;
+      res = res.where((p) => p.precioVenta >= min);
+    }
+
+    if (_maxPrecioVenta != null) {
+      final max = _maxPrecioVenta!;
+      res = res.where((p) => p.precioVenta <= max);
+    }
+
+    final q = _searchText.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      res = res.where((p) {
+        return p.nombre.toLowerCase().contains(q) ||
+            p.sku.toLowerCase().contains(q) ||
+            p.descripcion.toLowerCase().contains(q);
+      });
+    }
+
+    return res.toList();
+  }
+
+  Future<void> _abrirFiltros() async {
+    final productos = _cacheProductos ?? await _cargarProductosConCache();
+    if (!mounted) return;
+
+    final proveedores = _valoresUnicosProveedor(productos);
+    final categorias = _valoresUnicosCategoria(productos);
+
+    bool soloActivosLocal = _soloActivos;
+    String? proveedorLocal = _filtroProveedor;
+    String? categoriaLocal = _filtroCategoria;
+
+    final minCtrl = TextEditingController(
+      text: _minPrecioVenta?.toString() ?? '',
+    );
+    final maxCtrl = TextEditingController(
+      text: _maxPrecioVenta?.toString() ?? '',
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Filtros'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String?>(
+                      value:
+                          (proveedorLocal != null &&
+                              proveedores.contains(proveedorLocal))
+                          ? proveedorLocal
+                          : null,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Todos los proveedores'),
+                        ),
+                        ...proveedores.map(
+                          (p) => DropdownMenuItem<String?>(
+                            value: p,
+                            child: Text(p),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setDialogState(() => proveedorLocal = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Proveedor',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String?>(
+                      value:
+                          (categoriaLocal != null &&
+                              categorias.contains(categoriaLocal))
+                          ? categoriaLocal
+                          : null,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Todas las categorías'),
+                        ),
+                        ...categorias.map(
+                          (c) => DropdownMenuItem<String?>(
+                            value: c,
+                            child: Text(c),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setDialogState(() => categoriaLocal = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: minCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Precio venta mín.',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: maxCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Precio venta máx.',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      soloActivosLocal = true;
+                      proveedorLocal = null;
+                      categoriaLocal = null;
+                      minCtrl.text = '';
+                      maxCtrl.text = '';
+                    });
+                  },
+                  child: const Text('Limpiar'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final min = double.tryParse(minCtrl.text.trim());
+                    final max = double.tryParse(maxCtrl.text.trim());
+
+                    setState(() {
+                      _soloActivos = soloActivosLocal;
+                      _filtroProveedor = proveedorLocal;
+                      _filtroCategoria = categoriaLocal;
+                      _minPrecioVenta = min;
+                      _maxPrecioVenta = max;
+                    });
+
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    minCtrl.dispose();
+    maxCtrl.dispose();
+  }
+
+  void _limpiarBusqueda() {
+    _searchCtrl.clear();
+    setState(() => _searchText = '');
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -307,35 +473,11 @@ class _ProductosPageState extends State<ProductosPage>
                     ],
                   ),
                 ),
-                
-                // --- BOTÓN ROJO: SIN STOCK (NUEVO) ---
-                ElevatedButton.icon(
-                  onPressed: _abrirReporteSinStock,
-                  icon: const Icon(Icons.warning_amber_rounded),
-                  label: const Text('Sin Stock'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-
-                // --- BOTÓN TEAL: VALORACIÓN ---
-                ElevatedButton.icon(
-                  onPressed: _abrirReporteInventario,
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  label: const Text('Valoración'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                
                 ElevatedButton.icon(
                   onPressed: () async {
-                    await Navigator.of(context)
-                        .pushNamed(AppRoutes.rutaGestionMaestros);
+                    await Navigator.of(
+                      context,
+                    ).pushNamed(AppRoutes.rutaGestionMaestros);
 
                     await _cargarProveedoresYCategorias();
                     _cacheProductos = null;
@@ -353,85 +495,150 @@ class _ProductosPageState extends State<ProductosPage>
               ],
             ),
             const SizedBox(height: 16.0),
-            Expanded(
-              child: Card(
-                elevation: 0,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
-                  child: FutureBuilder<List<Producto>>(
-                    future: _futureProductos,
-                    initialData: _cacheProductos,
-                    builder: (
-                      BuildContext context,
-                      AsyncSnapshot<List<Producto>> snapshot,
-                    ) {
-                      if (snapshot.connectionState == ConnectionState.waiting &&
-                          (snapshot.data == null || snapshot.data!.isEmpty)) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'Error al cargar productos: ${snapshot.error}',
-                          ),
-                        );
-                      }
-
-                      final data = snapshot.data ?? <Producto>[];
-                      final productos = data
-                          .where((producto) => producto.activo)
-                          .toList();
-
-                      if (productos.isEmpty) {
-                        return const Center(
-                          child: Text('No hay productos registrados.'),
-                        );
-                      }
-
-                      return ListView.builder(
-                        key: const PageStorageKey('productos_list'),
-                        itemCount: productos.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final Producto producto = productos[index];
-
-                          return ProductoListItem(
-                            producto: producto,
-                            inventarioService: _inventarioService,
-                            onVerUbicaciones: () {
-                              if (producto.idProducto != null) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        UbicacionesProductoPage(
-                                      producto: producto,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            onEditar: () {
-                              _abrirFormularioProducto(
-                                productoEditar: producto,
-                              );
-                            },
-                            onEliminar: () {
-                              _confirmarEliminarProducto(producto);
-                            },
-                            onVerDetalle: () {
-                              _mostrarDetallesDeProducto(producto);
-                            },
-                          );
-                        },
-                      );
+            Row(
+              children: [
+                SizedBox(
+                  width: 400,
+                  child: SearchBar(
+                    controller: _searchCtrl,
+                    hintText: 'Buscar productos...',
+                    onChanged: (String value) {
+                      setState(() => _searchText = value);
                     },
+                    leading: const Icon(Icons.search),
+                    trailing: [
+                      if (_searchText.trim().isNotEmpty)
+                        IconButton(
+                          tooltip: 'Limpiar',
+                          onPressed: _limpiarBusqueda,
+                          icon: const Icon(Icons.close),
+                        ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Filtros',
+                  onPressed: _abrirFiltros,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.filter_list),
+                      if (_hasActiveFilters())
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '•',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  fontSize: 18,
+                                  height: 0.9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16.0),
+            Expanded(
+              child: CustomCard(
+                content: FutureBuilder<List<Producto>>(
+                  future: _futureProductos,
+                  initialData: _cacheProductos,
+                  builder:
+                      (
+                        BuildContext context,
+                        AsyncSnapshot<List<Producto>> snapshot,
+                      ) {
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            (snapshot.data == null || snapshot.data!.isEmpty)) {
+                          _syncConteo(0);
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          _syncConteo(0);
+                          return Center(
+                            child: Text(
+                              'Error al cargar productos: ${snapshot.error}',
+                            ),
+                          );
+                        }
+
+                        final data = snapshot.data ?? <Producto>[];
+                        final productos = _filtrarProductos(data);
+
+                        _syncConteo(productos.length);
+
+                        if (productos.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No hay productos para los filtros actuales.',
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          key: const PageStorageKey('productos_list'),
+                          itemCount: productos.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final Producto producto = productos[index];
+
+                            return ProductoListItem(
+                              index: index + 1,
+                              producto: producto,
+                              inventarioService: _inventarioService,
+                              onVerUbicaciones: () {
+                                if (producto.idProducto != null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          UbicacionesProductoPage(
+                                            producto: producto,
+                                          ),
+                                    ),
+                                  );
+                                }
+                              },
+                              onEditar: () {
+                                _abrirFormularioProducto(
+                                  productoEditar: producto,
+                                );
+                              },
+                              onEliminar: () {
+                                _confirmarEliminarProducto(producto);
+                              },
+                              onVerDetalle: () {
+                                _mostrarDetallesDeProducto(producto);
+                              },
+                            );
+                          },
+                        );
+                      },
                 ),
               ),
             ),
+            const SizedBox(height: 16.0),
+            Text("Productos encontrados ( $_conteoFiltrado )"),
           ],
         ),
       ),

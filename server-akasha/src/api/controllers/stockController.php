@@ -12,36 +12,27 @@ class stockController
 
     public function getStockProducto(?int $id)
     {
-
         try {
+            $query = "SELECT s.id_producto, p.nombre, u.nombre_almacen, s.cantidad_actual as stock 
+                      FROM stock as s 
+                      LEFT JOIN producto as p ON s.id_producto = p.id_producto 
+                      LEFT JOIN ubicacion as u ON u.id_ubicacion=s.id_ubicacion";
 
-            if ($id !== null) { //Esta función nos permite retornar el stock en caso de que se especifique una ID o no
-                $query = "SELECT s.id_producto, p.nombre, u.nombre_almacen, s.cantidad_actual as stock FROM stock as s 
-                LEFT JOIN producto as p ON s.id_producto = p.id_producto 
-                LEFT JOIN ubicacion as u ON u.id_ubicacion=s.id_ubicacion 
-                WHERE s.id_producto = :id_prod";
+            if ($id !== null) {
+                $query .= " WHERE s.id_producto = :id_prod";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id_prod' => $id]);
-                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('Producto no encontrado', 404);
-                }
             } else {
-                $query = "SELECT p.nombre, u.nombre_almacen, s.cantidad_actual as stock FROM stock as s 
-                LEFT JOIN producto as p ON s.id_producto = p.id_producto 
-                LEFT JOIN ubicacion as u ON u.id_ubicacion=s.id_ubicacion";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute();
-                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('Producto no encontrado', 404);
-                }
+            if ($result) {
+                return $result;
+            } else {
+                throw new Exception('Producto no encontrado en stock', 404);
             }
         } catch (Exception $e) {
             throw $e;
@@ -50,34 +41,35 @@ class stockController
 
     public function addStock()
     {
-        //Del JSON extraemos los datos
         $body = json_decode(file_get_contents('php://input'), true);
-
         $validator = new akashaValidator($this->DB, $body);
+
         if ($validator->ubicacionIsNotUnique()) {
-            throw new Exception('Esta combinación de ubicación ya está registrada', 401);
+            throw new Exception('Esta combinación de producto y ubicación ya está registrada', 409);
         }
 
-        $query = "INSERT INTO stock (id_producto, id_ubicacion, cantidad_actual) VALUES (:id_prod, :id_ubi, 0)";
-        $stmt = $this->DB->prepare($query);
-        $stmt->execute([
-            ':id_prod' => $body['id_producto'],
-            ':id_ubi' => $body['id_ubicacion']
-        ]);
+        try {
+            $this->DB->beginTransaction();
 
-        if ($stmt) {
+            $query = "INSERT INTO stock (id_producto, id_ubicacion, cantidad_actual) VALUES (:id_prod, :id_ubi, 0)";
+            $stmt = $this->DB->prepare($query);
+            $stmt->execute([
+                ':id_prod' => $body['id_producto'],
+                ':id_ubi' => $body['id_ubicacion']
+            ]);
+
             $this->DB->commit();
             return true;
-        } else {
-            throw new Exception('Ha ocurrido un error', 500);
+
+        } catch (Exception $e) {
+            $this->DB->rollBack();
+            throw $e;
         }
     }
 
     public function deleteStock()
     {
-
         $body = json_decode(file_get_contents('php://input'), true);
-
         $validator = new akashaValidator($this->DB, $body);
 
         if ($validator->stockIsNotEmpty()) {
@@ -85,6 +77,7 @@ class stockController
         }
 
         try {
+            $this->DB->beginTransaction();
 
             $query = "DELETE FROM stock WHERE id_producto = :id_prod AND id_ubicacion = :id_ubi";
             $stmt = $this->DB->prepare($query);
@@ -93,16 +86,15 @@ class stockController
                 ':id_ubi' => $body['id_ubicacion']
             ]);
 
-            $rows_af = $stmt->columnCount();
-
-            if ($rows_af > 0) {
+            if ($stmt->rowCount() > 0) {
+                $this->DB->commit();
                 return true;
-            } else if ($rows_af == 0) {
-                throw new Exception('Este producto ya ha sido eliminado de esta ubicación o no fue posible encontrarlo', 404);
             } else {
-                throw new Exception('Se ha producido un error', 500);
+                throw new Exception('Registro de stock no encontrado', 404);
             }
         } catch (Exception $e) {
+            $this->DB->rollBack();
+            throw $e;
         }
     }
 }

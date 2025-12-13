@@ -1,3 +1,4 @@
+import 'package:akasha/common/custom_card.dart';
 import 'package:flutter/material.dart';
 
 class CrudTabLayout extends StatelessWidget {
@@ -49,11 +50,8 @@ class CrudTabLayout extends StatelessWidget {
         ),
         const SizedBox(height: 8.0),
         Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-              child: child,
-            ),
+          child: CustomCard(
+            content:  child
           ),
         ),
       ],

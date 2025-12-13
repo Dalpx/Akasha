@@ -11,10 +11,10 @@ class CustomTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsetsGeometry.only(bottom: 8.0),
       child: Card(
-        color: Constants().input, // Usando tus constantes originales
+        color: Constants().background, // Usando tus constantes originales
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Constants().border, width: 1.0),
+          side: BorderSide(color: Constants().borderInput, width: 1.0),
         ),
         child: listTile,
       ),

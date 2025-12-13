@@ -1,5 +1,5 @@
 import 'package:akasha/core/constants.dart';
-import 'package:akasha/views/transacciones/widgets/logica/resumen_item.dart';
+import 'package:akasha/views/transacciones/widgets/resumen/resumen_item.dart';
 
 import 'package:flutter/material.dart';
 

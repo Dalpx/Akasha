@@ -1,3 +1,4 @@
+import 'package:akasha/common/custom_tile.dart';
 import 'package:akasha/core/session_manager.dart';
 import 'package:akasha/models/compra.dart';
 import 'package:akasha/models/producto.dart';
@@ -10,12 +11,14 @@ import 'package:akasha/services/pdf_service.dart';
 import 'package:akasha/services/proveedor_service.dart';
 import 'package:akasha/services/tipo_comprobante_service.dart';
 import 'package:akasha/services/ubicacion_service.dart';
-import 'package:akasha/views/transacciones/transaccion_detalles_helper.dart';
-import 'package:akasha/views/transacciones/transaccion_shared.dart';
-import 'package:akasha/views/transacciones/transaccion_stock_helper.dart';
+import 'package:akasha/views/transacciones/widgets/common/linea_producto_editar.dart';
+import 'package:akasha/views/transacciones/widgets/common/transaccion_dropdown.dart';
+import 'package:akasha/views/transacciones/widgets/helpers/transaccion_detalles_helper.dart';
+import 'package:akasha/views/transacciones/widgets/helpers/transaccion_shared.dart';
+import 'package:akasha/views/transacciones/widgets/helpers/transaccion_stock_helper.dart';
 import 'package:akasha/views/transacciones/widgets/documentos/factura_report.dart';
 import 'package:akasha/views/transacciones/widgets/forms/linea_compra_form.dart';
-import 'package:akasha/views/transacciones/widgets/logica/resumen_totales.dart';
+import 'package:akasha/views/transacciones/widgets/resumen/resumen_totales.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
@@ -59,6 +62,14 @@ class ComprasTabState extends State<ComprasTab>
 
   static const double _iva = 0.16;
 
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchText = '';
+  String? _filtroProveedor;
+  double? _minTotal;
+  double? _maxTotal;
+
+  int _conteoFiltrado = 0;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -80,6 +91,7 @@ class ComprasTabState extends State<ComprasTab>
     for (final l in _lineas) {
       l.dispose();
     }
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -88,9 +100,7 @@ class ComprasTabState extends State<ComprasTab>
     await _registrarCompra();
   }
 
-  Future<void> refreshFromExternalChange() async {
-    // Implementar si es necesario
-  }
+  Future<void> refreshFromExternalChange() async {}
 
   void _onLineaChanged() {
     if (mounted) setState(() {});
@@ -115,8 +125,9 @@ class ComprasTabState extends State<ComprasTab>
   Future<void> _cargarDatosIniciales() async {
     setState(() => _cargandoInicial = true);
 
-    final comprasFuture =
-        _compraService.obtenerCompras().catchError((_) => <Compra>[]);
+    final comprasFuture = _compraService.obtenerCompras().catchError(
+      (_) => <Compra>[],
+    );
 
     try {
       final resultados = await Future.wait([
@@ -166,14 +177,18 @@ class ComprasTabState extends State<ComprasTab>
 
     final productoInicial = _productos.isNotEmpty ? _productos.first : null;
 
-    final ubicacionesDisponibles =
-        _stock.ubicacionesAsignadas(productoInicial?.idProducto, _ubicaciones);
+    final ubicacionesDisponibles = _stock.ubicacionesAsignadas(
+      productoInicial?.idProducto,
+      _ubicaciones,
+    );
     final ubicacionInicial = ubicacionesDisponibles.isNotEmpty
         ? ubicacionesDisponibles.first
         : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
 
-    final stockInicial =
-        _stock.stockEnUbicacion(productoInicial?.idProducto, ubicacionInicial);
+    final stockInicial = _stock.stockEnUbicacion(
+      productoInicial?.idProducto,
+      ubicacionInicial,
+    );
 
     final primera = LineaCompraForm(
       producto: productoInicial,
@@ -193,14 +208,18 @@ class ComprasTabState extends State<ComprasTab>
   void _agregarLinea() {
     final productoInicial = _productos.isNotEmpty ? _productos.first : null;
 
-    final ubicacionesDisponibles =
-        _stock.ubicacionesAsignadas(productoInicial?.idProducto, _ubicaciones);
+    final ubicacionesDisponibles = _stock.ubicacionesAsignadas(
+      productoInicial?.idProducto,
+      _ubicaciones,
+    );
     final ubicacionInicial = ubicacionesDisponibles.isNotEmpty
         ? ubicacionesDisponibles.first
         : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
 
-    final stockInicial =
-        _stock.stockEnUbicacion(productoInicial?.idProducto, ubicacionInicial);
+    final stockInicial = _stock.stockEnUbicacion(
+      productoInicial?.idProducto,
+      ubicacionInicial,
+    );
 
     final linea = LineaCompraForm(
       producto: productoInicial,
@@ -298,22 +317,27 @@ class ComprasTabState extends State<ComprasTab>
       showDialog(
         context: context,
         builder: (_) => Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 750),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(12)),
-                    border:
-                        Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -352,10 +376,7 @@ class ComprasTabState extends State<ComprasTab>
                 Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(0),
-                    child: FacturaReport(
-                      compra: c,
-                      detalles: detalles,
-                    ),
+                    child: FacturaReport(compra: c, detalles: detalles),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -377,186 +398,258 @@ class ComprasTabState extends State<ComprasTab>
     messenger?.showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ---------------- UI ----------------
-
   Widget _buildProveedorSelector() {
-    return SizedBox(
+    return TransaccionDropdown<Proveedor>(
       width: 260,
-      child: DropdownButtonFormField<Proveedor>(
-        value: _proveedorSeleccionado,
-        decoration: const InputDecoration(
-          labelText: 'Proveedor',
-          border: OutlineInputBorder(),
-        ),
-        items: _proveedores.map((c) {
-          final nombre = c.nombre;
-          final show =
-              nombre.isEmpty ? 'Proveedor ${c.idProveedor ?? ''}' : nombre;
-          return DropdownMenuItem(value: c, child: Text(show));
-        }).toList(),
-        onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
-        validator: (_) =>
-            _proveedorSeleccionado == null ? 'Selecciona un proveedor' : null,
-      ),
+      labelText: 'Proveedor',
+      value: _proveedorSeleccionado,
+      items: _proveedores,
+      itemText: (p) =>
+          p.nombre.isEmpty ? 'Proveedor ${p.idProveedor ?? ''}' : p.nombre,
+      onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
+      validator: (v) => v == null ? 'Selecciona un proveedor' : null,
     );
   }
 
   Widget _buildTipoComprobanteSelector() {
-    return SizedBox(
+    return TransaccionDropdown<TipoComprobante>(
       width: 260,
-      child: DropdownButtonFormField<TipoComprobante>(
-        value: _tipoComprobanteSeleccionado,
-        decoration: const InputDecoration(
-          labelText: 'Tipo comprobante',
-          border: OutlineInputBorder(),
-        ),
-        items: _tiposComprobante.map((t) {
-          return DropdownMenuItem(value: t, child: Text(t.nombre));
-        }).toList(),
-        onChanged: (nuevo) =>
-            setState(() => _tipoComprobanteSeleccionado = nuevo),
-        validator: (_) => _tipoComprobanteSeleccionado == null
-            ? 'Selecciona un tipo de comprobante'
-            : null,
-      ),
+      labelText: 'Tipo comprobante',
+      value: _tipoComprobanteSeleccionado,
+      items: _tiposComprobante,
+      itemText: (t) => t.nombre,
+      onChanged: (nuevo) => setState(() => _tipoComprobanteSeleccionado = nuevo),
+      validator: (v) => v == null ? 'Selecciona un tipo de comprobante' : null,
     );
   }
 
   Widget _buildLineaDetalle(int index, LineaCompraForm linea) {
-    final stockActual = _stock.stockEnUbicacion(
-      linea.producto?.idProducto,
-      linea.ubicacionSeleccionada,
-    );
-    linea.stockDisponible = stockActual;
-
-    final ubicacionesAsignadas =
-        _stock.ubicacionesAsignadas(linea.producto?.idProducto, _ubicaciones);
-
-    if (linea.ubicacionSeleccionada != null &&
-        !ubicacionesAsignadas.any(
-          (u) => u.nombreAlmacen == linea.ubicacionSeleccionada!.nombreAlmacen,
-        )) {
-      linea.ubicacionSeleccionada =
-          ubicacionesAsignadas.isNotEmpty ? ubicacionesAsignadas.first : null;
-    }
-
-    final productoSelector = DropdownButtonFormField<Producto>(
-      value: linea.producto,
-      decoration: const InputDecoration(
-        labelText: 'Producto',
-        border: OutlineInputBorder(),
+    return LineaProductoEditor<LineaCompraForm>(
+      line: linea,
+      productos: _productos,
+      ubicaciones: _ubicaciones,
+      stock: _stock,
+      ubicacionesDisponibles: (idProducto, ubicaciones) =>
+          _stock.ubicacionesAsignadas(idProducto, ubicaciones),
+      fallbackToAllUbicacionesWhenEmpty: true,
+      ubicacionMatches: (a, b) => a.nombreAlmacen == b.nombreAlmacen,
+      precioUnitario: (p) => p.precioCosto,
+      labelPrecio: 'Precio costo',
+      stockLabelBuilder: (u) => 'Stock actual en ${u.nombreAlmacen}:',
+      stockStyleBuilder: (_) => StockBannerStyle(
+        background: Colors.blue.shade50,
+        borderColor: Colors.blue.shade300,
+        valueColor: Colors.blue.shade700,
       ),
-      items: _productos.map((p) {
-        return DropdownMenuItem(value: p, child: Text(p.nombre));
-      }).toList(),
-      onChanged: (Producto? nuevo) async {
-        if (nuevo == null) {
-          setState(() {
-            linea.producto = null;
-            linea.precioCtrl.text = '0.00';
-            linea.stockDisponible = 0;
-            linea.ubicacionSeleccionada = null;
-          });
-          return;
-        }
-
-        await _stock.ensureLoadedForProduct(nuevo.idProducto);
-        if (!mounted) return;
-
-        setState(() {
-          linea.producto = nuevo;
-          linea.precioCtrl.text = nuevo.precioCosto.toStringAsFixed(2);
-
-          final ubicacionesFiltradas =
-              _stock.ubicacionesAsignadas(nuevo.idProducto, _ubicaciones);
-
-          linea.ubicacionSeleccionada = ubicacionesFiltradas.isNotEmpty
-              ? ubicacionesFiltradas.first
-              : (_ubicaciones.isNotEmpty ? _ubicaciones.first : null);
-
-          linea.stockDisponible = _stock.stockEnUbicacion(
-            linea.producto?.idProducto,
-            linea.ubicacionSeleccionada,
-          );
-        });
-      },
-      validator: (_) => linea.producto == null ? 'Selecciona un producto' : null,
-    );
-
-    final stockBanner =
-        (linea.producto != null && linea.ubicacionSeleccionada != null)
-            ? StockBannerCard(
-                label:
-                    'Stock actual en ${linea.ubicacionSeleccionada!.nombreAlmacen}:',
-                stock: linea.stockDisponible,
-                background: Colors.blue.shade50,
-                borderColor: Colors.blue.shade300,
-                valueColor: Colors.blue.shade700,
-              )
-            : null;
-
-    final cantidadField = TextFormField(
-      controller: linea.cantidadCtrl,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        labelText: 'Cantidad',
-        border: OutlineInputBorder(),
-      ),
-      validator: (value) {
+      cantidadValidator: (value, _) {
         final c = parseIntSafe(value ?? '');
         if (c <= 0) return 'Cantidad inválida';
         return null;
       },
-    );
-
-    final precioField = TextFormField(
-      controller: linea.precioCtrl,
-      readOnly: true,
-      enabled: false,
-      decoration: const InputDecoration(
-        labelText: 'Precio costo',
-        border: OutlineInputBorder(),
-      ),
-    );
-
-    final ubicacionField = DropdownButtonFormField<Ubicacion>(
-      value: linea.ubicacionSeleccionada,
-      decoration: const InputDecoration(
-        labelText: 'Ubicación',
-        border: OutlineInputBorder(),
-      ),
-      items: ubicacionesAsignadas.map((u) {
-        return DropdownMenuItem(
-          value: u,
-          child: Text(u.nombreAlmacen),
-        );
-      }).toList(),
-      onChanged: (Ubicacion? nueva) {
-        if (!mounted) return;
-        setState(() {
-          linea.ubicacionSeleccionada = nueva;
-          linea.stockDisponible =
-              _stock.stockEnUbicacion(linea.producto?.idProducto, nueva);
-        });
-      },
-      validator: (_) {
-        if (_ubicaciones.isEmpty) return 'No hay almacenes';
-        if (linea.ubicacionSeleccionada == null) {
-          return 'Selecciona una ubicación';
-        }
+      ubicacionValidator: (value, disponibles, todas) {
+        if (todas.isEmpty) return 'No hay almacenes';
+        if (value == null) return 'Selecciona una ubicación';
         return null;
       },
-    );
-
-    return LineaProductoCardBase(
-      productoSelector: productoSelector,
-      stockBanner: stockBanner,
-      cantidadField: cantidadField,
-      precioField: precioField,
-      ubicacionField: ubicacionField,
+      onAfterStockRecalc: (_, __) {},
+      getProducto: (l) => l.producto,
+      setProducto: (l, p) => l.producto = p,
+      getUbicacion: (l) => l.ubicacionSeleccionada,
+      setUbicacion: (l, u) => l.ubicacionSeleccionada = u,
+      cantidadCtrl: (l) => l.cantidadCtrl,
+      precioCtrl: (l) => l.precioCtrl,
+      getStock: (l) => l.stockDisponible,
+      setStock: (l, v) => l.stockDisponible = v,
+      requestRebuild: () {
+        if (mounted) setState(() {});
+      },
       onDelete: () => _eliminarLinea(index),
       canDelete: _lineas.length > 1,
     );
+  }
+
+  void _syncConteo(int value) {
+    if (_conteoFiltrado == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _conteoFiltrado = value);
+    });
+  }
+
+  void _limpiarBusqueda() {
+    _searchCtrl.clear();
+    setState(() => _searchText = '');
+  }
+
+  bool _hasActiveFilters() {
+    if ((_filtroProveedor ?? '').trim().isNotEmpty) return true;
+    if (_minTotal != null) return true;
+    if (_maxTotal != null) return true;
+    return false;
+  }
+
+  List<String> _valoresUnicosProveedor(List<Compra> compras) {
+    final set = <String>{};
+    for (final c in compras) {
+      final v = c.proveedor.trim();
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<Compra> _filtrarCompras(List<Compra> compras) {
+    Iterable<Compra> res = compras;
+
+    if ((_filtroProveedor ?? '').trim().isNotEmpty) {
+      final fp = _filtroProveedor!.trim();
+      res = res.where((c) => c.proveedor.trim() == fp);
+    }
+
+    if (_minTotal != null) {
+      final min = _minTotal!;
+      res = res.where((c) => c.total >= min);
+    }
+
+    if (_maxTotal != null) {
+      final max = _maxTotal!;
+      res = res.where((c) => c.total <= max);
+    }
+
+    final q = _searchText.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      res = res.where((c) {
+        final id = '${c.idCompra}'.toLowerCase();
+        final nro = c.nroComprobante.toLowerCase();
+        final prov = c.proveedor.toLowerCase();
+        final fecha = c.fechaHora.toLowerCase();
+        final total = c.total.toStringAsFixed(2).toLowerCase();
+        return id.contains(q) ||
+            nro.contains(q) ||
+            prov.contains(q) ||
+            fecha.contains(q) ||
+            total.contains(q);
+      });
+    }
+
+    return res.toList();
+  }
+
+  Future<void> _abrirFiltros() async {
+    final proveedores = _valoresUnicosProveedor(_compras);
+
+    String? proveedorLocal = _filtroProveedor;
+
+    final minCtrl = TextEditingController(text: _minTotal?.toString() ?? '');
+    final maxCtrl = TextEditingController(text: _maxTotal?.toString() ?? '');
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Filtros'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String?>(
+                      value: (proveedorLocal != null &&
+                              proveedores.contains(proveedorLocal))
+                          ? proveedorLocal
+                          : null,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Todos los proveedores'),
+                        ),
+                        ...proveedores.map(
+                          (p) => DropdownMenuItem<String?>(
+                            value: p,
+                            child: Text(p),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setDialogState(() => proveedorLocal = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Proveedor',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: minCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Total mín.',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: maxCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Total máx.',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      proveedorLocal = null;
+                      minCtrl.text = '';
+                      maxCtrl.text = '';
+                    });
+                  },
+                  child: const Text('Limpiar'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final min = double.tryParse(minCtrl.text.trim());
+                    final max = double.tryParse(maxCtrl.text.trim());
+
+                    setState(() {
+                      _filtroProveedor = proveedorLocal;
+                      _minTotal = min;
+                      _maxTotal = max;
+                    });
+
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    minCtrl.dispose();
+    maxCtrl.dispose();
   }
 
   @override
@@ -574,10 +667,7 @@ class ComprasTabState extends State<ComprasTab>
     final factura = FacturaSectionCard(
       title: "Factura de compra",
       formKey: _formKey,
-      selectors: [
-        _buildProveedorSelector(),
-        _buildTipoComprobanteSelector(),
-      ],
+      selectors: [_buildProveedorSelector(), _buildTipoComprobanteSelector()],
       onAddLinea: _productos.isEmpty ? null : _agregarLinea,
       lineas: List.generate(
         _lineas.length,
@@ -591,24 +681,103 @@ class ComprasTabState extends State<ComprasTab>
       ),
     );
 
-    final historial = HistorialSectionCard<Compra>(
+    final comprasFiltradas = _filtrarCompras(_compras);
+    _syncConteo(comprasFiltradas.length);
+
+    final historialCard = HistorialSectionCard<Compra>(
       title: "Historial de compras",
-      items: _compras,
-      emptyText: 'No hay compras registradas.',
+      items: comprasFiltradas,
+      emptyText: 'No hay compras para los filtros actuales.',
       listKey: const PageStorageKey('compras_historial_list'),
       itemBuilder: (_, c) {
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text('${c.nroComprobante} · ${c.proveedor}'),
-          subtitle:
-              Text('${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)}'),
-          trailing: IconButton(
-            icon: const Icon(Icons.receipt_long),
-            tooltip: 'Ver detalle',
-            onPressed: () => _verDetalleCompra(c),
+        return CustomTile(
+          listTile: ListTile(
+            leading: Text(
+              '${c.idCompra}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            title: Text('${c.nroComprobante} · ${c.proveedor}'),
+            subtitle: Text(
+              '${c.fechaHora} · Total: ${c.total.toStringAsFixed(2)}',
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.receipt_long),
+              tooltip: 'Ver detalle',
+              onPressed: () => _verDetalleCompra(c),
+            ),
           ),
         );
       },
+    );
+
+    final historial = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 400,
+              child: SearchBar(
+                controller: _searchCtrl,
+                hintText: 'Buscar compras...',
+                onChanged: (value) => setState(() => _searchText = value),
+                leading: const Icon(Icons.search),
+                trailing: [
+                  if (_searchText.trim().isNotEmpty)
+                    IconButton(
+                      tooltip: 'Limpiar',
+                      onPressed: _limpiarBusqueda,
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Filtros',
+              onPressed: _abrirFiltros,
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.filter_list),
+                  if (_hasActiveFilters())
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '•',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              fontSize: 18,
+                              height: 0.9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        historialCard,
+        const SizedBox(height: 12),
+        Text('Compras encontradas ( $_conteoFiltrado )'),
+      ],
     );
 
     return TransaccionLayout(

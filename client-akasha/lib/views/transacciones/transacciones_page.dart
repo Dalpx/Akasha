@@ -74,6 +74,7 @@ class _ComprasVentasPageState extends State<ComprasVentasPage> {
                 final isCompras = controller.index == 0;
 
                 return FloatingActionButton(
+                  heroTag: null,
                   onPressed: () async {
                     if (isCompras) {
                       await _comprasKey.currentState?.onFabPressed();

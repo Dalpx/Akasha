@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../middlewares/akashaValidator.php';
 
 class categoriaController
 {
@@ -12,28 +13,22 @@ class categoriaController
     public function getCategoria(?int $id)
     {
         try {
+            $query = "SELECT * FROM categoria";
             if ($id !== null) {
-                $query = "SELECT * FROM categoria WHERE id_categoria = :id";
+                $query .= " WHERE id_categoria = :id";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('Categoría no encontrada', 404);
-                }
             } else {
-                $query = "SELECT * FROM categoria";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute();
                 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
 
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('No existen categorías registradas', 404);
-                }
+            if ($result) {
+                return $result;
+            } else {
+                throw new Exception('Categoría no encontrada o no existen registros', 404);
             }
         } catch (Exception $e) {
             throw $e;
@@ -44,24 +39,22 @@ class categoriaController
     {
         $body = json_decode(file_get_contents('php://input'), true);
 
-        // Validaciones básicas
+        // Validaciones
         if (empty($body['nombre_categoria'])) {
             throw new Exception('Nombre de categoría es obligatorio', 400);
         }
 
         try {
+            $this->DB->beginTransaction();
+
             $query = "INSERT INTO categoria (nombre_categoria) VALUES (:nombre_categoria)";
             $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([
-                ':nombre_categoria' => $body['nombre_categoria']
-            ]);
+            $stmt->execute([':nombre_categoria' => $body['nombre_categoria']]);
 
-            if ($result) {
-                return $result;
-            } else {
-                throw new Exception('Error al crear categoría', 500);
-            }
+            $this->DB->commit();
+            return true;
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }
@@ -70,27 +63,28 @@ class categoriaController
     {
         $body = json_decode(file_get_contents('php://input'), true);
 
-        if (empty($body['id_categoria'])) {
-            throw new Exception('ID de categoría es obligatorio', 400);
+        if (empty($body['id_categoria']) || empty($body['nombre_categoria'])) {
+            throw new Exception('ID y Nombre de categoría son obligatorios', 400);
         }
 
         try {
-            $query = "UPDATE categoria SET nombre_categoria = :nombre_categoria WHERE id_categoria = :id";
+            $this->DB->beginTransaction();
 
+            $query = "UPDATE categoria SET nombre_categoria = :nombre_categoria WHERE id_categoria = :id";
             $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([
+            $stmt->execute([
                 ':nombre_categoria' => $body['nombre_categoria'],
                 ':id' => $body['id_categoria']
             ]);
 
-            $rowsAffected = $stmt->rowCount();
-
-            if ($rowsAffected > 0) {
+            if ($stmt->rowCount() > 0) {
+                $this->DB->commit();
                 return true;
             } else {
-                throw new Exception('Categoría no encontrada', 404);
+                throw new Exception('Categoría no encontrada o sin cambios', 404);
             }
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }
@@ -98,30 +92,32 @@ class categoriaController
     public function deleteCategoria()
     {
         $body = json_decode(file_get_contents('php://input'), true);
-        $id = $body['id_categoria'] ?? null;
-        $validator = new akashaValidator($this->DB, $body);
-
-        if (!$id) {
+        
+        if (empty($body['id_categoria'])) {
             throw new Exception('ID de categoría es obligatorio', 400);
-        } else if ($validator->isAssigned('categoria')) {
+        }
+
+        $validator = new akashaValidator($this->DB, $body);
+        if ($validator->isAssigned('categoria')) {
             throw new Exception('No se puede eliminar la categoría porque está siendo utilizada por al menos un producto', 400);
         }
 
         try {
+            $this->DB->beginTransaction();
 
-
-            $query = "UPDATE categoria SET activo = 0 WHERE id_categoria = :id";
+            // Borrado lógico
+            $query = "UPDATE categoria SET activo = 0 WHERE id_categoria = :id"; 
             $stmt = $this->DB->prepare($query);
-            $stmt->execute([':id' => $id]);
+            $stmt->execute([':id' => $body['id_categoria']]);
 
-            $rowsAffected = $stmt->rowCount();
-
-            if ($rowsAffected > 0) {
+            if ($stmt->rowCount() > 0) {
+                $this->DB->commit();
                 return true;
             } else {
                 throw new Exception('Categoría no encontrada', 404);
             }
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }

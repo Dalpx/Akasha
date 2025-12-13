@@ -1,9 +1,10 @@
 import 'package:akasha/models/usuario.dart';
-import 'package:akasha/widgets/custom_tile.dart';
+import 'package:akasha/common/custom_tile.dart';
 import 'package:flutter/material.dart';
 
 class UsuarioListItem extends StatelessWidget {
   final Usuario usuario;
+  final int index;
   // Callbacks para que la página padre maneje la navegación y la lógica de negocio.
   final VoidCallback onEditar;
   final VoidCallback onDesactivar;
@@ -15,6 +16,7 @@ class UsuarioListItem extends StatelessWidget {
     required this.onEditar,
     required this.onDesactivar,
     required this.onVerDetalle,
+    required this.index,
   });
 
   String _textoTipoUsuario(String tipoUsuario) {
@@ -32,12 +34,14 @@ class UsuarioListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool esActivo = usuario.activo;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: CustomTile(
         listTile: ListTile(
+          leading: Text(
+            index.toString(),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           title: Text(
             usuario.nombreCompleto!,
             style: TextStyle(fontWeight: FontWeight.bold),

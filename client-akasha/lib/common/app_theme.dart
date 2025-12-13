@@ -42,7 +42,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _constants.border),
+          borderSide: BorderSide(color: _constants.borderInput),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -50,14 +50,14 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: _constants.border),
+          borderSide: BorderSide(color: _constants.borderInput),
         ),
-        hintStyle: TextStyle(color: _constants.border),
-        labelStyle: TextStyle(fontSize: 16, color: _constants.border),
+        hintStyle: TextStyle(color: _constants.borderInput),
+        labelStyle: TextStyle(fontSize: 16, color: _constants.borderInput),
         isDense: false,
         hoverColor: Colors.transparent,
         filled: true,
-        fillColor: _constants.input,
+        fillColor: _constants.surfaceAlt,
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -119,20 +119,37 @@ class AppTheme {
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: Constants().border
-          )
+          side: BorderSide(color: Constants().borderInput),
         ),
         color: Constants().card,
-        
-        elevation: 0
-      )
-      
-    );
 
-    
+        elevation: 0,
+      ),
+      searchBarTheme: SearchBarThemeData(
+        elevation: MaterialStatePropertyAll<double>(0),
+        overlayColor: const MaterialStatePropertyAll<Color>(Colors.transparent),
+
+        textStyle: MaterialStatePropertyAll<TextStyle>(
+          TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: Constants().primary
+          ),
+        ),
+
+        shape: MaterialStatePropertyAll<OutlinedBorder>(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: Constants().borderInput),
+          ),
+        ),
+
+        backgroundColor: MaterialStatePropertyAll<Color>(
+          Constants().surface,
+        ),
+      ),
+    );
   }
 }

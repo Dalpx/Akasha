@@ -1,4 +1,4 @@
-import 'package:akasha/widgets/custom_tile.dart';
+import 'package:akasha/common/custom_tile.dart';
 import 'package:flutter/material.dart';
 import '../../../../../models/proveedor.dart';
 

@@ -1,6 +1,6 @@
 <?php
-
 require_once __DIR__ . '/../middlewares/akashaValidator.php';
+
 class clienteController
 {
     protected $DB;
@@ -13,31 +13,25 @@ class clienteController
     public function getCliente(?int $id)
     {
         try {
+            $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo, c.direccion
+                      FROM cliente as c 
+                      LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento";
+
             if ($id !== null) {
-                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo, c.direccion
-                FROM cliente as c LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento
-                WHERE id_cliente = :id";
+                $query .= " WHERE id_cliente = :id";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute([':id' => $id]);
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('Cliente no encontrado', 404);
-                }
             } else {
-                $query = "SELECT c.id_cliente, c.nombre, c.apellido, td.nombre_tipo_documento as tipo_documento, c.nro_documento, c.telefono, c.email, c.activo, c.direccion
-                FROM cliente as c LEFT JOIN tipo_documento as td ON c.tipo_documento=td.id_tipo_documento";
                 $stmt = $this->DB->prepare($query);
                 $stmt->execute();
                 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
 
-                if ($result) {
-                    return $result;
-                } else {
-                    throw new Exception('No existen clientes registrados', 404);
-                }
+            if ($result) {
+                return $result;
+            } else {
+                throw new Exception('Cliente(s) no encontrado(s)', 404);
             }
         } catch (Exception $e) {
             throw $e;
@@ -47,27 +41,24 @@ class clienteController
     public function addCliente()
     {
         $body = json_decode(file_get_contents('php://input'), true);
-
         $validator = new akashaValidator($this->DB, $body);
         $error = $validator->clienteIsValid();
 
-        // Validaciones si los datos están presentes, si los datos como la cedula y pasaporte siguen un patron válido y si un usuario con
-        //un mismo documento ya existe
         if ($validator->entityAlreadyExists('cliente')) {
             throw new Exception('Un cliente con este documento ya existe', 409);
-
         } else if ($error !== false) {
             throw new Exception($error, 400);
-
         }
 
         try {
+            $this->DB->beginTransaction();
+
             $query = "INSERT INTO cliente (nombre, apellido, tipo_documento, nro_documento, telefono, email, direccion, activo) 
                       VALUES (:nombre, :apellido, :tipo_doc, :nro_doc, :telefono, :email, :direccion, 1)";
             $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([
+            $stmt->execute([
                 ':nombre' => $body['nombre'],
-                ':apellido' =>$body['apellido'],
+                ':apellido' => $body['apellido'],
                 ':tipo_doc' => $body['tipo_documento'],
                 ':nro_doc' => $body['nro_documento'],
                 ':telefono' => $body['telefono'] ?? null,
@@ -75,12 +66,11 @@ class clienteController
                 ':direccion' => $body['direccion'] ?? null
             ]);
 
-            if ($result) {
-                return $result;
-            } else {
-                throw new Exception('Error al crear cliente', 500);
-            }
+            $this->DB->commit();
+            return true;
+
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }
@@ -88,17 +78,24 @@ class clienteController
     public function updateCliente()
     {
         $body = json_decode(file_get_contents('php://input'), true);
+        
+        if (!isset($body['id_cliente'])) {
+            throw new Exception('Falta el ID del cliente.', 400);
+        }
+
         $validator = new akashaValidator($this->DB, $body);
         $error = $validator->clienteIsValid();
 
-       /*  if ($validator->entityAlreadyExists('cliente')) {
-            throw new Exception('Un cliente con este documento ya existe', 409);
+        // Validación con exclusión de ID
+        if ($validator->entityAlreadyExists('cliente', $body['id_cliente'])) {
+            throw new Exception('Otro cliente ya posee este documento', 409);
         } else if ($error !== false) {
             throw new Exception($error, 400);
-
-        }*/
+        }
 
         try {
+            $this->DB->beginTransaction();
+
             $query = "UPDATE cliente SET 
                       nombre = :nombre,
                       apellido = :apellido, 
@@ -110,9 +107,9 @@ class clienteController
                       WHERE id_cliente = :id AND activo = 1";
 
             $stmt = $this->DB->prepare($query);
-            $result = $stmt->execute([
+            $stmt->execute([
                 ':nombre' => $body['nombre'],
-                ':apellido' =>$body['apellido'],
+                ':apellido' => $body['apellido'],
                 ':tipo_doc' => $body['tipo_documento'],
                 ':nro_doc' => $body['nro_documento'],
                 ':telefono' => $body['telefono'] ?? null,
@@ -121,14 +118,15 @@ class clienteController
                 ':id' => $body['id_cliente']
             ]);
 
-            $rowsAffected = $stmt->rowCount();
-
-            if ($rowsAffected > 0) {
+            if ($stmt->rowCount() > 0) {
+                $this->DB->commit();
                 return true;
             } else {
-                throw new Exception('Cliente no encontrado o ya eliminado', 404);
+                throw new Exception('Cliente no encontrado o sin cambios', 404);
             }
+
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }
@@ -136,27 +134,26 @@ class clienteController
     public function deleteCliente()
     {
         $body = json_decode(file_get_contents('php://input'), true);
-        $id = $body['id_cliente'] ?? null;
 
-        if (!$id) {
+        if (empty($body['id_cliente'])) {
             throw new Exception('ID de cliente es obligatorio', 400);
         }
 
         try {
+            $this->DB->beginTransaction();
+
             $query = "UPDATE cliente SET activo = 0 WHERE id_cliente = :id";
             $stmt = $this->DB->prepare($query);
-            $stmt->execute([':id' => $id]);
+            $stmt->execute([':id' => $body['id_cliente']]);
 
-            $rowsAffected = $stmt->rowCount();
-
-            if ($rowsAffected > 0) {
+            if ($stmt->rowCount() > 0) {
+                $this->DB->commit();
                 return true;
-            } else if ($rowsAffected == 0) {
-                throw new Exception('El cliente ya ha sido eliminado o no fue posible encontrarlo', 404);
             } else {
-                throw new Exception('Se ha producido un error', 500);
+                throw new Exception('El cliente ya ha sido eliminado o no existe', 404);
             }
         } catch (Exception $e) {
+            $this->DB->rollBack();
             throw $e;
         }
     }

@@ -82,12 +82,21 @@ class _ReportesPageState extends State<ReportesPage> {
     final inventarioSinStock = resultados[3] as List<Map<String, dynamic>>;
 
     // 2. Cálculos Financieros
-    double totalVentas = ventas.fold(0.0, (sum, v) => sum + (double.tryParse(v.total.toString()) ?? 0.0));
-    double totalCompras = compras.fold(0.0, (sum, c) => sum + (double.tryParse(c.total.toString()) ?? 0.0));
+    double totalVentas = ventas.fold(
+      0.0,
+      (sum, v) => sum + (double.tryParse(v.total.toString()) ?? 0.0),
+    );
+    double totalCompras = compras.fold(
+      0.0,
+      (sum, c) => sum + (double.tryParse(c.total.toString()) ?? 0.0),
+    );
     final double utilidad = totalVentas - totalCompras;
 
     // 3. Cálculo de Valoración de Inventario
-    double valorInventario = inventario.fold(0.0, (sum, item) => sum + (item['valor_total'] as num).toDouble());
+    double valorInventario = inventario.fold(
+      0.0,
+      (sum, item) => sum + (item['valor_total'] as num).toDouble(),
+    );
 
     return _ReporteData(
       ventas: ventas,
@@ -143,42 +152,68 @@ class _ReportesPageState extends State<ReportesPage> {
     }).toList();
   }
 
-  List<Map<String, dynamic>> _mapearInventarioParaVista(List<Map<String, dynamic>> inventario) {
-    return inventario.map((item) => {
-      'ref': item['sku'],
-      'fecha': item['nombre'],
-      'entidad': "${item['cantidad']} unds.",
-      'total': item['valor_total'],
-    }).toList();
+  List<Map<String, dynamic>> _mapearInventarioParaVista(
+    List<Map<String, dynamic>> inventario,
+  ) {
+    return inventario
+        .map(
+          (item) => {
+            'ref': item['sku'],
+            'fecha': item['nombre'],
+            'entidad': "${item['cantidad']} unds.",
+            'total': item['valor_total'],
+          },
+        )
+        .toList();
   }
 
   // NUEVO: Mapeo para productos sin stock
-  List<Map<String, dynamic>> _mapearSinStockParaVista(List<Map<String, dynamic>> sinStock) {
-    return sinStock.map((item) => {
-      'ref': item['sku'],
-      'fecha': item['nombre'],
-      'entidad': "${item['cantidad']} unds.", // Aquí mostrará 0 o negativo
-      'total': 0.0, // Irrelevante
-    }).toList();
+  List<Map<String, dynamic>> _mapearSinStockParaVista(
+    List<Map<String, dynamic>> sinStock,
+  ) {
+    return sinStock
+        .map(
+          (item) => {
+            'ref': item['sku'],
+            'fecha': item['nombre'],
+            'entidad':
+                "${item['cantidad']} unds.", // Aquí mostrará 0 o negativo
+            'total': 0.0, // Irrelevante
+          },
+        )
+        .toList();
   }
 
   // --- ACCIONES (Imprimir y Navegar) ---
 
-  Future<void> _imprimirReporteGeneral(String titulo, List<Map<String, dynamic>> datos, double total) async {
+  Future<void> _imprimirReporteGeneral(
+    String titulo,
+    List<Map<String, dynamic>> datos,
+    double total,
+  ) async {
     final pdfBytes = await PdfService().generarReporteGeneral(
       titulo: titulo,
       datos: datos,
       totalGeneral: total,
     );
-    await Printing.sharePdf(bytes: pdfBytes, filename: '${titulo.replaceAll(' ', '_')}.pdf');
+    await Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: '${titulo.replaceAll(' ', '_')}.pdf',
+    );
   }
 
-  Future<void> _imprimirInventario(List<Map<String, dynamic>> datos, double total) async {
+  Future<void> _imprimirInventario(
+    List<Map<String, dynamic>> datos,
+    double total,
+  ) async {
     final pdfBytes = await PdfService().generarReporteInventario(
       datos: datos,
       valorTotalInventario: total,
     );
-    await Printing.sharePdf(bytes: pdfBytes, filename: 'Valoracion_Inventario.pdf');
+    await Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: 'Valoracion_Inventario.pdf',
+    );
   }
 
   // NUEVO: Imprimir Sin Stock
@@ -187,7 +222,10 @@ class _ReportesPageState extends State<ReportesPage> {
       datos: datos,
       totalProductosAgotados: datos.length,
     );
-    await Printing.sharePdf(bytes: pdfBytes, filename: 'Productos_Sin_Stock.pdf');
+    await Printing.sharePdf(
+      bytes: pdfBytes,
+      filename: 'Productos_Sin_Stock.pdf',
+    );
   }
 
   void _abrirReporteVentas(_ReporteData data) {
@@ -237,7 +275,8 @@ class _ReportesPageState extends State<ReportesPage> {
         builder: (_) => VistaReporteDetallado(
           titulo: 'Productos Sin Stock',
           datos: _mapearSinStockParaVista(data.inventarioSinStock),
-          totalGeneral: data.cantidadSinStock.toDouble(), // Usamos conteo como total
+          totalGeneral: data.cantidadSinStock
+              .toDouble(), // Usamos conteo como total
         ),
       ),
     );
@@ -265,79 +304,127 @@ class _ReportesPageState extends State<ReportesPage> {
           final data = snapshot.data!;
 
           return RefreshIndicator(
-            onRefresh: () async => setState(() => _futureReporte = _cargarDatosReporte()),
+            onRefresh: () async =>
+                setState(() => _futureReporte = _cargarDatosReporte()),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  
                   // SECCIÓN 1: KPIs
-                  const Text("Resumen Financiero", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Resumen Financiero",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
-                  
+
                   Row(
                     children: [
-                      Expanded(child: _buildKpiCard("Ingresos (Ventas)", data.totalVentas, Colors.green, Icons.trending_up, currencyFormat)),
+                      Expanded(
+                        child: _buildKpiCard(
+                          "Ingresos (Ventas)",
+                          data.totalVentas,
+                          Colors.green,
+                          Icons.trending_up,
+                          currencyFormat,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildKpiCard("Gastos (Compras)", data.totalCompras, Colors.red, Icons.trending_down, currencyFormat)),
+                      Expanded(
+                        child: _buildKpiCard(
+                          "Gastos (Compras)",
+                          data.totalCompras,
+                          Colors.red,
+                          Icons.trending_down,
+                          currencyFormat,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
                   Row(
                     children: [
-                      Expanded(child: _buildUtilidadCard(data.utilidad, currencyFormat)),
+                      Expanded(
+                        child: _buildUtilidadCard(
+                          data.utilidad,
+                          currencyFormat,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildKpiCard("Activos (Stock)", data.valorInventario, Colors.teal, Icons.inventory_2, currencyFormat)),
+                      Expanded(
+                        child: _buildKpiCard(
+                          "Activos (Stock)",
+                          data.valorInventario,
+                          Colors.teal,
+                          Icons.inventory_2,
+                          currencyFormat,
+                        ),
+                      ),
                     ],
                   ),
 
                   const SizedBox(height: 40),
 
                   // SECCIÓN 2: ACCESOS A REPORTES
-                  const Text("Informes Detallados", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Informes Detallados",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
 
                   _buildReportButton(
-                    context, 
+                    context,
                     title: "Reporte de Ventas",
                     subtitle: "${data.cantidadVentas} operaciones registradas",
                     icon: Icons.sell,
                     color: Colors.blue.shade700,
                     onTap: () => _abrirReporteVentas(data),
-                    onPrint: () => _imprimirReporteGeneral("Reporte de Ventas", _mapearVentas(data.ventas), data.totalVentas),
+                    onPrint: () => _imprimirReporteGeneral(
+                      "Reporte de Ventas",
+                      _mapearVentas(data.ventas),
+                      data.totalVentas,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   _buildReportButton(
-                    context, 
+                    context,
                     title: "Reporte de Compras",
                     subtitle: "${data.cantidadCompras} operaciones registradas",
                     icon: Icons.shopping_cart,
                     color: const Color(0xFF714B67),
                     onTap: () => _abrirReporteCompras(data),
-                    onPrint: () => _imprimirReporteGeneral("Reporte de Compras", _mapearCompras(data.compras), data.totalCompras),
+                    onPrint: () => _imprimirReporteGeneral(
+                      "Reporte de Compras",
+                      _mapearCompras(data.compras),
+                      data.totalCompras,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   _buildReportButton(
-                    context, 
+                    context,
                     title: "Valoración de Inventario",
-                    subtitle: "${data.cantidadProductos} productos únicos en almacén",
+                    subtitle:
+                        "${data.cantidadProductos} productos únicos en almacén",
                     icon: Icons.inventory,
                     color: Colors.teal,
                     onTap: () => _abrirReporteInventario(data),
-                    onPrint: () => _imprimirInventario(data.inventario, data.valorInventario),
+                    onPrint: () => _imprimirInventario(
+                      data.inventario,
+                      data.valorInventario,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   // NUEVO BOTÓN: PRODUCTOS SIN STOCK
                   _buildReportButton(
-                    context, 
+                    context,
                     title: "Productos Sin Stock",
-                    subtitle: "${data.cantidadSinStock} productos agotados o en negativo",
+                    subtitle:
+                        "${data.cantidadSinStock} productos agotados o en negativo",
                     icon: Icons.warning_amber_rounded,
                     color: Colors.red.shade600, // Color de alerta
                     onTap: () => _abrirReporteSinStock(data),
@@ -354,14 +441,26 @@ class _ReportesPageState extends State<ReportesPage> {
 
   // --- WIDGETS AUXILIARES ---
 
-  Widget _buildKpiCard(String title, double amount, Color color, IconData icon, NumberFormat format) {
+  Widget _buildKpiCard(
+    String title,
+    double amount,
+    Color color,
+    IconData icon,
+    NumberFormat format,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,13 +469,24 @@ class _ReportesPageState extends State<ReportesPage> {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             format.format(amount),
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
@@ -389,40 +499,62 @@ class _ReportesPageState extends State<ReportesPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isPositive 
-            ? [Colors.teal.shade400, Colors.teal.shade700] 
-            : [Colors.orange.shade400, Colors.deepOrange.shade700],
+          colors: isPositive
+              ? [Colors.teal.shade400, Colors.teal.shade700]
+              : [Colors.orange.shade400, Colors.deepOrange.shade700],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: (isPositive ? Colors.teal : Colors.orange).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: (isPositive ? Colors.teal : Colors.orange).withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           Row(
+          Row(
             children: [
-              Icon(isPositive ? Icons.thumb_up_alt : Icons.warning_amber, color: Colors.white70, size: 20),
+              Icon(
+                isPositive ? Icons.thumb_up_alt : Icons.warning_amber,
+                color: Colors.white70,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              const Text("Utilidad Neta", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              const Text(
+                "Utilidad Neta",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             format.format(utilidad),
-            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildReportButton(BuildContext context, {
-    required String title, 
-    required String subtitle, 
-    required IconData icon, 
-    required Color color, 
+  Widget _buildReportButton(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
     required VoidCallback onTap,
     required VoidCallback onPrint,
   }) {
@@ -433,10 +565,10 @@ class _ReportesPageState extends State<ReportesPage> {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03), 
-            blurRadius: 5, 
-            offset: const Offset(0, 2)
-          )
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: ClipRRect(
@@ -445,7 +577,7 @@ class _ReportesPageState extends State<ReportesPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(width: 6, color: color), 
+              Container(width: 6, color: color),
               Expanded(
                 child: InkWell(
                   onTap: onTap,
@@ -455,7 +587,10 @@ class _ReportesPageState extends State<ReportesPage> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
                           child: Icon(icon, color: color, size: 28),
                         ),
                         const SizedBox(width: 16),
@@ -464,9 +599,22 @@ class _ReportesPageState extends State<ReportesPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                              Text(
+                                subtitle,
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -487,7 +635,14 @@ class _ReportesPageState extends State<ReportesPage> {
                     children: [
                       Icon(Icons.print, color: Colors.grey.shade600),
                       const SizedBox(height: 4),
-                      Text("PDF", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+                      Text(
+                        "PDF",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
                     ],
                   ),
                 ),

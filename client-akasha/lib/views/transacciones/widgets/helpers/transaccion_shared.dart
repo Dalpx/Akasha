@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:akasha/common/custom_card.dart';
 import 'package:akasha/core/constants.dart';
 import 'package:flutter/material.dart';
 
@@ -63,13 +64,7 @@ class TransaccionLayout extends StatelessWidget {
     return SingleChildScrollView(
       key: scrollKey,
       padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          factura,
-          const SizedBox(height: 16),
-          historial,
-        ],
-      ),
+      child: Column(children: [factura, const SizedBox(height: 16), historial]),
     );
   }
 }
@@ -106,46 +101,47 @@ class FacturaSectionCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: 8),
-        Card(
-          color: Constants().background,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: Constants().border),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: selectors,
+        CustomCard(
+          content: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Datos del cliente: ",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: onAddLinea,
-                        icon: const Icon(Icons.add),
-                        label: Text(addButtonText),
+                ),
+                SizedBox(height: 16),
+                Wrap(spacing: 12, runSpacing: 12, children: selectors),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Productos: ${lineas.length}",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: lineasHeight,
-                    child: SingleChildScrollView(
-                      child: Column(children: lineas),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  totales,
-                ],
-              ),
+                    ElevatedButton.icon(
+                      onPressed: onAddLinea,
+                      icon: const Icon(Icons.add),
+                      label: Text(addButtonText),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: lineasHeight,
+                  child: SingleChildScrollView(child: Column(children: lineas)),
+                ),
+                const SizedBox(height: 8),
+                totales,
+              ],
             ),
           ),
         ),
@@ -182,26 +178,19 @@ class HistorialSectionCard<T> extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: 8),
-        Card(
-          color: Constants().background,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: Constants().border),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: SizedBox(
-              height: h,
-              width: double.infinity,
-              child: items.isEmpty
-                  ? Center(child: Text(emptyText))
-                  : ListView.separated(
-                      key: listKey,
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (ctx, i) => itemBuilder(ctx, items[i]),
-                    ),
-            ),
+        CustomCard(
+          content: SizedBox(
+            height: h,
+            width: double.infinity,
+            child: items.isEmpty
+                ? Center(child: Text(emptyText))
+                : ListView.separated(
+                    key: listKey,
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 0, color: Colors.transparent),
+                    itemBuilder: (ctx, i) => itemBuilder(ctx, items[i]),
+                  ),
           ),
         ),
       ],
@@ -284,9 +273,14 @@ class LineaProductoCardBase extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: Constants().background, // Usando tus constantes originales
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Constants().borderInput, width: 1.0),
+      ),
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             Row(

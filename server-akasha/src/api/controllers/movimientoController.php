@@ -61,21 +61,14 @@ class movimientoController
     {
         $body = json_decode(file_get_contents('php://input'), true);
 
-        /*
-         NOTA IMPORTANTE: Basado en la imagen de la tabla 'stock', se requiere
-         que el $body incluya 'id_ubicacion' para saber qué registro actualizar.
-        */
-
         try {
             // Iniciar la transacción
             $this->DB->beginTransaction();
 
-            // --- PASO 1: Insertar el registro en movimiento_inventario ---
             $queryMov = "INSERT INTO movimiento_inventario (tipo_movimiento, cantidad, descripcion, id_producto, id_usuario, id_ubicacion)
                          VALUES (:tipo_mov, :cant, :descripcion, :id_producto, :id_usuario, :id_ubi)";
             $stmtMov = $this->DB->prepare($queryMov);
 
-            // Ejecución con chequeo de errores SQL, estilo ventaController
             if (!$stmtMov->execute([
                 ':tipo_mov' => $body['tipo_movimiento'],
                 ':cant' => $body['cantidad'],
@@ -90,14 +83,10 @@ class movimientoController
             }
 
 
-            // --- PASO 2: Actualizar la tabla Stock ---
 
             // Determinamos si sumamos o restamos según el tipo_movimiento.
-            // Asumiendo (basado en getMovimientos): 1 = Entrada (+), 0 = Salida (-)
+            // 1 = Entrada (+), 0 = Salida (-)
             $operador = ($body['tipo_movimiento'] == 1) ? '+' : '-';
-
-            // Query dinámica usando el operador determinado
-            // Se requiere filtrar por id_producto Y id_ubicacion según la imagen
             $queryStock = "UPDATE stock 
                            SET cantidad_actual = cantidad_actual $operador :cantidad 
                            WHERE id_producto = :id_p AND id_ubicacion = :id_u";
@@ -107,7 +96,6 @@ class movimientoController
             if (!$stmtStock->execute([
                 ':cantidad' => $body['cantidad'],
                 ':id_p' => $body['id_producto'],
-                // Asumimos que id_ubicacion viene en el body, es necesario por la estructura de la tabla.
                 ':id_u' => $body['id_ubicacion']
             ])) {
                 $errorInfo = $stmtStock->errorInfo();
@@ -123,10 +111,6 @@ class movimientoController
                 $ubicId = $body['id_ubicacion'] ?? 'Desconocida';
                 throw new Exception("Error crítico de inventario: No se encontró el registro de stock para Producto ID: $prodId en Ubicación ID: $ubicId, o los datos son inconsistentes. No se realizó la actualización.", 500);
             }
-
-
-            // --- Commit final ---
-            // Si llegamos aquí, el insert y el update funcionaron correctamente.
             $this->DB->commit();
             return true;
         } catch (Exception $e) {
