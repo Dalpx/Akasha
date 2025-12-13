@@ -17,6 +17,9 @@ import 'package:akasha/services/ubicacion_service.dart';
 import 'package:akasha/widgets/transacciones/forms/linea_compra_form.dart';
 import 'package:akasha/widgets/transacciones/logica/resumen_totales.dart';
 import 'package:flutter/material.dart';
+import 'package:akasha/widgets/transacciones/documentos/factura_report.dart';
+import 'package:printing/printing.dart'; // Para lanzar la impresión
+import 'package:akasha/services/pdf_service.dart'; // Tu nuevo servicio
 
 class ComprasTab extends StatefulWidget {
   final SessionManager sessionManager;
@@ -422,63 +425,96 @@ class ComprasTabState extends State<ComprasTab>
   }
 
   Future<void> _verDetalleCompra(Compra c) async {
+    // 1. Loading...
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: SizedBox(
-          height: 80,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
+      // 2. Data
       final detalles = await _compraService.obtenerDetallesCompra(c.idCompra);
 
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(); // Bye loading
 
+      // 3. Mostrar Dialog con botón de imprimir
       showDialog(
         context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Detalle · ${c.nroComprobante}'),
-          content: SizedBox(
-            width: 520,
-            child: detalles.isEmpty
-                ? const Text('Esta compra no tiene detalle.')
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: detalles.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final d = detalles[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text(d.nombreProducto ?? 'Producto ${d.idProducto}'),
-                        subtitle: Text(
-                          'Cant: ${d.cantidad} · P.U.: ${d.precioUnitario.toStringAsFixed(2)}',
-                        ),
-                        trailing: Text(
-                          d.subtotal.toStringAsFixed(2),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      );
-                    },
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 750),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- BARRA DE ACCIONES SUPERIOR ---
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
                   ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF714B67),
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.print, size: 18),
+                        label: const Text("Imprimir PDF"),
+                        onPressed: () async {
+                          // 1. Generar bytes
+                          final pdfBytes = await PdfService().generarFacturaCompra(c, detalles);
+                          
+                          // 2. Limpiar nombre (Windows no permite / : * ? " < > |)
+                          final nombreLimpio = c.nroComprobante.replaceAll(RegExp(r'[\\/:*?"<>|]'), '-');
+                          final nombreArchivo = 'Factura_$nombreLimpio.pdf'; // Agregamos .pdf aquí
+
+                          // 3. USAR SHARE EN LUGAR DE LAYOUT
+                          // Esto abrirá el diálogo "Guardar como" con el nombre ya puesto.
+                          await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: nombreArchivo, 
+                          );
+                        },
+                      ),
+                      
+                      // Botón Cerrar
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // --- VISTA PREVIA (WIDGET FLUTTER) ---
+                // Usamos Flexible para que el scroll funcione bien dentro del dialog
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(0),
+                    child: FacturaReport(
+                      compra: c,
+                      detalles: detalles,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+              ],
             ),
-          ],
+          ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      _showMessage('No se pudo cargar el detalle: $e');
+      _showMessage('Error: $e');
     }
   }
 

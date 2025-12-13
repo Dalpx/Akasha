@@ -242,4 +242,55 @@ class InventarioService {
       log("Error al intentar eliminar instancia: $e");
     }
   }
+
+  // ====== REPORTE Y VALORACIÓN (NUEVO) ======
+
+  /// Calcula el inventario valorado (Costo * Stock Total)
+  /// Nota: Al no tener SQL directo, esto hace múltiples peticiones.
+  /// Idealmente, crearías un endpoint '/reporte/inventario' en PHP para esto.
+  Future<List<Map<String, dynamic>>> obtenerReporteSinStock() async {
+    // Reutilizamos el reporte valorado ya que contiene el stock total calculado
+    final reporteValorado = await obtenerReporteValorado();
+
+    // Filtramos los productos que tienen 0 o menos en stock
+    final productosSinStock = reporteValorado
+        .where((item) => (item['cantidad'] as num) <= 0)
+        .toList();
+
+    return productosSinStock;
+  }
+  Future<List<Map<String, dynamic>>> obtenerReporteValorado() async {
+    try {
+      // 1. Obtenemos todos los productos activos
+      final productos = await obtenerProductos();
+      List<Map<String, dynamic>> reporte = [];
+
+      // 2. Iteramos y buscamos su stock (Usamos Future.wait para hacerlo paralelo y mas rápido)
+      await Future.wait(productos.map((p) async {
+        if (p.idProducto != null) {
+          final int stockTotal = await obtenerStockTotalDeProducto(p.idProducto!);
+          
+          // Calculamos valor
+          final double valorTotal = p.precioCosto * stockTotal;
+
+          reporte.add({
+            'id': p.idProducto,
+            'nombre': p.nombre,
+            'sku': p.sku,
+            'costo': p.precioCosto,
+            'cantidad': stockTotal,
+            'valor_total': valorTotal,
+          });
+        }
+      }));
+
+      // 3. Ordenamos por el que tenga más valor acumulado (Descendente)
+      reporte.sort((a, b) => (b['valor_total'] as double).compareTo(a['valor_total'] as double));
+
+      return reporte;
+    } catch (e) {
+      log("Error generando reporte valorado: $e");
+      return [];
+    }
+  }
 }

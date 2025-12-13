@@ -10,6 +10,7 @@ import '../../services/inventario_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../services/categoria_service.dart';
 import '../../core/app_routes.dart';
+import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart'; // Importante
 
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
@@ -95,6 +96,89 @@ class _ProductosPageState extends State<ProductosPage>
     _cacheProductos = null;
     await _cargarProveedoresYCategorias();
     _recargarProductos();
+  }
+
+  // --- REPORTE VALORACIÓN ---
+  Future<void> _abrirReporteInventario() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final inventario = await _inventarioService.obtenerReporteValorado();
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      double valorTotal = inventario.fold(
+          0.0, (sum, item) => sum + (item['valor_total'] as num).toDouble());
+
+      final listaMapeada = inventario.map((item) => {
+        'ref': item['sku'],
+        'fecha': item['nombre'], 
+        'entidad': "${item['cantidad']} unds.",
+        'total': item['valor_total'],
+      }).toList();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VistaReporteDetallado(
+            titulo: 'Inventario Valorado',
+            datos: listaMapeada,
+            totalGeneral: valorTotal,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al generar reporte: $e')),
+      );
+    }
+  }
+
+  // --- REPORTE SIN STOCK (NUEVO) ---
+  Future<void> _abrirReporteSinStock() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final inventarioSinStock = await _inventarioService.obtenerReporteSinStock();
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      final listaMapeada = inventarioSinStock.map((item) => {
+        'ref': item['sku'],
+        'fecha': item['nombre'], 
+        'entidad': "${item['cantidad']} unds.",
+        'total': 0.0, // Irrelevante
+      }).toList();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VistaReporteDetallado(
+            titulo: 'Productos Sin Stock',
+            datos: listaMapeada,
+            totalGeneral: inventarioSinStock.length.toDouble(), // Conteo
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al generar reporte: $e')),
+      );
+    }
   }
 
   Future<void> _abrirFormularioProducto({Producto? productoEditar}) async {
@@ -223,6 +307,31 @@ class _ProductosPageState extends State<ProductosPage>
                     ],
                   ),
                 ),
+                
+                // --- BOTÓN ROJO: SIN STOCK (NUEVO) ---
+                ElevatedButton.icon(
+                  onPressed: _abrirReporteSinStock,
+                  icon: const Icon(Icons.warning_amber_rounded),
+                  label: const Text('Sin Stock'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade600,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+
+                // --- BOTÓN TEAL: VALORACIÓN ---
+                ElevatedButton.icon(
+                  onPressed: _abrirReporteInventario,
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  label: const Text('Valoración'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                
                 ElevatedButton.icon(
                   onPressed: () async {
                     await Navigator.of(context)
