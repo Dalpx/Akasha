@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 class LineaCompraForm {
   Producto? producto;
   Ubicacion? ubicacionSeleccionada;
-  // NUEVO: Stock disponible en la ubicacionSeleccionada
   int stockDisponible;
 
   final TextEditingController cantidadCtrl;
