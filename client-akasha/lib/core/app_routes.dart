@@ -15,6 +15,7 @@ import 'package:akasha/views/transacciones/compras_ventas_page.dart';
 import 'package:flutter/material.dart';
 
 import 'session_manager.dart';
+import 'package:akasha/services/inventario_service.dart';
 
 /// Clase encargada de construir el mapa de rutas de la aplicación.
 class AppRoutes {
@@ -45,7 +46,7 @@ class AppRoutes {
         return ComprasVentasPage(sessionManager: sessionManager,);
       },
       rutaReportes: (BuildContext context) {
-        return ReportesPage(ventaService: VentaService(), compraService: CompraService(),);
+        return ReportesPage(ventaService: VentaService(), compraService: CompraService(),inventarioService: InventarioService(),);
       },
       rutaGestionMaestros: (BuildContext context) {
         return GestionEntidadesMaestrasPage();

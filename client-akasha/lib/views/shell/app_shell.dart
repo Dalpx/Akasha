@@ -11,6 +11,7 @@ import 'package:akasha/views/reportes/reportes_page.dart';
 import 'package:akasha/views/seguridad/usuarios_page.dart';
 import 'package:akasha/views/transacciones/compras_ventas_page.dart';
 import 'package:flutter/material.dart';
+import 'package:akasha/services/inventario_service.dart';
 
 class _NavOption {
   final int index;
@@ -83,6 +84,7 @@ class _AppShellState extends State<AppShell> {
 
   late final VentaService _ventaService;
   late final CompraService _compraService;
+  late final InventarioService _inventarioService;
 
   /// Contador por página para forzar refresh al re-seleccionar.
   final Map<int, int> _refreshTick = <int, int>{};
@@ -93,6 +95,7 @@ class _AppShellState extends State<AppShell> {
 
     _ventaService = VentaService();
     _compraService = CompraService();
+    _inventarioService = InventarioService();
 
     // Inicializa ticks para todos los índices base.
     for (final option in _opcionesBase) {
@@ -124,6 +127,8 @@ class _AppShellState extends State<AppShell> {
         key: ValueKey('reportes_$t4'),
         ventaService: _ventaService,
         compraService: _compraService,
+        inventarioService: _inventarioService,
+        
       ),
       ClientesPage(key: ValueKey('clientes_$t5')),
     ];

@@ -10,9 +10,11 @@ class Compra {
 
   final String tipoPago;
   final String proveedor;
-  final String hechoPor;
+  final String hechoPor; // Nombre del usuario (útil para mostrar)
+  final int idUsuario;   // ID del usuario (útil para lógica interna)
   final String email;
   final String nombreTipoUsuario;
+  final int estado;      // Agregado para saber si es Borrador/Publicado
 
   final List<DetalleCompra> detalleCompra;
 
@@ -26,8 +28,10 @@ class Compra {
     required this.tipoPago,
     required this.proveedor,
     required this.hechoPor,
+    required this.idUsuario,
     required this.email,
     required this.nombreTipoUsuario,
+    required this.estado,
     required this.detalleCompra,
   });
 
@@ -55,14 +59,18 @@ class Compra {
       tipoPago: json['tipo_pago']?.toString() ?? '',
       proveedor: json['proveedor']?.toString() ?? '',
       hechoPor: json['hecho_por']?.toString() ?? '',
+      // Si no viene id_usuario, ponemos 0 para evitar null safety errors
+      idUsuario: int.tryParse(json['id_usuario']?.toString() ?? '0') ?? 0, 
       email: json['email']?.toString() ?? '',
       nombreTipoUsuario: json['nombre_tipo_usuario']?.toString() ?? '',
+      // Si no viene estado, asumimos 1 (Publicado/Activo) por defecto
+      estado: int.tryParse(json['estado']?.toString() ?? '1') ?? 1, 
       detalleCompra: detalles,
     );
   }
 }
 
-/// DTO para POST
+/// DTO para POST (Sin cambios, tal cual lo tenías)
 class CompraCreate {
   final String nroComprobante;
   final int idTipoComprobante;
