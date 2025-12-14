@@ -92,7 +92,7 @@ class AppTheme {
       ),
 
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: _constants.card,
+        backgroundColor: _constants.surface,
         selectedItemColor: _constants.primary,
         unselectedItemColor: _constants.mutedForeground,
         selectedLabelStyle: const TextStyle(
@@ -133,7 +133,7 @@ class AppTheme {
 
         textStyle: MaterialStatePropertyAll<TextStyle>(
           TextStyle(
-            fontSize: 18,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
             color: Constants().primary
           ),

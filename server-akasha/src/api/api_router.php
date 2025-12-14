@@ -148,8 +148,9 @@ try {
             $result = stockOrchestrator::addStock();
             if ($result) {
                 http_response_code(201);
-                echo json_encode(["message" => "Stock añadido con éxito"]);
+                echo json_encode(["message" => "Stock añadido con éxito"]); 
             }
+            break;
         case 'DELETE_stock':
             $result = stockOrchestrator::deleteStock();
             if ($result) {

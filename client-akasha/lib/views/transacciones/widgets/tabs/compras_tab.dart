@@ -198,7 +198,9 @@ class ComprasTabState extends State<ComprasTab>
     primera.ubicacionSeleccionada = ubicacionInicial;
 
     if (primera.producto != null) {
-      primera.precioCtrl.text = primera.producto!.precioCosto.toStringAsFixed(2);
+      primera.precioCtrl.text = primera.producto!.precioCosto.toStringAsFixed(
+        2,
+      );
     }
 
     _watchLinea(primera);
@@ -350,14 +352,12 @@ class ComprasTabState extends State<ComprasTab>
                         icon: const Icon(Icons.print, size: 18),
                         label: const Text("Imprimir PDF"),
                         onPressed: () async {
-                          final pdfBytes =
-                              await PdfService().generarFacturaCompra(
-                            c,
-                            detalles,
-                          );
+                          final pdfBytes = await PdfService()
+                              .generarFacturaCompra(c, detalles);
 
-                          final nombreLimpio =
-                              limpiarNombreArchivoWindows(c.nroComprobante);
+                          final nombreLimpio = limpiarNombreArchivoWindows(
+                            c.nroComprobante,
+                          );
                           final nombreArchivo = 'Factura_$nombreLimpio.pdf';
 
                           await Printing.sharePdf(
@@ -418,7 +418,8 @@ class ComprasTabState extends State<ComprasTab>
       value: _tipoComprobanteSeleccionado,
       items: _tiposComprobante,
       itemText: (t) => t.nombre,
-      onChanged: (nuevo) => setState(() => _tipoComprobanteSeleccionado = nuevo),
+      onChanged: (nuevo) =>
+          setState(() => _tipoComprobanteSeleccionado = nuevo),
       validator: (v) => v == null ? 'Selecciona un tipo de comprobante' : null,
     );
   }
@@ -556,7 +557,8 @@ class ComprasTabState extends State<ComprasTab>
                   children: [
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String?>(
-                      value: (proveedorLocal != null &&
+                      value:
+                          (proveedorLocal != null &&
                               proveedores.contains(proveedorLocal))
                           ? proveedorLocal
                           : null,
@@ -572,7 +574,8 @@ class ComprasTabState extends State<ComprasTab>
                           ),
                         ),
                       ],
-                      onChanged: (v) => setDialogState(() => proveedorLocal = v),
+                      onChanged: (v) =>
+                          setDialogState(() => proveedorLocal = v),
                       decoration: const InputDecoration(
                         labelText: 'Proveedor',
                         border: OutlineInputBorder(),
@@ -685,7 +688,6 @@ class ComprasTabState extends State<ComprasTab>
     _syncConteo(comprasFiltradas.length);
 
     final historialCard = HistorialSectionCard<Compra>(
-      title: "Historial de compras",
       items: comprasFiltradas,
       emptyText: 'No hay compras para los filtros actuales.',
       listKey: const PageStorageKey('compras_historial_list'),
@@ -715,11 +717,18 @@ class ComprasTabState extends State<ComprasTab>
     );
 
     final historial = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        Text(
+          "Historial de compras",
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             SizedBox(
+              height: 40,
               width: 400,
               child: SearchBar(
                 controller: _searchCtrl,

@@ -100,18 +100,12 @@ class _UbicacionFormDialogState extends State<UbicacionFormDialog> {
               controller: _nombreController,
               decoration: const InputDecoration(labelText: 'Nombre'),
             ),
+            const SizedBox(height: 12.0),
             TextField(
               controller: _descripcionController,
               decoration: const InputDecoration(
                 labelText: 'Descripción (opcional)',
               ),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              value: _activa,
-              onChanged: _saving ? null : (v) => setState(() => _activa = v),
-              title: const Text('Activa'),
-              contentPadding: EdgeInsets.zero,
             ),
           ],
         ),

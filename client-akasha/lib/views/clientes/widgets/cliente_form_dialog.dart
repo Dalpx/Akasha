@@ -162,6 +162,7 @@ class _ClienteFormDialogState extends State<ClienteFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 2. Apellido
               TextFormField(
                 controller: _apellidoController,
@@ -171,6 +172,7 @@ class _ClienteFormDialogState extends State<ClienteFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 3. Tipo de Documento
               DropdownButtonFormField<String>(
                 value: _tipoDocumentoSeleccionado,
@@ -186,6 +188,7 @@ class _ClienteFormDialogState extends State<ClienteFormDialog> {
                 },
                 validator: (value) => value == null ? 'Seleccione un tipo de documento' : null,
               ),
+              const SizedBox(height: 12.0),
               // 4. Número de Documento 
               TextFormField(
                 controller: _nroDocumentoController,
@@ -197,6 +200,7 @@ class _ClienteFormDialogState extends State<ClienteFormDialog> {
                 ),
                 validator: (value) => _validarDocumento(value, _tipoDocumentoSeleccionado),
               ),
+              const SizedBox(height: 12.0),
               // 5. Teléfono
               TextFormField(
                 controller: _telefonoController,
@@ -210,6 +214,7 @@ class _ClienteFormDialogState extends State<ClienteFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 6. Email
               TextFormField(
                 controller: _emailController,
@@ -222,6 +227,7 @@ class _ClienteFormDialogState extends State<ClienteFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 7. Dirección
               TextFormField(
                 controller: _direccionController,

@@ -780,7 +780,6 @@ class VentasTabState extends State<VentasTab> with AutomaticKeepAliveClientMixin
     _syncConteo(ventasFiltradas.length);
 
     final historialCard = HistorialSectionCard<Venta>(
-      title: "Historial de ventas",
       items: ventasFiltradas,
       emptyText: 'No hay ventas para los filtros actuales.',
       listKey: const PageStorageKey('ventas_historial_list'),
@@ -807,11 +806,18 @@ class VentasTabState extends State<VentasTab> with AutomaticKeepAliveClientMixin
     );
 
     final historial = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        Text(
+          "Historial de ventas",
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             SizedBox(
+              height: 40,
               width: 400,
               child: SearchBar(
                 controller: _searchCtrl,

@@ -107,14 +107,17 @@ class _ProveedorFormDialogState extends State<ProveedorFormDialog> {
               controller: _nombreController,
               decoration: const InputDecoration(labelText: 'Nombre'),
             ),
+            const SizedBox(height: 12.0),
             TextField(
               controller: _telefonoController,
               decoration: const InputDecoration(labelText: 'Teléfono'),
             ),
+            const SizedBox(height: 12.0),
             TextField(
               controller: _correoController,
               decoration: const InputDecoration(labelText: 'Correo'),
             ),
+            const SizedBox(height: 12.0),
             TextField(
               controller: _direccionController,
               decoration: const InputDecoration(labelText: 'Dirección'),

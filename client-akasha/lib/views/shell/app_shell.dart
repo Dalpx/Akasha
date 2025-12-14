@@ -208,7 +208,7 @@ class _AppShellState extends State<AppShell> {
           children: <Widget>[
             Container(
               width: 250.0,
-              color: Constants().sidebar,
+              color: Constants().surface,
               child: Column(
                 children: <Widget>[
                   const SizedBox(height: 40.0),

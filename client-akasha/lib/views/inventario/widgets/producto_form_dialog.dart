@@ -99,18 +99,21 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 2. SKU
               TextFormField(
                 controller: _skuController,
                 decoration: const InputDecoration(labelText: 'SKU *'),
                 validator: (value) => _validarSku(value),
               ),
+              const SizedBox(height: 12.0),
               // 3. Descripción
               TextFormField(
                 controller: _descripcionController,
                 decoration: const InputDecoration(labelText: 'Descripción'),
                 maxLines: 2,
               ),
+              const SizedBox(height: 12.0),
               // 4. Precio Costo
               TextFormField(
                 controller: _costoController,
@@ -121,6 +124,7 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
                 ],
                 validator: (value) => _validarNumero(value, 'Precio costo'),
               ),
+              const SizedBox(height: 12.0),
               // 5. Precio Venta
               TextFormField(
                 controller: _ventaController,

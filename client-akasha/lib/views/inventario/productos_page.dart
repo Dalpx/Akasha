@@ -498,6 +498,7 @@ class _ProductosPageState extends State<ProductosPage>
             Row(
               children: [
                 SizedBox(
+                  height: 40,
                   width: 400,
                   child: SearchBar(
                     controller: _searchCtrl,

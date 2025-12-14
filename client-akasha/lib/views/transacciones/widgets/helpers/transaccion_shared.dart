@@ -26,7 +26,7 @@ String limpiarNombreArchivoWindows(String input) {
 
 double historialHeight(BuildContext context) {
   final screenH = MediaQuery.of(context).size.height;
-  return min(420, max(220, screenH * 0.32));
+  return min(420, max(220, screenH * 0.45));
 }
 
 class TransaccionLayout extends StatelessWidget {
@@ -151,7 +151,6 @@ class FacturaSectionCard extends StatelessWidget {
 }
 
 class HistorialSectionCard<T> extends StatelessWidget {
-  final String title;
   final List<T> items;
   final String emptyText;
   final Key listKey;
@@ -159,7 +158,6 @@ class HistorialSectionCard<T> extends StatelessWidget {
 
   const HistorialSectionCard({
     super.key,
-    required this.title,
     required this.items,
     required this.emptyText,
     required this.listKey,
@@ -173,11 +171,10 @@ class HistorialSectionCard<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        const SizedBox(height: 8),
+        // Text(
+        //   title,
+        //   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        // ),
         CustomCard(
           content: SizedBox(
             height: h,

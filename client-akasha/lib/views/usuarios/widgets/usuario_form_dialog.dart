@@ -197,6 +197,7 @@ class _UsuarioFormDialogState extends State<UsuarioFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 1. Nombre Completo
               TextFormField(
                 controller: _nombreCompletoController,
@@ -213,6 +214,7 @@ class _UsuarioFormDialogState extends State<UsuarioFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 2. Email
               TextFormField(
                 controller: _emailController,
@@ -227,12 +229,10 @@ class _UsuarioFormDialogState extends State<UsuarioFormDialog> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12.0),
               // 3. Tipo de Usuario (Dropdown)
               DropdownButtonFormField<String>(
                 value: _tipoUsuarioSeleccionado,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de Usuario *',
-                ),
                 // Los values de los items deben coincidir con el valor inicial (_tipoUsuarioSeleccionado)
                 items: const [
                   DropdownMenuItem(value: 'super', child: Text('Super')),
@@ -250,7 +250,7 @@ class _UsuarioFormDialogState extends State<UsuarioFormDialog> {
                 validator: (value) =>
                     value == null ? 'Seleccione un tipo de usuario.' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // 4. Clave (Condicional: obligatoria en creación)
               TextFormField(
@@ -264,6 +264,7 @@ class _UsuarioFormDialogState extends State<UsuarioFormDialog> {
                 obscureText: true,
                 validator: _validarClave,
               ),
+              const SizedBox(height: 12.0),
               // 5. Confirmar Clave (Condicional: sólo se valida si se ingresó clave)
               TextFormField(
                 controller: _confirmarClaveController,
