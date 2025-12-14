@@ -27,7 +27,7 @@ class LineaProductoEditor<TLine> extends StatelessWidget {
   /// - compras: ubicacionesAsignadas(...)
   /// - ventas: ubicacionesConStock(...)
   final List<Ubicacion> Function(int? idProducto, List<Ubicacion> ubicaciones)
-      ubicacionesDisponibles;
+  ubicacionesDisponibles;
 
   /// Si `ubicacionesDisponibles` devuelve vacío pero hay ubicaciones globales,
   /// aquí decides si el dropdown muestra todas (compras) o ninguna (ventas).
@@ -54,7 +54,8 @@ class LineaProductoEditor<TLine> extends StatelessWidget {
     Ubicacion? value,
     List<Ubicacion> disponibles,
     List<Ubicacion> todas,
-  ) ubicacionValidator;
+  )
+  ubicacionValidator;
 
   /// Para ventas: ajustar cantidad cuando cambia stock (0 => "0", etc)
   final void Function(TLine line, int stockDisponible) onAfterStockRecalc;
@@ -110,6 +111,14 @@ class LineaProductoEditor<TLine> extends StatelessWidget {
   Widget build(BuildContext context) {
     // 1) Items de ubicaciones
     final producto = getProducto(line);
+
+    if (producto != null &&
+        !productos.any((p) => p.idProducto == producto.idProducto)) {
+      setProducto(line, null);
+      setUbicacion(line, null);
+      setStock(line, 0);
+      precioCtrl(line).text = '0.00';
+    }
     final filtered = ubicacionesDisponibles(producto?.idProducto, ubicaciones);
 
     final items = filtered.isNotEmpty
@@ -125,7 +134,10 @@ class LineaProductoEditor<TLine> extends StatelessWidget {
     }
 
     // 3) Recalcular stock actual
-    final stockActual = stock.stockEnUbicacion(producto?.idProducto, selectedUb);
+    final stockActual = stock.stockEnUbicacion(
+      producto?.idProducto,
+      selectedUb,
+    );
     setStock(line, stockActual);
 
     // --- Widgets internos ---
@@ -135,41 +147,59 @@ class LineaProductoEditor<TLine> extends StatelessWidget {
         labelText: 'Producto',
         border: OutlineInputBorder(),
       ),
-      items: productos
-          .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
-          .toList(),
-      onChanged: (Producto? nuevo) async {
-        if (nuevo == null) {
-          setProducto(line, null);
-          precioCtrl(line).text = '0.00';
-          setStock(line, 0);
-          setUbicacion(line, null);
-          onAfterStockRecalc(line, 0);
-          requestRebuild();
-          return;
-        }
+      items: productos.isNotEmpty
+          ? productos
+                .map((p) => DropdownMenuItem(value: p, child: Text(p.nombre)))
+                .toList()
+          : [
+              const DropdownMenuItem(
+                enabled: false,
+                value: null,
+                child: Text('No hay productos para este proveedor'),
+              ),
+            ],
+      onChanged: productos.isEmpty
+          ? null
+          : (Producto? nuevo) async {
+              if (nuevo == null) {
+                setProducto(line, null);
+                precioCtrl(line).text = '0.00';
+                setStock(line, 0);
+                setUbicacion(line, null);
+                onAfterStockRecalc(line, 0);
+                requestRebuild();
+                return;
+              }
 
-        await stock.ensureLoadedForProduct(nuevo.idProducto);
+              await stock.ensureLoadedForProduct(nuevo.idProducto);
 
-        setProducto(line, nuevo);
-        precioCtrl(line).text = precioUnitario(nuevo).toStringAsFixed(2);
+              setProducto(line, nuevo);
+              precioCtrl(line).text = precioUnitario(nuevo).toStringAsFixed(2);
 
-        final filtered2 =
-            ubicacionesDisponibles(nuevo.idProducto, ubicaciones);
-        final items2 = filtered2.isNotEmpty
-            ? filtered2
-            : (fallbackToAllUbicacionesWhenEmpty ? ubicaciones : <Ubicacion>[]);
+              final filtered2 = ubicacionesDisponibles(
+                nuevo.idProducto,
+                ubicaciones,
+              );
+              final items2 = filtered2.isNotEmpty
+                  ? filtered2
+                  : (fallbackToAllUbicacionesWhenEmpty
+                        ? ubicaciones
+                        : <Ubicacion>[]);
 
-        final nuevaUb = items2.isNotEmpty ? items2.first : null;
-        setUbicacion(line, nuevaUb);
+              final nuevaUb = items2.isNotEmpty ? items2.first : null;
+              setUbicacion(line, nuevaUb);
 
-        final stockNuevo = stock.stockEnUbicacion(nuevo.idProducto, nuevaUb);
-        setStock(line, stockNuevo);
-        onAfterStockRecalc(line, stockNuevo);
+              final stockNuevo = stock.stockEnUbicacion(
+                nuevo.idProducto,
+                nuevaUb,
+              );
+              setStock(line, stockNuevo);
+              onAfterStockRecalc(line, stockNuevo);
 
-        requestRebuild();
-      },
-      validator: (_) => getProducto(line) == null ? 'Selecciona un producto' : null,
+              requestRebuild();
+            },
+      validator: (_) =>
+          getProducto(line) == null ? 'Selecciona un producto' : null,
     );
 
     final banner = (getProducto(line) != null && getUbicacion(line) != null)
@@ -213,17 +243,14 @@ class LineaProductoEditor<TLine> extends StatelessWidget {
         border: OutlineInputBorder(),
       ),
       items: items
-          .map(
-            (u) => DropdownMenuItem(
-              value: u,
-              child: Text(u.nombreAlmacen),
-            ),
-          )
+          .map((u) => DropdownMenuItem(value: u, child: Text(u.nombreAlmacen)))
           .toList(),
       onChanged: (Ubicacion? nueva) {
         setUbicacion(line, nueva);
-        final stockNuevo =
-            stock.stockEnUbicacion(getProducto(line)?.idProducto, nueva);
+        final stockNuevo = stock.stockEnUbicacion(
+          getProducto(line)?.idProducto,
+          nueva,
+        );
         setStock(line, stockNuevo);
         onAfterStockRecalc(line, stockNuevo);
         requestRebuild();

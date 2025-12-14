@@ -8,7 +8,6 @@ import 'views/shell/app_shell.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  
   runApp(const AkashaApp());
 }
 

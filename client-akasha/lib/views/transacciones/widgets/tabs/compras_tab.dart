@@ -47,6 +47,7 @@ class ComprasTabState extends State<ComprasTab>
   List<Compra> _compras = <Compra>[];
   List<Proveedor> _proveedores = <Proveedor>[];
   List<Producto> _productos = <Producto>[];
+  List<Producto> _productosFiltrados = <Producto>[];
   List<Ubicacion> _ubicaciones = <Ubicacion>[];
   List<TipoComprobante> _tiposComprobante = <TipoComprobante>[];
 
@@ -153,6 +154,8 @@ class ComprasTabState extends State<ComprasTab>
         if (_tiposComprobante.isNotEmpty) {
           _tipoComprobanteSeleccionado ??= _tiposComprobante.first;
         }
+
+        _filtrarProductosPorProveedor();
       });
 
       if (_productos.isNotEmpty) {
@@ -169,13 +172,29 @@ class ComprasTabState extends State<ComprasTab>
     }
   }
 
+  void _filtrarProductosPorProveedor() {
+  if (_proveedorSeleccionado == null) {
+    _productosFiltrados = [];
+    return;
+  }
+
+  final nombreProveedor = _proveedorSeleccionado!.nombre.trim().toLowerCase();
+
+  _productosFiltrados = _productos.where((p) {
+    final provProducto = (p.idProveedor ?? '').trim().toLowerCase();
+    return provProducto == nombreProveedor;
+  }).toList();
+}
+
   void _inicializarLineas() {
     for (final l in _lineas) {
       l.dispose();
     }
     _lineas.clear();
 
-    final productoInicial = _productos.isNotEmpty ? _productos.first : null;
+    final productoInicial = _productosFiltrados.isNotEmpty
+        ? _productosFiltrados.first
+        : null;
 
     final ubicacionesDisponibles = _stock.ubicacionesAsignadas(
       productoInicial?.idProducto,
@@ -406,7 +425,13 @@ class ComprasTabState extends State<ComprasTab>
       items: _proveedores,
       itemText: (p) =>
           p.nombre.isEmpty ? 'Proveedor ${p.idProveedor ?? ''}' : p.nombre,
-      onChanged: (nuevo) => setState(() => _proveedorSeleccionado = nuevo),
+      onChanged: (nuevo) {
+        setState(() {
+          _proveedorSeleccionado = nuevo;
+          _filtrarProductosPorProveedor();
+          _inicializarLineas();
+        });
+      },
       validator: (v) => v == null ? 'Selecciona un proveedor' : null,
     );
   }
@@ -427,7 +452,7 @@ class ComprasTabState extends State<ComprasTab>
   Widget _buildLineaDetalle(int index, LineaCompraForm linea) {
     return LineaProductoEditor<LineaCompraForm>(
       line: linea,
-      productos: _productos,
+      productos: _productosFiltrados,
       ubicaciones: _ubicaciones,
       stock: _stock,
       ubicacionesDisponibles: (idProducto, ubicaciones) =>
@@ -671,7 +696,7 @@ class ComprasTabState extends State<ComprasTab>
       title: "Factura de compra",
       formKey: _formKey,
       selectors: [_buildProveedorSelector(), _buildTipoComprobanteSelector()],
-      onAddLinea: _productos.isEmpty ? null : _agregarLinea,
+      onAddLinea: _productosFiltrados.isEmpty ? null : _agregarLinea,
       lineas: List.generate(
         _lineas.length,
         (i) => _buildLineaDetalle(i, _lineas[i]),

@@ -177,7 +177,21 @@ class _ProductoFormDialogState extends State<ProductoFormDialog> {
   String? _validarNumero(String? value, String campoName) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return '$campoName es obligatorio.';
-    if (double.tryParse(v) == null) return 'Debe ser un número válido.';
+    
+    final numValue = double.tryParse(v);
+    if (numValue == null) return 'Debe ser un número válido.';
+    
+    // Nueva validación específica para Precio Venta: debe ser >= Precio Costo
+    if (campoName == 'Precio venta') {
+      final costoText = _costoController.text.trim();
+      final costoValue = double.tryParse(costoText);
+
+      // Si el costo es válido y el precio de venta es menor, mostrar error
+      if (costoValue != null && numValue < costoValue) {
+        return 'El precio de venta debe ser mayor o igual al precio costo.';
+      }
+    }
+
     return null;
   }
 
