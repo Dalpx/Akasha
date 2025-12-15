@@ -1,14 +1,13 @@
 import 'package:akasha/common/custom_tile.dart';
 import 'package:flutter/material.dart';
-import '../../../../../models/producto.dart';
-import '../../../../../services/inventario_service.dart';
+import '../../../../../../models/producto.dart';
+import '../../../../../../services/inventario_service.dart';
 
 class ProductoListItem extends StatelessWidget {
   final int index;
   final Producto producto;
   final InventarioService inventarioService;
 
-  // Callbacks para las acciones.
   final VoidCallback onVerUbicaciones;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
@@ -25,40 +24,80 @@ class ProductoListItem extends StatelessWidget {
     required this.index,
   });
 
+  Widget? _buildStockBadge(BuildContext context, int stock) {
+    if (stock >= 10) return null;
+
+    final bool sinStock = stock == 0;
+    final Color bg = sinStock
+        ? Theme.of(context).colorScheme.error
+        : Colors.orange.shade700;
+    // final Color fg = sinStock
+    //     ? Theme.of(context).colorScheme.onError
+    //     : Colors.white;
+    final IconData icon = sinStock
+        ? Icons.error_rounded
+        : Icons.warning_amber_rounded;
+    final String tooltip = sinStock
+        ? 'Stock: 0. Porfavor agregue stock'
+        : 'Stock: 10. Evalue la reposición de stock';
+
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: () {},
+        icon: Icon(icon, color: bg),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<int>(
-      // Solicitamos el stock específico de este producto
       future: inventarioService.obtenerStockTotalDeProducto(
         producto.idProducto!,
       ),
       builder: (context, snapshot) {
-        final int stock = snapshot.data ?? 0;
+        final bool hasStock = snapshot.hasData && snapshot.data != null;
+        final int? stock = hasStock ? snapshot.data : null;
+
+        final String stockText = stock?.toString() ?? '...';
+        final Widget? badge = stock == null
+            ? null
+            : _buildStockBadge(context, stock);
 
         return CustomTile(
           listTile: ListTile(
             leading: Text(
               index.toString(),
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            title: Text(
-              producto.nombre,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    producto.nombre,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             subtitle: Text(
-              'STOCK: $stock | SKU: ${producto.sku}',
+              'STOCK: $stockText | SKU: ${producto.sku}',
               style: const TextStyle(fontSize: 12),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Botón de visualización rápida (el "ojito")
+                if (badge != null) ...[const SizedBox(width: 8), badge],
                 IconButton(
                   onPressed: onVerDetalle ?? () {},
                   icon: const Icon(Icons.visibility),
                   tooltip: 'Ver detalle',
                 ),
-                // Menú de opciones
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     switch (value) {
@@ -100,7 +139,7 @@ class ProductoListItem extends StatelessWidget {
                         children: [
                           Icon(Icons.delete),
                           SizedBox(width: 8),
-                          Text('Eliminar (Desactivar)'),
+                          Text('Eliminar'),
                         ],
                       ),
                     ),

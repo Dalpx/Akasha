@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../../models/producto.dart';
-import '../../../../../models/proveedor.dart';
-import '../../../../../models/categoria.dart';
+import '../../../../../../models/producto.dart';
+import '../../../../../../models/proveedor.dart';
+import '../../../../../../models/categoria.dart';
 
 class ProductoFormDialog extends StatefulWidget {
   final Producto? producto; // Si es null, es modo CREAR. Si no, es EDITAR.

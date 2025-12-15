@@ -1,8 +1,9 @@
 import 'package:akasha/common/custom_card.dart';
+import 'package:akasha/common/custom_tile.dart';
 import 'package:akasha/views/inventario/ubicaciones_productos_page.dart';
-import 'package:akasha/views/inventario/widgets/producto_detalles.dart';
-import 'package:akasha/views/inventario/widgets/producto_form_dialog.dart';
-import 'package:akasha/views/inventario/widgets/producto_list_item.dart';
+import 'package:akasha/views/inventario/widgets/producto_page/producto_detalles.dart';
+import 'package:akasha/views/inventario/widgets/producto_page/producto_form_dialog.dart';
+import 'package:akasha/views/inventario/widgets/producto_page/producto_list_item.dart';
 import 'package:flutter/material.dart';
 import '../../models/producto.dart';
 import '../../models/proveedor.dart';
@@ -11,7 +12,6 @@ import '../../services/inventario_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../services/categoria_service.dart';
 import '../../core/app_routes.dart';
-import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart';
 
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
@@ -317,8 +317,7 @@ class _ProductosPageState extends State<ProductosPage>
                   children: [
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String?>(
-                      value:
-                          (proveedorLocal != null &&
+                      value: (proveedorLocal != null &&
                               proveedores.contains(proveedorLocal))
                           ? proveedorLocal
                           : null,
@@ -343,8 +342,7 @@ class _ProductosPageState extends State<ProductosPage>
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
-                      value:
-                          (categoriaLocal != null &&
+                      value: (categoriaLocal != null &&
                               categorias.contains(categoriaLocal))
                           ? categoriaLocal
                           : null,
@@ -450,6 +448,74 @@ class _ProductosPageState extends State<ProductosPage>
     setState(() => _searchText = '');
   }
 
+  Widget _fallbackProductoSinId(BuildContext context, Producto producto, int idx) {
+    return CustomTile(
+      listTile: ListTile(
+        leading: Text(
+          idx.toString(),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        title: Text(
+          producto.nombre,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          'SKU: ${producto.sku}',
+          style: const TextStyle(fontSize: 12),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              onPressed: () => _mostrarDetallesDeProducto(producto),
+              icon: const Icon(Icons.visibility),
+              tooltip: 'Ver detalle',
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                switch (value) {
+                  case 'ubicaciones':
+                    break;
+                  case 'editar':
+                    _abrirFormularioProducto(productoEditar: producto);
+                    break;
+                  case 'eliminar':
+                    _confirmarEliminarProducto(producto);
+                    break;
+                }
+              },
+              itemBuilder: (context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'editar',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit),
+                      SizedBox(width: 8),
+                      Text('Editar'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'eliminar',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete),
+                      SizedBox(width: 8),
+                      Text('Eliminar (Desactivar)'),
+                    ],
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'Opciones',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -475,9 +541,8 @@ class _ProductosPageState extends State<ProductosPage>
                 ),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    await Navigator.of(
-                      context,
-                    ).pushNamed(AppRoutes.rutaGestionMaestros);
+                    await Navigator.of(context)
+                        .pushNamed(AppRoutes.rutaGestionMaestros);
 
                     await _cargarProveedoresYCategorias();
                     _cacheProductos = null;
@@ -540,9 +605,8 @@ class _ProductosPageState extends State<ProductosPage>
                               child: Text(
                                 '•',
                                 style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
+                                  color:
+                                      Theme.of(context).colorScheme.onPrimary,
                                   fontSize: 18,
                                   height: 0.9,
                                   fontWeight: FontWeight.bold,
@@ -562,79 +626,72 @@ class _ProductosPageState extends State<ProductosPage>
                 content: FutureBuilder<List<Producto>>(
                   future: _futureProductos,
                   initialData: _cacheProductos,
-                  builder:
-                      (
-                        BuildContext context,
-                        AsyncSnapshot<List<Producto>> snapshot,
-                      ) {
-                        if (snapshot.connectionState ==
-                                ConnectionState.waiting &&
-                            (snapshot.data == null || snapshot.data!.isEmpty)) {
-                          _syncConteo(0);
-                          return const Center(
-                            child: CircularProgressIndicator(),
+                  builder: (BuildContext context,
+                      AsyncSnapshot<List<Producto>> snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        (snapshot.data == null || snapshot.data!.isEmpty)) {
+                      _syncConteo(0);
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      _syncConteo(0);
+                      return Center(
+                        child:
+                            Text('Error al cargar productos: ${snapshot.error}'),
+                      );
+                    }
+
+                    final data = snapshot.data ?? <Producto>[];
+                    final productos = _filtrarProductos(data);
+                    _syncConteo(productos.length);
+
+                    if (productos.isEmpty) {
+                      return const Center(
+                        child: Text('No hay productos para los filtros actuales.'),
+                      );
+                    }
+
+                    return ListView.builder(
+                      key: const PageStorageKey('productos_list'),
+                      itemCount: productos.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final Producto producto = productos[index];
+
+                        if (producto.idProducto == null) {
+                          return _fallbackProductoSinId(
+                            context,
+                            producto,
+                            index + 1,
                           );
                         }
 
-                        if (snapshot.hasError) {
-                          _syncConteo(0);
-                          return Center(
-                            child: Text(
-                              'Error al cargar productos: ${snapshot.error}',
-                            ),
-                          );
-                        }
-
-                        final data = snapshot.data ?? <Producto>[];
-                        final productos = _filtrarProductos(data);
-
-                        _syncConteo(productos.length);
-
-                        if (productos.isEmpty) {
-                          return const Center(
-                            child: Text(
-                              'No hay productos para los filtros actuales.',
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          key: const PageStorageKey('productos_list'),
-                          itemCount: productos.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            final Producto producto = productos[index];
-
-                            return ProductoListItem(
-                              index: index + 1,
-                              producto: producto,
-                              inventarioService: _inventarioService,
-                              onVerUbicaciones: () {
-                                if (producto.idProducto != null) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          UbicacionesProductoPage(
-                                            producto: producto,
-                                          ),
-                                    ),
-                                  );
-                                }
-                              },
-                              onEditar: () {
-                                _abrirFormularioProducto(
-                                  productoEditar: producto,
-                                );
-                              },
-                              onEliminar: () {
-                                _confirmarEliminarProducto(producto);
-                              },
-                              onVerDetalle: () {
-                                _mostrarDetallesDeProducto(producto);
-                              },
+                        return ProductoListItem(
+                          index: index + 1,
+                          producto: producto,
+                          inventarioService: _inventarioService,
+                          onVerUbicaciones: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => UbicacionesProductoPage(
+                                  producto: producto,
+                                ),
+                              ),
                             );
+                          },
+                          onEditar: () {
+                            _abrirFormularioProducto(productoEditar: producto);
+                          },
+                          onEliminar: () {
+                            _confirmarEliminarProducto(producto);
+                          },
+                          onVerDetalle: () {
+                            _mostrarDetallesDeProducto(producto);
                           },
                         );
                       },
+                    );
+                  },
                 ),
               ),
             ),
@@ -644,15 +701,5 @@ class _ProductosPageState extends State<ProductosPage>
         ),
       ),
     );
-  }
-}
-
-extension ListExtension<T> on List<T> {
-  T? firstWhereOrNull(bool Function(T) test) {
-    try {
-      return firstWhere(test);
-    } catch (_) {
-      return null;
-    }
   }
 }

@@ -150,6 +150,25 @@ class AppTheme {
           Constants().surface,
         ),
       ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: _constants.primary,
+        foregroundColor: _constants.primaryForeground,
+        elevation: 0,
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          shape: MaterialStatePropertyAll<OutlinedBorder>(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Constants().borderInput),
+            ),
+          ),
+          backgroundColor: MaterialStatePropertyAll<Color>(
+            Constants().card,
+          ),
+          elevation: MaterialStatePropertyAll<double>(0),
+        ),
+      ),
     );
   }
 }
