@@ -63,6 +63,26 @@ class akashaValidator
                 }
                 break;
 
+            case 'categoria':
+                $query = "SELECT nombre_categoria FROM categoria WHERE nombre_categoria = :nom";
+                $params = [':nom' => $this->data['nombre_categoria']];
+
+                if ($excludeId !== null) {
+                    $query .= " AND id_categoria != :id_excluir";
+                    $params[':id_excluir'] = $excludeId;
+                }
+                break;
+
+            case 'ubicacion':
+                $query = "SELECT nombre_almacen FROM ubicacion WHERE nombre_almacen = :nom";
+                $params = [':nom' => $this->data['nombre_almacen']];
+
+                if ($excludeId !== null) {
+                    $query .= " AND id_ubicacion != :id_excluir";
+                    $params[':id_excluir'] = $excludeId;
+                }
+                break;
+
             default:
                 return false;
         }

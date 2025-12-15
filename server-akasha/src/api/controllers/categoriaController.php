@@ -62,9 +62,13 @@ class categoriaController
     public function updateCategoria()
     {
         $body = json_decode(file_get_contents('php://input'), true);
+        $validator = new akashaValidator($this->DB, $body);
 
         if (empty($body['id_categoria']) || empty($body['nombre_categoria'])) {
             throw new Exception('ID y Nombre de categoría son obligatorios', 400);
+        }
+        if($validator->entityAlreadyExists('categoria', $body['id_categoria'])){
+            throw new Exception('Una categoria con este nombre ya existe', 409);
         }
 
         try {

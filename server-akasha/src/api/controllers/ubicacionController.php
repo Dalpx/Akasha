@@ -64,11 +64,13 @@ class ubicacionController
     public function updateUbicacion()
     {
         $body = json_decode(file_get_contents('php://input'), true);
-
+        $validator = new akashaValidator($this->DB, $body);
         if (empty($body['id_ubicacion'])) {
             throw new Exception('ID de ubicación es obligatorio', 400);
         }
-
+        if ($validator->entityAlreadyExists('ubicacion', $body['id_ubicacion'])) {
+            throw new Exception('Una ubicación con este nombre ya existe', 409);
+        }
         try {
             $this->DB->beginTransaction();
 
