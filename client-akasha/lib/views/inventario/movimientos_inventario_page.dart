@@ -201,18 +201,21 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
       _showMessage('Cantidad inválida.');
       return;
     }
-    
+
     // NUEVA VALIDACIÓN DE STOCK (SOLO PARA SALIDA)
-    if (_tipoMovimiento == 0) { // Salida
-        final stockActual = _obtenerStockEnUbicacion(
-          producto!.idProducto,
-          ubicacion,
+    if (_tipoMovimiento == 0) {
+      // Salida
+      final stockActual = _obtenerStockEnUbicacion(
+        producto!.idProducto,
+        ubicacion,
+      );
+
+      if (cantidad > stockActual) {
+        _showMessage(
+          'Stock insuficiente en ${ubicacion!.nombreAlmacen}. Solo hay $stockActual unidades.',
         );
-        
-        if (cantidad > stockActual) {
-           _showMessage('Stock insuficiente en ${ubicacion!.nombreAlmacen}. Solo hay $stockActual unidades.');
-           return;
-        }
+        return;
+      }
     }
 
     final mov = MovimientoCreate(
@@ -446,17 +449,22 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
         }
 
         if (!mounted) return;
-        
+
         setState(() {
           _productoSeleccionado = v;
-          
+
           // NUEVO: Ajustar la ubicación seleccionada basada en stock si es Salida
-          if (_tipoMovimiento == 0) { // Salida
-            final ubicacionesConStock = _obtenerUbicacionesConStock(v.idProducto);
-            
+          if (_tipoMovimiento == 0) {
+            // Salida
+            final ubicacionesConStock = _obtenerUbicacionesConStock(
+              v.idProducto,
+            );
+
             // Si la ubicación seleccionada no está en la lista con stock, seleccionar la primera con stock.
-            if (_ubicacionSeleccionada == null || 
-                !ubicacionesConStock.any((u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion)) {
+            if (_ubicacionSeleccionada == null ||
+                !ubicacionesConStock.any(
+                  (u) => u.idUbicacion == _ubicacionSeleccionada!.idUbicacion,
+                )) {
               _ubicacionSeleccionada = ubicacionesConStock.isNotEmpty
                   ? ubicacionesConStock.first
                   : null;
@@ -477,19 +485,29 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
   Widget _buildUbicacionSelector() {
     final isSalida = _tipoMovimiento == 0;
     final idProducto = _productoSeleccionado?.idProducto;
-    
-    // Obtener la lista de ubicaciones:
-    // - Si es Salida y hay un producto, se filtra por stock > 0.
-    // - Si es Entrada o no hay producto, se muestran todas.
-    final List<Ubicacion> ubicacionesDisponibles = isSalida && idProducto != null
+
+    // 1. Determinar las ubicaciones disponibles (filtradas o todas)
+    final List<Ubicacion> ubicacionesDisponibles =
+        isSalida && idProducto != null
         ? _obtenerUbicacionesConStock(idProducto)
         : _ubicaciones;
-        
-    // Mostrar el stock en el dropdown solo si estamos en modo Salida y tenemos producto
+
+    Ubicacion? valorSeleccionadoAjustado = _ubicacionSeleccionada;
+    if (_ubicacionSeleccionada != null &&
+        !ubicacionesDisponibles.contains(_ubicacionSeleccionada)) {
+      valorSeleccionadoAjustado = null;
+    }
+
+    if (valorSeleccionadoAjustado == null &&
+        ubicacionesDisponibles.isNotEmpty) {
+      if (!isSalida || (isSalida && ubicacionesDisponibles.isNotEmpty)) {
+      }
+    }
+
     final bool showStockInDropdown = isSalida && idProducto != null;
-    
+
     return DropdownButtonFormField<Ubicacion>(
-      value: _ubicacionSeleccionada,
+      value: valorSeleccionadoAjustado,
       decoration: const InputDecoration(
         labelText: 'Ubicación',
         border: OutlineInputBorder(),
@@ -565,10 +583,7 @@ class _MovimientoInventarioPageState extends State<MovimientoInventarioPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4),
-        side: BorderSide(
-          color: borderColor,
-          width: 1,
-        ),
+        side: BorderSide(color: borderColor, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(8.0),

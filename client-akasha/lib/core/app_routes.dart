@@ -12,6 +12,9 @@ import 'package:akasha/views/reportes/reportes_page.dart';
 import 'package:akasha/views/seguridad/usuarios_page.dart';
 import 'package:akasha/views/shell/app_shell.dart';
 import 'package:akasha/views/transacciones/compras_ventas_page.dart';
+import 'package:akasha/views/usuarios/usuarios_page.dart';
+import 'package:akasha/views/shell/app_shell.dart';
+import 'package:akasha/views/transacciones/transacciones_page.dart';
 import 'package:flutter/material.dart';
 
 import 'session_manager.dart';

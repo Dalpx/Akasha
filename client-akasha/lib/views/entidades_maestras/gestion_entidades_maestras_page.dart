@@ -1,9 +1,9 @@
 import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/services/ubicacion_service.dart';
 
-import 'package:akasha/widgets/entidades_maestras/tabs/categorias_tab.dart';
-import 'package:akasha/widgets/entidades_maestras/tabs/proveedores_tab.dart';
-import 'package:akasha/widgets/entidades_maestras/tabs/ubicaciones_tab.dart';
+import 'package:akasha/views/entidades_maestras/widgets/tabs/categorias_tab.dart';
+import 'package:akasha/views/entidades_maestras/widgets/tabs/proveedores_tab.dart';
+import 'package:akasha/views/entidades_maestras/widgets/tabs/ubicaciones_tab.dart';
 
 import 'package:flutter/material.dart';
 import '../../models/proveedor.dart';

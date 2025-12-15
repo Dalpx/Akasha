@@ -6,9 +6,9 @@ import '../models/compra.dart';
 import '../models/detalle_compra.dart';
 
 class CompraService {
-  final String _baseUrl = 'http://localhost/akasha/server-akasha/src/compra';
+  final String _baseUrl =
+      'http://localhost/akasha/server-akasha/src/compra';
 
-  // Headers simples, sin sesión
   Map<String, String> get _headers => const {
         HttpHeaders.acceptHeader: 'application/json',
         HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
@@ -24,7 +24,6 @@ class CompraService {
 
     final decoded = json.decode(utf8.decode(resp.bodyBytes));
 
-    // Caso 1: Lista directa
     if (decoded is List) {
       return decoded
           .map((e) => Compra.fromJson(e as Map<String, dynamic>))
@@ -81,6 +80,7 @@ class CompraService {
   Future<bool> registrarCompra({
     // Asumo que CompraCreate está en models/compra.dart o importado
     required dynamic cabecera, 
+    required CompraCreate cabecera,
     required List<DetalleCompra> detalles,
   }) async {
     final body = {

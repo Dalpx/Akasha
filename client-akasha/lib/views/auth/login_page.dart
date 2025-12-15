@@ -1,3 +1,4 @@
+import 'package:akasha/common/custom_card.dart';
 import 'package:akasha/core/app_routes.dart';
 import 'package:akasha/core/constants.dart';
 import 'package:flutter/material.dart';
@@ -55,10 +56,8 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Constants().card,
-      // Usamos Stack para superponer y posicionar elementos libremente
       body: Stack(
         children: [
-          // 1. Contenido principal (Centrado)
           Center(
             child: SingleChildScrollView(
               child: Column(
@@ -69,73 +68,69 @@ class _LoginPageState extends State<LoginPage> {
                     width: 100,
                     height: 100,
                   ),
-                  SizedBox(height: 18,),
+                  SizedBox(height: 18),
                   Text(
                     "Inicia Sesión",
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  SizedBox(height: 18,),
+                  SizedBox(height: 18),
                   Text(
                     "Ingresa los datos de tu cuenta para\n poder acceder",
                     style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 16,),
+                  SizedBox(height: 16),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400.0),
-                    child: Card(
+                    child: CustomCard(
                       color: Constants().background,
-                      margin: const EdgeInsets.all(16.0),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
+                      content: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            "Usuario",
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: _usuarioController,
+                            decoration: const InputDecoration(
+                              hintText: "Ingresa tu usuario",
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Text("Contraseña"),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: _claveController,
+                            obscureText: true,
+                            decoration: const InputDecoration(
+                              hintText: "Ingresa tu contraseña",
+                            ),
+                          ),
+                          const SizedBox(height: 12.0),
+                          if (_error != null)
                             Text(
-                              "Usuario",
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              _error!,
+                              style: const TextStyle(color: Colors.red),
                             ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _usuarioController,
-                              decoration: const InputDecoration(
-                                hintText: "Ingresa tu usuario",
-                              ),
+                          const SizedBox(height: 24.0),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _cargando ? null : _iniciarSesion,
+                              child: _cargando
+                                  ? const SizedBox(
+                                      width: 20.0,
+                                      height: 20.0,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.0,
+                                      ),
+                                    )
+                                  : const Text('Ingresar'),
                             ),
-                            SizedBox(height: 12),
-                            Text("Contraseña"),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: _claveController,
-                              obscureText: true,
-                              decoration: const InputDecoration(
-                                hintText: "Ingresa tu contraseña",
-                              ),
-                            ),
-                            const SizedBox(height: 12.0),
-                            if (_error != null)
-                              Text(
-                                _error!,
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                            const SizedBox(height: 24.0),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: _cargando ? null : _iniciarSesion,
-                                child: _cargando
-                                    ? const SizedBox(
-                                        width: 20.0,
-                                        height: 20.0,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.0,
-                                        ),
-                                      )
-                                    : const Text('Ingresar'),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -143,14 +138,14 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          
-          // 2. Texto "Hola" (Fijado abajo usando Align)
           Align(
-            alignment: Alignment.bottomCenter, // <-- Esto lo fija en la parte inferior
+            alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: EdgeInsets.only(bottom: 20.0), // Añadir un poco de margen desde el borde
-              child: Text("Desarrolado en el IUJO Extensión Barquisimeto en 2025"
-              ,style: Theme.of(context).textTheme.bodySmall,),
+              padding: EdgeInsets.only(bottom: 20.0),
+              child: Text(
+                "Desarrolado en el IUJO Extensión Barquisimeto en 2025",
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
           ),
         ],

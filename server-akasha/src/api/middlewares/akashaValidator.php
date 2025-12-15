@@ -14,49 +14,64 @@ class akashaValidator
 
     //Función que chquea si el producto ya existe mediante el SKU que tiene la restricción UNIQUE
     //También chequea si un usuario ya existe mediante el nombre de usuario y si un cliente existe mediante el número de documento
-    public function entityAlreadyExists(string $tipo): bool
+    /**
+     * Función que chequea si la entidad ya existe (producto por SKU, usuario por nombre, cliente por documento, proveedor por nombre)
+     * @param string $tipo El tipo de entidad a verificar ('producto', 'usuario', 'cliente', 'proveedor').
+     * @param ?int $excludeId ID de la entidad a excluir de la comprobación (usado en actualizaciones).
+     * @return bool
+     */
+    public function entityAlreadyExists(string $tipo, ?int $excludeId = null): bool
     {
         switch ($tipo) {
             case 'producto':
                 $query = "SELECT sku FROM producto WHERE sku = :sku";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute([':sku' => $this->data['sku']]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $params = [':sku' => $this->data['sku']];
 
-                if ($result) return true;
-                else return false;
+                if ($excludeId !== null) {
+                    $query .= " AND id_producto != :id_excluir";
+                    $params[':id_excluir'] = $excludeId;
+                }
                 break;
+
             case 'usuario':
                 $query = "SELECT nombre_usuario FROM usuario WHERE nombre_usuario = :nom_u";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute([':nom_u' => $this->data['usuario']]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $params = [':nom_u' => $this->data['usuario']];
 
-                if ($result) return true;
-                else return false;
+                if ($excludeId !== null) {
+                    $query .= " AND id_usuario != :id_excluir";
+                    $params[':id_excluir'] = $excludeId;
+                }
                 break;
+
             case 'cliente':
                 $query = "SELECT nro_documento FROM cliente WHERE nro_documento = :nro_d";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute([':nro_d' => $this->data['nro_documento']]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $params = [':nro_d' => $this->data['nro_documento']];
 
-                if ($result) return true;
-                else return false;
+                if ($excludeId !== null) {
+                    $query .= " AND id_cliente != :id_excluir";
+                    $params[':id_excluir'] = $excludeId;
+                }
                 break;
+
             case 'proveedor':
                 $query = "SELECT nombre FROM proveedor WHERE nombre = :nom";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute([':nom' => $this->data['nombre']]);
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $params = [':nom' => $this->data['nombre']];
 
-                if ($result) return true;
-                else return false;
+                if ($excludeId !== null) {
+                    $query .= " AND id_proveedor != :id_excluir";
+                    $params[':id_excluir'] = $excludeId;
+                }
                 break;
+
             default:
                 return false;
-                break;
         }
+
+        $stmt = $this->DB->prepare($query);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return (bool)$result;
     }
 
     public function isAssigned(string $tipo)
@@ -113,16 +128,16 @@ class akashaValidator
     public function stockIsNotEmpty(): bool
     {
         $query = "SELECT cantidad_actual FROM stock WHERE id_producto = :id_prod AND id_ubicacion = :id_ubi";
-                $stmt = $this->DB->prepare($query);
-                $stmt->execute([
-                ':id_prod' => $this->data['id_producto'],
-                ':id_ubi' => $this->data['id_ubicacion']
-            ]);
-                $count = $stmt->fetchColumn();
-            
-            if($count > 0) return true;
-            
-            else return false;
+        $stmt = $this->DB->prepare($query);
+        $stmt->execute([
+            ':id_prod' => $this->data['id_producto'],
+            ':id_ubi' => $this->data['id_ubicacion']
+        ]);
+        $count = $stmt->fetchColumn();
+
+        if ($count > 0) return true;
+
+        else return false;
     }
 
     /**

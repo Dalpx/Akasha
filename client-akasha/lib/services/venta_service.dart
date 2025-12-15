@@ -6,16 +6,17 @@ import '../models/venta.dart';
 import '../models/detalle_venta.dart';
 
 class VentaService {
-  // URL hardcodeada como en tu original
+  // Mantengo tu endpoint base. Si lo quieres, muévelo a un ApiConfig central.
   final String _baseUrl = "http://localhost/akasha/server-akasha/src/venta";
 
-  // Headers simples (Igual que CompraService, sin tokens)
   Map<String, String> get _headers => const {
         HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
         HttpHeaders.acceptHeader: 'application/json',
       };
 
-  // --- OBTENER VENTAS ---
+  /// GET de ventas (lista). Soporta:
+  /// - [ { ... }, ... ]
+  /// - { message: "...", data: [ { ... } ] }
   Future<List<Venta>> obtenerVentas({int? idVenta}) async {
     final uri = Uri.parse(idVenta == null ? _baseUrl : '$_baseUrl?id_venta=$idVenta');
     final resp = await http.get(uri, headers: _headers);

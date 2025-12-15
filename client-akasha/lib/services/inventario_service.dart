@@ -190,17 +190,22 @@ class InventarioService {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        print("Nueva instancia de ubicacion creada.");
+        log("Nueva instancia de ubicacion creada.");
         notifyProductosChanged();
       } else {
-        print("Fallo al establecer stock. Código: ${response.statusCode}. Respuesta: ${response.body}");
+        log(
+          "Fallo al establecer stock. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
     } catch (e) {
-      print("Error al intentar establecer stock: $e");
+      log("Error al intentar establecer stock: $e");
     }
   }
 
-  Future<void> eliminarInstanciaUbicacion(int idProducto, int idUbicacion) async {
+  Future<void> eliminarInstanciaUbicacion(
+    int idProducto,
+    int idUbicacion,
+  ) async {
     final url = Uri.parse(_stockUbicacionUrl);
     try {
       final response = await http.delete(
@@ -213,26 +218,41 @@ class InventarioService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        print("Instancia eliminada con éxito.");
+        log("Instancia eliminada con éxito.");
         notifyProductosChanged();
       } else {
-        print("Fallo al eliminar instancia. Código: ${response.statusCode}. Respuesta: ${response.body}");
+        log(
+          "Fallo al eliminar instancia. Código: ${response.statusCode}. Respuesta: ${response.body}",
+        );
       }
     } catch (e) {
-      print("Error al intentar eliminar instancia: $e");
+      log("Error al intentar eliminar instancia: $e");
     }
   }
 
-  // ====== REPORTE Y VALORACIÓN ======
+  // ====== REPORTE Y VALORACIÓN (NUEVO) ======
 
   /// Calcula el inventario valorado (Costo * Stock Total)
+  /// Nota: Al no tener SQL directo, esto hace múltiples peticiones.
+  /// Idealmente, crearías un endpoint '/reporte/inventario' en PHP para esto.
+  Future<List<Map<String, dynamic>>> obtenerReporteSinStock() async {
+    // Reutilizamos el reporte valorado ya que contiene el stock total calculado
+    final reporteValorado = await obtenerReporteValorado();
+
+    // Filtramos los productos que tienen 0 o menos en stock
+    final productosSinStock = reporteValorado
+        .where((item) => (item['cantidad'] as num) <= 0)
+        .toList();
+
+    return productosSinStock;
+  }
   Future<List<Map<String, dynamic>>> obtenerReporteValorado() async {
     try {
       // 1. Obtenemos todos los productos activos
       final productos = await obtenerProductos();
       List<Map<String, dynamic>> reporte = [];
 
-      // 2. Iteramos y buscamos su stock
+      // 2. Iteramos y buscamos su stock (Usamos Future.wait para hacerlo paralelo y mas rápido)
       await Future.wait(productos.map((p) async {
         if (p.idProducto != null) {
           final int stockTotal = await obtenerStockTotalDeProducto(p.idProducto!);

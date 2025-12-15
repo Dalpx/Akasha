@@ -1,20 +1,16 @@
 import 'package:akasha/core/app_routes.dart';
-import 'package:akasha/widgets/app_theme.dart';
+import 'package:akasha/common/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'core/session_manager.dart';
 import 'views/auth/login_page.dart';
 import 'views/shell/app_shell.dart';
 
 void main() {
-  // Punto de entrada de la aplicación
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Aquí podrías inicializar SharedPreferences, servicios, etc.
   runApp(const AkashaApp());
 }
 
-/// Widget raíz de la aplicación.
-/// Se encarga de configurar el MaterialApp, rutas y tema.
 class AkashaApp extends StatefulWidget {
   const AkashaApp({super.key});
 

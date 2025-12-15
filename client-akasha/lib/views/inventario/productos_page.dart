@@ -1,7 +1,8 @@
+import 'package:akasha/common/custom_card.dart';
 import 'package:akasha/views/inventario/ubicaciones_productos_page.dart';
-import 'package:akasha/widgets/producto/producto_detalles.dart';
-import 'package:akasha/widgets/producto/producto_form_dialog.dart';
-import 'package:akasha/widgets/producto/producto_list_item.dart';
+import 'package:akasha/views/inventario/widgets/producto_detalles.dart';
+import 'package:akasha/views/inventario/widgets/producto_form_dialog.dart';
+import 'package:akasha/views/inventario/widgets/producto_list_item.dart';
 import 'package:flutter/material.dart';
 import '../../models/producto.dart';
 import '../../models/proveedor.dart';
@@ -10,8 +11,7 @@ import '../../services/inventario_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../services/categoria_service.dart';
 import '../../core/app_routes.dart';
-// Aseguramos la importación de la vista detallada
-import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart'; 
+import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart';
 
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
@@ -32,8 +32,18 @@ class _ProductosPageState extends State<ProductosPage>
   List<Categoria> _categorias = <Categoria>[];
 
   bool _cargandoCombos = true;
-
   List<Producto>? _cacheProductos;
+
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchText = '';
+
+  bool _soloActivos = true;
+  String? _filtroProveedor;
+  String? _filtroCategoria;
+  double? _minPrecioVenta;
+  double? _maxPrecioVenta;
+
+  int _conteoFiltrado = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -43,13 +53,13 @@ class _ProductosPageState extends State<ProductosPage>
     super.initState();
     _futureProductos = _cargarProductosConCache();
     _cargarProveedoresYCategorias();
-
     InventarioService.productosRevision.addListener(_onProductosChanged);
   }
 
   @override
   void dispose() {
     InventarioService.productosRevision.removeListener(_onProductosChanged);
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -70,7 +80,6 @@ class _ProductosPageState extends State<ProductosPage>
     try {
       final proveedoresFuture = _proveedorService.obtenerProveedoresActivos();
       final categoriasFuture = _categoriaService.obtenerCategorias();
-
       final results = await Future.wait([proveedoresFuture, categoriasFuture]);
 
       if (!mounted) return;
@@ -98,222 +107,6 @@ class _ProductosPageState extends State<ProductosPage>
     await _cargarProveedoresYCategorias();
     _recargarProductos();
   }
-
-  // --- REPORTE VALORACIÓN ---
-  Future<void> _abrirReporteInventario() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      final inventario = await _inventarioService.obtenerReporteValorado();
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      final listaMapeada = inventario.map((item) => {
-        'ref': item['sku'],
-        'fecha': item['nombre'], 
-        'entidad': "${item['cantidad']} unds.",
-        'total': item['valor_total'],
-        'timestamp': null, // Agregado para compatibilidad
-        'esValorMonetario': true,
-      }).toList();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VistaReporteDetallado(
-            titulo: 'Inventario Valorado',
-            datosIniciales: listaMapeada,
-            permiteFiltrarFecha: false,  // Inventario es foto actual
-            esValorMonetario: true,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar reporte: $e')),
-      );
-    }
-  }
-
-  // --- REPORTE SIN STOCK ---
-  Future<void> _abrirReporteSinStock() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      final inventarioSinStock = await _inventarioService.obtenerReporteSinStock();
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      final listaMapeada = inventarioSinStock.map((item) => {
-        'ref': item['sku'],
-        'fecha': item['nombre'], 
-        'entidad': "${item['cantidad']} unds.",
-        'total': 0.0,
-        'timestamp': null, // Agregado para compatibilidad
-        'esValorMonetario': false,
-      }).toList();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VistaReporteDetallado(
-            titulo: 'Productos Sin Stock',
-            datosIniciales: listaMapeada,
-            permiteFiltrarFecha: false,
-            esValorMonetario: false,
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar reporte: $e')),
-      );
-    }
-  }
-
-  // ====================================================================
-  // NUEVA FUNCIÓN: ABRIR REPORTE DE STOCK POR UBICACIÓN
-  // ====================================================================
-  Future<void> _abrirReporteStockPorUbicacion() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      // 1. Obtener la data del servicio
-      final stockUbicacion = await _inventarioService.obtenerReporteStockPorUbicacion();
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      
-      // 2. Mapear los datos (usando la misma lógica corregida de ReportesPage)
-      final listaMapeada = stockUbicacion.map((item) {
-        // Usamos las claves reales que devuelve la API y las mapeamos a la vista
-        final cantidad = (item['stock'] as num? ?? 0.0).toDouble();
-        final nombreProducto = item['nombre'] ?? 'Producto Desconocido';
-
-        return {
-          // Mapeamos el nombre del producto al campo 'ref' y 'fecha'
-          'ref': nombreProducto, 
-          'fecha': nombreProducto, 
-          // Mapeamos el nombre del almacén a 'entidad' (la columna principal del reporte)
-          'entidad': item['nombre_almacen'] ?? 'Ubicación General', 
-          'total': cantidad,
-          'timestamp': null,
-          'producto_nombre': nombreProducto, // Para filtros
-        };
-      }).toList();
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VistaReporteDetallado(
-            titulo: 'Stock por Ubicación',
-            labelEntidad: 'Ubicación',
-            datosIniciales: listaMapeada, 
-            permiteFiltrarFecha: false, // Es un reporte de estado actual
-            esValorMonetario: false, // Es en CANTIDADES
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar Stock por Ubicación: $e')),
-      );
-    }
-  }
-
-
-  // ====================================================================
-  // FUNCIÓN EXISTENTE: ABRIR REPORTE DE HISTORIAL DE MOVIMIENTO (KARDEX)
-  // ====================================================================
-  Future<void> _abrirHistorialMovimiento() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      // 1. Obtener todos los movimientos (Kardex global)
-      final historial = await _inventarioService.obtenerHistorialMovimientos();
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      
-      // 2. Mapear los datos de historial (usando la lógica de mapeo del ReportesPage)
-      final listaMapeada = historial.map((m) {
-        DateTime? fechaObj = (m['fecha'] != null) ? DateTime.tryParse(m['fecha'].toString()) : null;
-
-        String nombreProd = m['producto'] ?? m['nombre_producto'] ?? 'Producto';
-        String tipo = m['tipo_movimiento'] ?? m['tipo'] ?? 'Mov'; 
-        String ubicacion = m['ubicacion'] ?? 'General';
-        
-        double cantidadAbsoluta = double.tryParse(m['cantidad'].toString()) ?? 0.0;
-        
-        bool esSalida = tipo.toLowerCase().contains('salida') || 
-                        tipo.toLowerCase().contains('venta') ||
-                        tipo.toLowerCase().contains('consumo') ||
-                        tipo.toLowerCase().contains('out');
-
-        double cantidadReal = esSalida ? (cantidadAbsoluta * -1) : cantidadAbsoluta;
-
-        return {
-          // Datos para la Vista (App)
-          'ref': m['referencia'] ?? m['id_movimiento'] ?? '-',
-          'fecha': m['fecha'] ?? '-',
-          'entidad': nombreProd, 
-          'total': cantidadReal, 
-          'timestamp': fechaObj,
-          
-          // DATOS CRUDOS PARA EL PDF
-          'tipo_movimiento': tipo,  
-          'ubicacion': ubicacion,   
-          'cantidad': cantidadReal,  
-          'producto_nombre': nombreProd, 
-        };
-      }).toList();
-
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VistaReporteDetallado(
-            titulo: 'Historial de Movimientos (Kardex)',
-            labelEntidad: 'Producto',
-            datosIniciales: listaMapeada, 
-            permiteFiltrarFecha: true,
-            esValorMonetario: false, // Es en CANTIDADES
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al generar Kardex: $e')),
-      );
-    }
-  }
-
 
   Future<void> _abrirFormularioProducto({Producto? productoEditar}) async {
     if (_cargandoCombos) {
@@ -416,6 +209,245 @@ class _ProductosPageState extends State<ProductosPage>
     await _inventarioService.eliminarProducto(idProducto);
     _cacheProductos = null;
     _recargarProductos();
+  }
+
+  void _syncConteo(int value) {
+    if (_conteoFiltrado == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _conteoFiltrado = value);
+    });
+  }
+
+  bool _hasActiveFilters() {
+    if ((_filtroProveedor ?? '').trim().isNotEmpty) return true;
+    if ((_filtroCategoria ?? '').trim().isNotEmpty) return true;
+    if (_minPrecioVenta != null) return true;
+    if (_maxPrecioVenta != null) return true;
+    return false;
+  }
+
+  List<String> _valoresUnicosProveedor(List<Producto> productos) {
+    final set = <String>{};
+    for (final p in productos) {
+      final v = (p.idProveedor ?? '').trim();
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<String> _valoresUnicosCategoria(List<Producto> productos) {
+    final set = <String>{};
+    for (final p in productos) {
+      final v = (p.idCategoria ?? '').trim();
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<Producto> _filtrarProductos(List<Producto> productos) {
+    Iterable<Producto> res = productos;
+
+    if (_soloActivos) {
+      res = res.where((p) => p.activo);
+    }
+
+    if ((_filtroProveedor ?? '').trim().isNotEmpty) {
+      final fp = _filtroProveedor!.trim();
+      res = res.where((p) => (p.idProveedor ?? '').trim() == fp);
+    }
+
+    if ((_filtroCategoria ?? '').trim().isNotEmpty) {
+      final fc = _filtroCategoria!.trim();
+      res = res.where((p) => (p.idCategoria ?? '').trim() == fc);
+    }
+
+    if (_minPrecioVenta != null) {
+      final min = _minPrecioVenta!;
+      res = res.where((p) => p.precioVenta >= min);
+    }
+
+    if (_maxPrecioVenta != null) {
+      final max = _maxPrecioVenta!;
+      res = res.where((p) => p.precioVenta <= max);
+    }
+
+    final q = _searchText.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      res = res.where((p) {
+        return p.nombre.toLowerCase().contains(q) ||
+            p.sku.toLowerCase().contains(q) ||
+            p.descripcion.toLowerCase().contains(q);
+      });
+    }
+
+    return res.toList();
+  }
+
+  Future<void> _abrirFiltros() async {
+    final productos = _cacheProductos ?? await _cargarProductosConCache();
+    if (!mounted) return;
+
+    final proveedores = _valoresUnicosProveedor(productos);
+    final categorias = _valoresUnicosCategoria(productos);
+
+    bool soloActivosLocal = _soloActivos;
+    String? proveedorLocal = _filtroProveedor;
+    String? categoriaLocal = _filtroCategoria;
+
+    final minCtrl = TextEditingController(
+      text: _minPrecioVenta?.toString() ?? '',
+    );
+    final maxCtrl = TextEditingController(
+      text: _maxPrecioVenta?.toString() ?? '',
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Filtros'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String?>(
+                      value:
+                          (proveedorLocal != null &&
+                              proveedores.contains(proveedorLocal))
+                          ? proveedorLocal
+                          : null,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Todos los proveedores'),
+                        ),
+                        ...proveedores.map(
+                          (p) => DropdownMenuItem<String?>(
+                            value: p,
+                            child: Text(p),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setDialogState(() => proveedorLocal = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Proveedor',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String?>(
+                      value:
+                          (categoriaLocal != null &&
+                              categorias.contains(categoriaLocal))
+                          ? categoriaLocal
+                          : null,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Todas las categorías'),
+                        ),
+                        ...categorias.map(
+                          (c) => DropdownMenuItem<String?>(
+                            value: c,
+                            child: Text(c),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setDialogState(() => categoriaLocal = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: minCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Precio venta mín.',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: maxCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Precio venta máx.',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      soloActivosLocal = true;
+                      proveedorLocal = null;
+                      categoriaLocal = null;
+                      minCtrl.text = '';
+                      maxCtrl.text = '';
+                    });
+                  },
+                  child: const Text('Limpiar'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final min = double.tryParse(minCtrl.text.trim());
+                    final max = double.tryParse(maxCtrl.text.trim());
+
+                    setState(() {
+                      _soloActivos = soloActivosLocal;
+                      _filtroProveedor = proveedorLocal;
+                      _filtroCategoria = categoriaLocal;
+                      _minPrecioVenta = min;
+                      _maxPrecioVenta = max;
+                    });
+
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    minCtrl.dispose();
+    maxCtrl.dispose();
+  }
+
+  void _limpiarBusqueda() {
+    _searchCtrl.clear();
+    setState(() => _searchText = '');
   }
 
   @override

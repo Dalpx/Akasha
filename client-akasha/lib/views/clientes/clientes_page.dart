@@ -1,6 +1,9 @@
+import 'package:akasha/common/custom_card.dart';
 import 'package:akasha/models/cliente.dart';
 import 'package:akasha/services/cliente_service.dart';
-import 'package:akasha/widgets/cliente/cliente_form_dialog.dart';
+import 'package:akasha/views/clientes/widgets/cliente_detalles.dart';
+import 'package:akasha/views/clientes/widgets/cliente_form_dialog.dart';
+import 'package:akasha/views/clientes/widgets/cliente_list_item.dart';
 import 'package:flutter/material.dart';
 
 class ClientesPage extends StatefulWidget {
@@ -10,16 +13,21 @@ class ClientesPage extends StatefulWidget {
   State<ClientesPage> createState() => _ClientesPageState();
 }
 
-class _ClientesPageState extends State<ClientesPage> 
+class _ClientesPageState extends State<ClientesPage>
     with AutomaticKeepAliveClientMixin {
-  
-  // Servicios y Estado
   final ClienteService _clienteService = ClienteService();
+
   late Future<List<Cliente>> _futureClientes;
-  
-  // Control de Búsqueda
-  final TextEditingController _searchController = TextEditingController();
-  String _filtroBusqueda = "";
+  List<Cliente>? _cacheClientes;
+
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchText = '';
+
+  String? _filtroTipoDocumento;
+  bool _soloConEmail = false;
+  bool _soloConDireccion = false;
+
+  int _conteoFiltrado = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -27,62 +35,78 @@ class _ClientesPageState extends State<ClientesPage>
   @override
   void initState() {
     super.initState();
-    _futureClientes = _loadClientes();
+    _futureClientes = _cargarClientesConCache();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  Future<List<Cliente>> _loadClientes() {
-    // Nota: Asumimos que el servicio trae todos o gestiona el filtro.
-    // Si tu servicio solo trae activos, la búsqueda solo buscará en activos.
-    return _clienteService.obtenerClientesActivos(); 
+  Future<List<Cliente>> _cargarClientesConCache() async {
+    if (_cacheClientes != null) return _cacheClientes!;
+    final clientes = await _clienteService.obtenerClientesActivos();
+    _cacheClientes = clientes;
+    return clientes;
   }
 
   void _recargarClientes() {
     if (!mounted) return;
     setState(() {
-      _futureClientes = _loadClientes();
+      _futureClientes = _cargarClientesConCache();
     });
   }
 
-  // --- LÓGICA DE ACCIONES ---
+  Future<void> _abrirFormularioCliente({Cliente? clienteEditar}) async {
+    final List<Cliente> clientesActuales =
+        await _clienteService.obtenerClientesActivos();
 
-  Future<void> _abrirFormulario({Cliente? cliente}) async {
-    // Obtenemos lista actual para validaciones (si el dialog lo requiere)
-    final List<Cliente> clientesActuales = await _clienteService.obtenerClientesActivos();
-    
     if (!mounted) return;
 
     final Cliente? clienteResultado = await showDialog<Cliente>(
       context: context,
       builder: (context) => ClienteFormDialog(
-        cliente: cliente,
+        cliente: clienteEditar,
         clientesExistentes: clientesActuales,
       ),
     );
 
     if (clienteResultado != null) {
-      if (cliente == null) {
+      if (clienteEditar == null) {
         await _clienteService.crearCliente(clienteResultado);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cliente creado exitosamente'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('Cliente creado exitosamente.'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } else {
         await _clienteService.actualizarCliente(clienteResultado);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cliente actualizado exitosamente'), backgroundColor: Colors.green),
+            const SnackBar(
+              content: Text('Cliente actualizado exitosamente.'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       }
+
+      _cacheClientes = null;
       _recargarClientes();
     }
+  }
+
+  void _mostrarDetallesDeClientes(Cliente cliente) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return ClienteDetalles(cliente: cliente);
+      },
+    );
   }
 
   Future<void> _confirmarEliminarCliente(Cliente cliente) async {
@@ -92,42 +116,196 @@ class _ClientesPageState extends State<ClientesPage>
         title: Text(cliente.activo ? 'Desactivar Cliente' : 'Reactivar Cliente'),
         content: Text(
           cliente.activo
-              ? '¿Desea desactivar a ${cliente.nombre} ${cliente.apellido}? No podrá realizar nuevas compras.'
-              : '¿Desea reactivar a ${cliente.nombre} ${cliente.apellido}?',
+              ? '¿Está seguro de que desea desactivar al cliente ${cliente.nombre} ${cliente.apellido}? Esto lo inhabilitará para nuevas ventas.'
+              : '¿Está seguro de que desea reactivar al cliente ${cliente.nombre} ${cliente.apellido}?',
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: cliente.activo ? Colors.red : Colors.green,
-              foregroundColor: Colors.white,
-            ),
+          TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(cliente.activo ? 'Desactivar' : 'Reactivar'),
+            child: Text(
+              cliente.activo ? 'Desactivar' : 'Reactivar',
+              style: TextStyle(
+                color: cliente.activo ? Colors.red : Colors.green,
+              ),
+            ),
           ),
         ],
       ),
     );
 
     if (confirmar == true) {
-      if (cliente.idCliente != null) {
-        // Asumiendo que eliminarCliente hace un "Soft Delete" (cambia activo a 0)
+      if (cliente.activo) {
         await _clienteService.eliminarCliente(cliente.idCliente!);
       }
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Estado del cliente actualizado.'),
-            backgroundColor: cliente.activo ? Colors.orange : Colors.green,
+            content: Text(
+              'Cliente ${cliente.activo ? 'desactivado' : 'reactivado'} correctamente.',
+            ),
+            backgroundColor: cliente.activo ? Colors.red : Colors.green,
           ),
         );
       }
+      _cacheClientes = null;
       _recargarClientes();
     }
+  }
+
+  void _syncConteo(int value) {
+    if (_conteoFiltrado == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _conteoFiltrado = value);
+    });
+  }
+
+  void _limpiarBusqueda() {
+    _searchCtrl.clear();
+    setState(() => _searchText = '');
+  }
+
+  bool _hasActiveFilters() {
+    if ((_filtroTipoDocumento ?? '').trim().isNotEmpty) return true;
+    if (_soloConEmail) return true;
+    if (_soloConDireccion) return true;
+    return false;
+  }
+
+  List<String> _valoresUnicosTipoDocumento(List<Cliente> clientes) {
+    final set = <String>{};
+    for (final c in clientes) {
+      final v = c.tipoDocumento.trim();
+      if (v.isNotEmpty) set.add(v);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<Cliente> _filtrarClientes(List<Cliente> clientes) {
+    Iterable<Cliente> res = clientes;
+
+    res = res.where((c) => c.activo);
+
+    if ((_filtroTipoDocumento ?? '').trim().isNotEmpty) {
+      final ft = _filtroTipoDocumento!.trim();
+      res = res.where((c) => c.tipoDocumento.trim() == ft);
+    }
+
+    if (_soloConEmail) {
+      res = res.where((c) => (c.email ?? '').trim().isNotEmpty);
+    }
+
+    if (_soloConDireccion) {
+      res = res.where((c) => (c.direccion ?? '').trim().isNotEmpty);
+    }
+
+    final q = _searchText.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      res = res.where((c) {
+        final nombre = c.nombre.toLowerCase();
+        final apellido = c.apellido.toLowerCase();
+        final doc = c.nroDocumento.toLowerCase();
+        final tel = c.telefono.toLowerCase();
+        final email = (c.email ?? '').toLowerCase();
+        final dir = (c.direccion ?? '').toLowerCase();
+        return nombre.contains(q) ||
+            apellido.contains(q) ||
+            ('$nombre $apellido').contains(q) ||
+            doc.contains(q) ||
+            tel.contains(q) ||
+            email.contains(q) ||
+            dir.contains(q);
+      });
+    }
+
+    return res.toList();
+  }
+
+  Future<void> _abrirFiltros() async {
+    final clientes = _cacheClientes ?? await _cargarClientesConCache();
+    if (!mounted) return;
+
+    final tipos = _valoresUnicosTipoDocumento(clientes);
+
+    String? tipoLocal = _filtroTipoDocumento;
+    bool soloConEmailLocal = _soloConEmail;
+    bool soloConDireccionLocal = _soloConDireccion;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Filtros'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String?>(
+                      value: (tipoLocal != null && tipos.contains(tipoLocal))
+                          ? tipoLocal
+                          : null,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Todos los tipos de documento'),
+                        ),
+                        ...tipos.map(
+                          (t) => DropdownMenuItem<String?>(
+                            value: t,
+                            child: Text(t),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setDialogState(() => tipoLocal = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Tipo de documento',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      tipoLocal = null;
+                      soloConEmailLocal = false;
+                      soloConDireccionLocal = false;
+                    });
+                  },
+                  child: const Text('Limpiar'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _filtroTipoDocumento = tipoLocal;
+                      _soloConEmail = soloConEmailLocal;
+                      _soloConDireccion = soloConDireccionLocal;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Aplicar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -135,311 +313,157 @@ class _ClientesPageState extends State<ClientesPage>
     super.build(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: Column(
-        children: [
-          // --- HEADER (Igual que Proveedores pero con ícono de Clientes) ---
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Colors.black12)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50, // Azul para clientes
-                        borderRadius: BorderRadius.circular(12),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Clientes',
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                      child: Icon(Icons.people_alt_rounded, color: Colors.blue.shade700, size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Clientes",
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
-                        Text(
-                          "Directorio de clientes y compradores",
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                
-                // --- BARRA DE BÚSQUEDA ---
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: "Buscar por nombre, apellido o documento...",
-                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                    suffixIcon: _filtroBusqueda.isNotEmpty 
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.grey),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                              _filtroBusqueda = "";
-                            });
-                          },
-                        ) 
-                      : null,
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+                      const Text('Gestión de clientes'),
+                    ],
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _filtroBusqueda = value.toLowerCase();
-                    });
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _abrirFormularioCliente();
                   },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nuevo'),
                 ),
               ],
             ),
-          ),
-
-          // --- LISTA DE RESULTADOS ---
-          Expanded(
-            child: FutureBuilder<List<Cliente>>(
-              future: _futureClientes,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return _buildEmptyState();
-                }
-
-                final listaCompleta = snapshot.data!;
-                
-                // Filtrado Local
-                final listaFiltrada = listaCompleta.where((c) {
-                  final nombre = c.nombre.toLowerCase();
-                  final apellido = c.apellido.toLowerCase();
-                  final doc = c.nroDocumento.toLowerCase();
-                  
-                  return nombre.contains(_filtroBusqueda) || 
-                         apellido.contains(_filtroBusqueda) ||
-                         doc.contains(_filtroBusqueda);
-                }).toList();
-
-                if (listaFiltrada.isEmpty) {
-                  return _buildEmptyState(isSearch: true);
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: listaFiltrada.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final c = listaFiltrada[index];
-                    return _buildClienteCard(c);
-                  },
-                );
-              },
+            const SizedBox(height: 16.0),
+            Row(
+              children: [
+                SizedBox(
+                  height: 40,
+                  width: 300,
+                  child: SearchBar(
+                    controller: _searchCtrl,
+                    hintText: 'Buscar clientes...',
+                    onChanged: (String value) {
+                      setState(() => _searchText = value);
+                    },
+                    leading: const Icon(Icons.search),
+                    trailing: [
+                      if (_searchText.trim().isNotEmpty)
+                        IconButton(
+                          tooltip: 'Limpiar',
+                          onPressed: _limpiarBusqueda,
+                          icon: const Icon(Icons.close),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Filtros',
+                  onPressed: _abrirFiltros,
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.filter_list),
+                      if (_hasActiveFilters())
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '•',
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onPrimary,
+                                  fontSize: 18,
+                                  height: 0.9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 16.0),
+            Expanded(
+              child: CustomCard(
+                content: FutureBuilder<List<Cliente>>(
+                  future: _futureClientes,
+                  initialData: _cacheClientes,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        (snapshot.data == null || snapshot.data!.isEmpty)) {
+                      _syncConteo(0);
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _abrirFormulario(),
-        backgroundColor: Colors.blue.shade700,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Nuevo Cliente", style: TextStyle(color: Colors.white)),
-      ),
-    );
-  }
+                    if (snapshot.hasError) {
+                      _syncConteo(0);
+                      return Center(
+                        child: Text(
+                          'Error al cargar clientes: ${snapshot.error}',
+                        ),
+                      );
+                    }
 
-  Widget _buildEmptyState({bool isSearch = false}) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isSearch ? Icons.search_off : Icons.person_off_outlined, 
-            size: 60, 
-            color: Colors.grey.shade300
-          ),
-          const SizedBox(height: 10),
-          Text(
-            isSearch ? "No se encontraron clientes" : "No hay clientes registrados",
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
-        ],
-      ),
-    );
-  }
+                    final data = snapshot.data ?? <Cliente>[];
+                    final clientes = _filtrarClientes(data);
 
-  // --- TARJETA DE CLIENTE ---
-  Widget _buildClienteCard(Cliente c) {
-    // Iniciales para el Avatar (Nombre + Apellido)
-    String iniciales = c.nombre.isNotEmpty ? c.nombre[0] : '';
-    if (c.apellido.isNotEmpty) {
-      iniciales += c.apellido[0];
-    }
-    iniciales = iniciales.toUpperCase();
+                    _syncConteo(clientes.length);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      color: Colors.white,
-      child: InkWell(
-        onTap: () => _abrirFormulario(cliente: c),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Avatar con iniciales y Badge
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.blue.shade50,
-                    child: Text(
-                      iniciales,
-                      style: TextStyle(
-                        fontSize: 18, 
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: c.activo ? Colors.green : Colors.red,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              
-              // Información
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "${c.nombre} ${c.apellido}",
-                      style: const TextStyle(
-                        fontSize: 18, 
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    if (clientes.isEmpty) {
+                      return const Center(
+                        child: Text('No hay clientes para los filtros actuales.'),
+                      );
+                    }
 
-                    // Documento y Teléfono
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInfoItem(Icons.badge_outlined, c.nroDocumento),
-                        const SizedBox(width: 16),
-                        _buildInfoItem(Icons.phone_outlined, c.telefono),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    
-                    // Email
-                    _buildInfoItem(Icons.email_outlined, c.email),
-                    const SizedBox(height: 6),
+                    return ListView.builder(
+                      key: const PageStorageKey('clientes_list'),
+                      itemCount: clientes.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final Cliente cliente = clientes[index];
 
-                    // Dirección
-                    _buildInfoItem(Icons.location_on_outlined, c.direccion),
-                  ],
+                        return ClienteListItem(
+                          index: index + 1,
+                          cliente: cliente,
+                          onEditar: () {
+                            _abrirFormularioCliente(clienteEditar: cliente);
+                          },
+                          onDesactivar: () {
+                            _confirmarEliminarCliente(cliente);
+                          },
+                          onVerDetalle: () {
+                            _mostrarDetallesDeClientes(cliente);
+                          },
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
-
-              // Menú de opciones
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: Colors.grey.shade400),
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _abrirFormulario(cliente: c);
-                  } else if (value == 'toggle') {
-                    _confirmarEliminarCliente(c);
-                  }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 20, color: Colors.blueGrey),
-                        SizedBox(width: 10),
-                        Text('Editar'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'toggle',
-                    child: Row(
-                      children: [
-                        Icon(
-                          c.activo ? Icons.block : Icons.check_circle_outline, 
-                          size: 20, 
-                          color: c.activo ? Colors.redAccent : Colors.green
-                        ),
-                        const SizedBox(width: 10),
-                        Text(c.activo ? 'Desactivar' : 'Reactivar'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16.0),
+            Text('Clientes encontrados ( $_conteoFiltrado )'),
+          ],
         ),
       ),
-    );
-  }
-
-  // Helper pequeño para filas de iconos+texto
-  Widget _buildInfoItem(IconData icon, String? value) {
-    if (value == null || value.isEmpty) return const SizedBox.shrink();
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: Colors.grey.shade500),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            value,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }
