@@ -12,6 +12,7 @@ import 'package:akasha/views/seguridad/usuarios_page.dart';
 import 'package:akasha/views/transacciones/compras_ventas_page.dart';
 import 'package:flutter/material.dart';
 import 'package:akasha/services/inventario_service.dart';
+import 'package:akasha/views/proveedores/proveedores_page.dart'; 
 
 class _NavOption {
   final int index;
@@ -43,6 +44,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _indiceSeleccionado = 0;
 
+  // 1. LISTA DE OPCIONES CON ÍNDICES ACTUALIZADOS (Reportes es index 6)
   final List<_NavOption> _opcionesBase = [
     _NavOption(
       index: 0,
@@ -69,16 +71,22 @@ class _AppShellState extends State<AppShell> {
       requiredRoles: ["super", "administrador", "almacen"],
     ),
     _NavOption(
-      index: 4,
-      icon: Icons.bar_chart,
-      label: 'Reportes',
-      requiredRoles: ["super"],
-    ),
-    _NavOption(
-      index: 5,
+      index: 4, // Antes era 5
       icon: Icons.handshake,
       label: 'Clientes',
       requiredRoles: ["super", "administrador"],
+    ),
+    _NavOption(
+      index: 5, // Antes era 6
+      icon: Icons.local_shipping,
+      label: 'Proveedores',
+      requiredRoles: ["super", "administrador"],
+    ),
+    _NavOption(
+      index: 6, // Antes era 4
+      icon: Icons.bar_chart,
+      label: 'Reportes',
+      requiredRoles: ["super"],
     ),
   ];
 
@@ -86,7 +94,6 @@ class _AppShellState extends State<AppShell> {
   late final CompraService _compraService;
   late final InventarioService _inventarioService;
 
-  /// Contador por página para forzar refresh al re-seleccionar.
   final Map<int, int> _refreshTick = <int, int>{};
 
   @override
@@ -97,40 +104,53 @@ class _AppShellState extends State<AppShell> {
     _compraService = CompraService();
     _inventarioService = InventarioService();
 
-    // Inicializa ticks para todos los índices base.
     for (final option in _opcionesBase) {
       _refreshTick[option.index] = 0;
     }
   }
 
+  // 2. BUILD PAGES CON ORDEN ACTUALIZADO
   List<Widget> _buildPages() {
-    // Usa ?? 0 por seguridad si en algún futuro cambia la lista de opciones.
-    final int t0 = _refreshTick[0] ?? 0;
-    final int t1 = _refreshTick[1] ?? 0;
-    final int t2 = _refreshTick[2] ?? 0;
-    final int t3 = _refreshTick[3] ?? 0;
-    final int t4 = _refreshTick[4] ?? 0;
-    final int t5 = _refreshTick[5] ?? 0;
+    final int t0 = _refreshTick[0] ?? 0; // Inventario
+    final int t1 = _refreshTick[1] ?? 0; // Transacciones
+    final int t2 = _refreshTick[2] ?? 0; // Movimientos
+    final int t3 = _refreshTick[3] ?? 0; // Usuarios
+    final int t4 = _refreshTick[4] ?? 0; // Clientes (Nuevo índice)
+    final int t5 = _refreshTick[5] ?? 0; // Proveedores (Nuevo índice)
+    final int t6 = _refreshTick[6] ?? 0; // Reportes (Nuevo índice)
 
     return [
+      // Index 0: Inventario
       ProductosPage(key: ValueKey('productos_$t0')),
+      
+      // Index 1: Transacciones
       ComprasVentasPage(
         key: ValueKey('transacciones_$t1'),
         sessionManager: widget.sessionManager,
       ),
+      
+      // Index 2: Movimientos
       MovimientoInventarioPage(
         key: ValueKey('movimientos_$t2'),
         sessionManager: widget.sessionManager,
       ),
+      
+      // Index 3: Usuarios
       UsuariosPage(key: ValueKey('usuarios_$t3')),
+      
+      // Index 4: Clientes
+      ClientesPage(key: ValueKey('clientes_$t4')), 
+
+      // Index 5: Proveedores
+      ProveedoresPage(key: ValueKey('proveedores_$t5')), 
+
+      // Index 6: Reportes (¡Al final!)
       ReportesPage(
-        key: ValueKey('reportes_$t4'),
+        key: ValueKey('reportes_$t6'),
         ventaService: _ventaService,
         compraService: _compraService,
         inventarioService: _inventarioService,
-        
       ),
-      ClientesPage(key: ValueKey('clientes_$t5')),
     ];
   }
 
@@ -177,8 +197,6 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildBodyConCache(int safeIndex) {
-    // Mantiene IndexedStack para no romper tu patrón,
-    // pero ahora cada child puede "reiniciarse" por Key.
     return IndexedStack(
       index: safeIndex,
       children: _buildPages(),
@@ -196,8 +214,6 @@ class _AppShellState extends State<AppShell> {
         if (!mounted) return;
         setState(() {
           _indiceSeleccionado = safeIndex;
-          // Nota: no incrementamos tick aquí para evitar refresh inesperado
-          // al cambiar permisos/rol.
         });
       });
     }

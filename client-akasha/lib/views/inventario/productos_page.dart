@@ -10,7 +10,8 @@ import '../../services/inventario_service.dart';
 import '../../services/proveedor_service.dart';
 import '../../services/categoria_service.dart';
 import '../../core/app_routes.dart';
-import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart'; // Importante
+// Aseguramos la importación de la vista detallada
+import 'package:akasha/views/reportes/widgets/vista_reporte_detallado.dart'; 
 
 class ProductosPage extends StatefulWidget {
   const ProductosPage({super.key});
@@ -112,14 +113,13 @@ class _ProductosPageState extends State<ProductosPage>
       if (!mounted) return;
       Navigator.of(context).pop();
 
-      double valorTotal = inventario.fold(
-          0.0, (sum, item) => sum + (item['valor_total'] as num).toDouble());
-
       final listaMapeada = inventario.map((item) => {
         'ref': item['sku'],
         'fecha': item['nombre'], 
         'entidad': "${item['cantidad']} unds.",
         'total': item['valor_total'],
+        'timestamp': null, // Agregado para compatibilidad
+        'esValorMonetario': true,
       }).toList();
 
       Navigator.push(
@@ -127,8 +127,9 @@ class _ProductosPageState extends State<ProductosPage>
         MaterialPageRoute(
           builder: (_) => VistaReporteDetallado(
             titulo: 'Inventario Valorado',
-            datos: listaMapeada,
-            totalGeneral: valorTotal,
+            datosIniciales: listaMapeada,
+            permiteFiltrarFecha: false,  // Inventario es foto actual
+            esValorMonetario: true,
           ),
         ),
       );
@@ -141,7 +142,7 @@ class _ProductosPageState extends State<ProductosPage>
     }
   }
 
-  // --- REPORTE SIN STOCK (NUEVO) ---
+  // --- REPORTE SIN STOCK ---
   Future<void> _abrirReporteSinStock() async {
     showDialog(
       context: context,
@@ -159,7 +160,9 @@ class _ProductosPageState extends State<ProductosPage>
         'ref': item['sku'],
         'fecha': item['nombre'], 
         'entidad': "${item['cantidad']} unds.",
-        'total': 0.0, // Irrelevante
+        'total': 0.0,
+        'timestamp': null, // Agregado para compatibilidad
+        'esValorMonetario': false,
       }).toList();
 
       Navigator.push(
@@ -167,8 +170,9 @@ class _ProductosPageState extends State<ProductosPage>
         MaterialPageRoute(
           builder: (_) => VistaReporteDetallado(
             titulo: 'Productos Sin Stock',
-            datos: listaMapeada,
-            totalGeneral: inventarioSinStock.length.toDouble(), // Conteo
+            datosIniciales: listaMapeada,
+            permiteFiltrarFecha: false,
+            esValorMonetario: false,
           ),
         ),
       );
@@ -180,6 +184,136 @@ class _ProductosPageState extends State<ProductosPage>
       );
     }
   }
+
+  // ====================================================================
+  // NUEVA FUNCIÓN: ABRIR REPORTE DE STOCK POR UBICACIÓN
+  // ====================================================================
+  Future<void> _abrirReporteStockPorUbicacion() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 1. Obtener la data del servicio
+      final stockUbicacion = await _inventarioService.obtenerReporteStockPorUbicacion();
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      
+      // 2. Mapear los datos (usando la misma lógica corregida de ReportesPage)
+      final listaMapeada = stockUbicacion.map((item) {
+        // Usamos las claves reales que devuelve la API y las mapeamos a la vista
+        final cantidad = (item['stock'] as num? ?? 0.0).toDouble();
+        final nombreProducto = item['nombre'] ?? 'Producto Desconocido';
+
+        return {
+          // Mapeamos el nombre del producto al campo 'ref' y 'fecha'
+          'ref': nombreProducto, 
+          'fecha': nombreProducto, 
+          // Mapeamos el nombre del almacén a 'entidad' (la columna principal del reporte)
+          'entidad': item['nombre_almacen'] ?? 'Ubicación General', 
+          'total': cantidad,
+          'timestamp': null,
+          'producto_nombre': nombreProducto, // Para filtros
+        };
+      }).toList();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VistaReporteDetallado(
+            titulo: 'Stock por Ubicación',
+            labelEntidad: 'Ubicación',
+            datosIniciales: listaMapeada, 
+            permiteFiltrarFecha: false, // Es un reporte de estado actual
+            esValorMonetario: false, // Es en CANTIDADES
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al generar Stock por Ubicación: $e')),
+      );
+    }
+  }
+
+
+  // ====================================================================
+  // FUNCIÓN EXISTENTE: ABRIR REPORTE DE HISTORIAL DE MOVIMIENTO (KARDEX)
+  // ====================================================================
+  Future<void> _abrirHistorialMovimiento() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 1. Obtener todos los movimientos (Kardex global)
+      final historial = await _inventarioService.obtenerHistorialMovimientos();
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      
+      // 2. Mapear los datos de historial (usando la lógica de mapeo del ReportesPage)
+      final listaMapeada = historial.map((m) {
+        DateTime? fechaObj = (m['fecha'] != null) ? DateTime.tryParse(m['fecha'].toString()) : null;
+
+        String nombreProd = m['producto'] ?? m['nombre_producto'] ?? 'Producto';
+        String tipo = m['tipo_movimiento'] ?? m['tipo'] ?? 'Mov'; 
+        String ubicacion = m['ubicacion'] ?? 'General';
+        
+        double cantidadAbsoluta = double.tryParse(m['cantidad'].toString()) ?? 0.0;
+        
+        bool esSalida = tipo.toLowerCase().contains('salida') || 
+                        tipo.toLowerCase().contains('venta') ||
+                        tipo.toLowerCase().contains('consumo') ||
+                        tipo.toLowerCase().contains('out');
+
+        double cantidadReal = esSalida ? (cantidadAbsoluta * -1) : cantidadAbsoluta;
+
+        return {
+          // Datos para la Vista (App)
+          'ref': m['referencia'] ?? m['id_movimiento'] ?? '-',
+          'fecha': m['fecha'] ?? '-',
+          'entidad': nombreProd, 
+          'total': cantidadReal, 
+          'timestamp': fechaObj,
+          
+          // DATOS CRUDOS PARA EL PDF
+          'tipo_movimiento': tipo,  
+          'ubicacion': ubicacion,   
+          'cantidad': cantidadReal,  
+          'producto_nombre': nombreProd, 
+        };
+      }).toList();
+
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VistaReporteDetallado(
+            titulo: 'Historial de Movimientos (Kardex)',
+            labelEntidad: 'Producto',
+            datosIniciales: listaMapeada, 
+            permiteFiltrarFecha: true,
+            esValorMonetario: false, // Es en CANTIDADES
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al generar Kardex: $e')),
+      );
+    }
+  }
+
 
   Future<void> _abrirFormularioProducto({Producto? productoEditar}) async {
     if (_cargandoCombos) {
@@ -308,11 +442,11 @@ class _ProductosPageState extends State<ProductosPage>
                   ),
                 ),
                 
-                // --- BOTÓN ROJO: SIN STOCK (NUEVO) ---
+                // --- BOTÓN ROJO: SIN STOCK ---
                 ElevatedButton.icon(
                   onPressed: _abrirReporteSinStock,
                   icon: const Icon(Icons.warning_amber_rounded),
-                  label: const Text('Sin Stock'),
+                  label: const Text('Productos Sin Stock'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade600,
                     foregroundColor: Colors.white,
@@ -331,7 +465,32 @@ class _ProductosPageState extends State<ProductosPage>
                   ),
                 ),
                 const SizedBox(width: 8.0),
-                
+
+                // --- BOTÓN AMARILLO: STOCK POR UBICACIÓN (NUEVO) ---
+                ElevatedButton.icon(
+                  onPressed: _abrirReporteStockPorUbicacion, // <-- NUEVA FUNCIÓN
+                  icon: const Icon(Icons.location_on),
+                  label: const Text('Ubicación'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+
+                // --- BOTÓN AZUL: HISTORIAL (KARDEX) ---
+                ElevatedButton.icon(
+                  onPressed: _abrirHistorialMovimiento, // <-- FUNCIÓN EXISTENTE
+                  icon: const Icon(Icons.history_toggle_off),
+                  label: const Text('Kardex'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade600,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+
+                // --- BOTONES RESTANTES ---
                 ElevatedButton.icon(
                   onPressed: () async {
                     await Navigator.of(context)
@@ -407,8 +566,8 @@ class _ProductosPageState extends State<ProductosPage>
                                   MaterialPageRoute(
                                     builder: (context) =>
                                         UbicacionesProductoPage(
-                                      producto: producto,
-                                    ),
+                                          producto: producto,
+                                        ),
                                   ),
                                 );
                               }

@@ -6,9 +6,9 @@ import '../models/compra.dart';
 import '../models/detalle_compra.dart';
 
 class CompraService {
-  final String _baseUrl =
-      'http://localhost/akasha/server-akasha/src/compra';
+  final String _baseUrl = 'http://localhost/akasha/server-akasha/src/compra';
 
+  // Headers simples, sin sesión
   Map<String, String> get _headers => const {
         HttpHeaders.acceptHeader: 'application/json',
         HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
@@ -24,12 +24,14 @@ class CompraService {
 
     final decoded = json.decode(utf8.decode(resp.bodyBytes));
 
+    // Caso 1: Lista directa
     if (decoded is List) {
       return decoded
           .map((e) => Compra.fromJson(e as Map<String, dynamic>))
           .toList();
     }
 
+    // Caso 2: Objeto { data: [...] }
     if (decoded is Map && decoded['data'] is List) {
       final data = decoded['data'] as List;
       return data
@@ -40,6 +42,7 @@ class CompraService {
     return const <Compra>[];
   }
 
+  // --- Método usado por ReportesPage (Lazy Loading) ---
   Future<List<DetalleCompra>> obtenerDetallesCompra(int idCompra) async {
     final resp =
         await http.get(Uri.parse('$_baseUrl/$idCompra'), headers: _headers);
@@ -51,6 +54,7 @@ class CompraService {
 
     final decoded = json.decode(utf8.decode(resp.bodyBytes));
 
+    // Lógica para encontrar la lista de detalles
     if (decoded is Map<String, dynamic>) {
       final raw = decoded['detalle_compra'];
       if (raw is List) {
@@ -60,6 +64,7 @@ class CompraService {
       }
     }
 
+    // Fallback por si viene dentro de 'data'
     if (decoded is Map && decoded['data'] is Map) {
       final data = decoded['data'] as Map;
       final raw = data['detalle_compra'];
@@ -74,7 +79,8 @@ class CompraService {
   }
 
   Future<bool> registrarCompra({
-    required CompraCreate cabecera,
+    // Asumo que CompraCreate está en models/compra.dart o importado
+    required dynamic cabecera, 
     required List<DetalleCompra> detalles,
   }) async {
     final body = {

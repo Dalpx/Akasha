@@ -3,27 +3,22 @@ import 'package:akasha/services/proveedor_service.dart';
 import 'package:akasha/widgets/entidades_maestras/dialogs/proveedor_form_dialog.dart';
 import 'package:flutter/material.dart';
 
-class ProveedoresTab extends StatefulWidget {
-  final ProveedorService service;
-  final Future<List<Proveedor>> future;
-  final VoidCallback onReload;
-  final void Function(Proveedor) onDelete;
-
-  const ProveedoresTab({
-    super.key,
-    required this.service,
-    required this.future,
-    required this.onReload,
-    required this.onDelete,
-  });
+class ProveedoresPage extends StatefulWidget {
+  const ProveedoresPage({super.key});
 
   @override
-  State<ProveedoresTab> createState() => _ProveedoresTabState();
+  State<ProveedoresPage> createState() => _ProveedoresPageState();
 }
 
-class _ProveedoresTabState extends State<ProveedoresTab>
+class _ProveedoresPageState extends State<ProveedoresPage> 
     with AutomaticKeepAliveClientMixin {
   
+  // Servicios y Estado de Datos
+  final ProveedorService _proveedorService = ProveedorService();
+  late Future<List<Proveedor>> _futureProveedores;
+  List<Proveedor>? _cacheProveedores;
+
+  // Estado de Búsqueda
   String _filtroBusqueda = "";
   final TextEditingController _searchController = TextEditingController();
 
@@ -31,33 +26,101 @@ class _ProveedoresTabState extends State<ProveedoresTab>
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    _futureProveedores = _loadProveedores();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  // Método para crear/editar
+  // --- LÓGICA DE DATOS ---
+
+  Future<List<Proveedor>> _loadProveedores({bool force = false}) async {
+    if (!force && _cacheProveedores != null) {
+      return _cacheProveedores!;
+    }
+    final list = await _proveedorService.obtenerProveedoresActivos();
+    _cacheProveedores = list;
+    return list;
+  }
+
+  void _recargarProveedores() {
+    if (!mounted) return;
+    setState(() {
+      _futureProveedores = _loadProveedores(force: true);
+    });
+  }
+
+  // --- LÓGICA DE ACCIONES ---
+
   Future<void> _abrirFormulario({Proveedor? proveedor}) async {
     final ok = await showProveedorFormDialog(
       context,
-      service: widget.service,
+      service: _proveedorService,
       initial: proveedor,
     );
+    // Si se creó o editó con éxito, recargamos la lista
+    if (ok && mounted) _recargarProveedores();
+  }
 
-    if (!mounted) return;
-    if (ok) widget.onReload();
+  void _confirmarEliminarProveedor(Proveedor proveedor) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirmar eliminación'),
+          content: Text(
+            '¿Seguro que deseas eliminar al proveedor "${proveedor.nombre}"?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (proveedor.idProveedor != null) {
+                  await _proveedorService.eliminarProveedor(
+                    proveedor.idProveedor!,
+                  );
+                }
+                if (!mounted) return;
+                
+                Navigator.of(dialogContext).pop(); // Cerrar diálogo
+                
+                // Limpiar caché y recargar
+                _cacheProveedores = null; 
+                _recargarProveedores();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Proveedor eliminado correctamente")),
+                );
+              },
+              child: const Text('Eliminar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-    // Usamos un Layout personalizado en lugar de CrudTabLayout para tener más control visual
+    
     return Scaffold(
       backgroundColor: Colors.grey.shade50, // Fondo suave
       body: Column(
         children: [
-          // --- HEADER PERSONALIZADO ---
+          // --- HEADER PERSONALIZADO (Estilo Tab) ---
           Container(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
             decoration: const BoxDecoration(
@@ -94,11 +157,12 @@ class _ProveedoresTabState extends State<ProveedoresTab>
                   ],
                 ),
                 const SizedBox(height: 20),
+                
                 // --- BARRA DE BÚSQUEDA ---
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: "Buscar por nombre o correo...", // RIF eliminado
+                    hintText: "Buscar por nombre o correo...",
                     prefixIcon: const Icon(Icons.search, color: Colors.grey),
                     suffixIcon: _filtroBusqueda.isNotEmpty 
                       ? IconButton(
@@ -132,7 +196,7 @@ class _ProveedoresTabState extends State<ProveedoresTab>
           // --- LISTA DE RESULTADOS ---
           Expanded(
             child: FutureBuilder<List<Proveedor>>(
-              future: widget.future,
+              future: _futureProveedores,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -143,7 +207,7 @@ class _ProveedoresTabState extends State<ProveedoresTab>
                 
                 final listaCompleta = snapshot.data ?? [];
                 
-                // Filtrado local
+                // Filtrado local usando la barra de búsqueda
                 final listaFiltrada = listaCompleta.where((p) {
                   final nombre = p.nombre.toLowerCase();
                   final correo = p.correo?.toLowerCase() ?? '';
@@ -188,12 +252,12 @@ class _ProveedoresTabState extends State<ProveedoresTab>
         onPressed: () => _abrirFormulario(),
         backgroundColor: Colors.indigo,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("Nuevo Proveedor", style: TextStyle(color: Colors.white)),
+        label: const Text("Nuevo", style: TextStyle(color: Colors.white)),
       ),
     );
   }
 
-  // --- WIDGET DE TARJETA MEJORADO ---
+  // --- WIDGET DE TARJETA (El diseño bonito) ---
   Widget _buildProveedorCard(Proveedor p) {
     return Card(
       elevation: 0, // Plano pero con borde sutil
@@ -210,7 +274,7 @@ class _ProveedoresTabState extends State<ProveedoresTab>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar con iniciales y Badge de activo/inactivo
+              // Avatar con iniciales y Badge
               Stack(
                 children: [
                   CircleAvatar(
@@ -225,7 +289,6 @@ class _ProveedoresTabState extends State<ProveedoresTab>
                       ),
                     ),
                   ),
-                  // Badge de Activo/Inactivo
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -262,18 +325,14 @@ class _ProveedoresTabState extends State<ProveedoresTab>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // TELÉFONO
                         _buildContactDetail(Icons.phone, p.telefono),
-                        
                         const SizedBox(width: 20),
-                        
-                        // CORREO
                         _buildContactDetail(Icons.email_outlined, p.correo),
                       ],
                     ),
                     const SizedBox(height: 8),
                     
-                    // DIRECCIÓN (Opcional, si quieres la línea completa)
+                    // Dirección (Con corrección de nulos)
                     Row(
                       children: [
                         Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade500),
@@ -291,12 +350,12 @@ class _ProveedoresTabState extends State<ProveedoresTab>
                 ),
               ),
 
-              // Botón de opciones (Eliminar y Editar)
+              // Botón de opciones
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: Colors.grey.shade400),
                 onSelected: (value) {
                   if (value == 'delete') {
-                    widget.onDelete(p);
+                    _confirmarEliminarProveedor(p);
                   } else if (value == 'edit') {
                     _abrirFormulario(proveedor: p);
                   }
@@ -331,10 +390,9 @@ class _ProveedoresTabState extends State<ProveedoresTab>
     );
   }
 
-  // NUEVO WIDGET AUXILIAR PARA DETALLES DE CONTACTO
+  // Helper para detalles
   Widget _buildContactDetail(IconData icon, String? value) {
     if (value == null || value.isEmpty) {
-      // Retorna un widget vacío o un marcador de posición si el dato falta
       return const SizedBox.shrink(); 
     }
     
