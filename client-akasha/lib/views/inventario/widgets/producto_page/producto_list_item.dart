@@ -38,7 +38,7 @@ class ProductoListItem extends StatelessWidget {
         ? Icons.error_rounded
         : Icons.warning_amber_rounded;
     final String tooltip = sinStock
-        ? 'Stock: 0. Porfavor agregue stock'
+        ? 'Stock: 0. Por favor agregue stock'
         : 'Stock: 10. Evalue la reposición de stock';
 
     return Tooltip(

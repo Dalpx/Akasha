@@ -307,7 +307,7 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                                             if (ubicacionCompleta.idUbicacion !=
                                                     null &&
                                                 ubicacionCompleta.idUbicacion! >
-                                                    0) {
+                                                    0 && s.cantidad == 0) {
                                               
                                               await _inventarioService
                                                   .eliminarInstanciaUbicacion(
@@ -323,7 +323,7 @@ class _UbicacionesProductoPageState extends State<UbicacionesProductoPage> {
                                               );
                                             } else {
                                               _mostrarMensaje(
-                                                'Error: No se pudo obtener un ID de ubicación válido.',
+                                                'Error: No se pudo eliminar la asignación.',
                                               );
                                             }
                                           },

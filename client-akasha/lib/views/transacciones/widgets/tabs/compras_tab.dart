@@ -243,7 +243,6 @@ class ComprasTabState extends State<ComprasTab>
     );
 
     final linea = LineaCompraForm(
-      producto: productoInicial,
       stockDisponible: stockInicial,
     );
 

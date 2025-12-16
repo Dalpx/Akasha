@@ -1,3 +1,4 @@
+import 'package:akasha/common/custom_card.dart';
 import 'package:akasha/views/inventario/helpers/movimiento_stock_helper.dart';
 import 'package:flutter/material.dart';
 
@@ -56,7 +57,7 @@ class MovimientoFormSectionCard extends StatelessWidget {
 
     final ubicacionesDisponibles = isSalida
         ? stock.ubicacionesConStock(idProducto, ubicaciones)
-        : ubicaciones;
+        : stock.ubicacionesAfiliadasAlProducto(idProducto, ubicaciones);
 
     final Ubicacion? ubicValue =
         (ubicacionSeleccionada != null &&
@@ -79,165 +80,160 @@ class MovimientoFormSectionCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         SizedBox(height: 12),
-        Card(
-          elevation: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+        CustomCard(
+          content: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 18,
+                  runSpacing: 18,
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      child: DropdownButtonFormField<int>(
+                        value: tipoMovimiento,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo movimiento',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 1, child: Text('Entrada')),
+                          DropdownMenuItem(value: 0, child: Text('Salida')),
+                        ],
+                        onChanged: (v) => onTipoChanged(v),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 18,
-                    runSpacing: 18,
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        child: DropdownButtonFormField<int>(
-                          value: tipoMovimiento,
-                          decoration: const InputDecoration(
-                            labelText: 'Tipo movimiento',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 1, child: Text('Entrada')),
-                            DropdownMenuItem(value: 0, child: Text('Salida')),
-                          ],
-                          onChanged: (v) => onTipoChanged(v),
+                    SizedBox(
+                      width: 320,
+                      child: DropdownButtonFormField<Producto>(
+                        value: productoSeleccionado,
+                        decoration: const InputDecoration(
+                          labelText: 'Producto',
+                          border: OutlineInputBorder(),
                         ),
-                      ),
-                      SizedBox(
-                        width: 320,
-                        child: DropdownButtonFormField<Producto>(
-                          value: productoSeleccionado,
-                          decoration: const InputDecoration(
-                            labelText: 'Producto',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: productos
-                              .map(
-                                (p) => DropdownMenuItem(
-                                  value: p,
-                                  child: Text(
-                                    p.nombre,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
+                        items: productos
+                            .map(
+                              (p) => DropdownMenuItem(
+                                value: p,
+                                child: Text(
+                                  p.nombre,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (v) => onProductoChanged(v),
-                          validator: (_) => productoSeleccionado == null
-                              ? 'Selecciona un producto'
-                              : null,
-                        ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => onProductoChanged(v),
+                        validator: (_) => productoSeleccionado == null
+                            ? 'Selecciona un producto'
+                            : null,
                       ),
-                      SizedBox(
-                        width: 320,
-                        child: DropdownButtonFormField<Ubicacion>(
-                          value: ubicValue,
-                          decoration: const InputDecoration(
-                            labelText: 'Ubicación',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: ubicacionesDisponibles.map((u) {
-                            final display = isSalida && idProducto != null
-                                ? '${u.nombreAlmacen} (Stock: ${stock.stockEnUbicacion(idProducto, u)})'
-                                : u.nombreAlmacen;
-                            return DropdownMenuItem(
-                              value: u,
-                              child: Text(display),
-                            );
-                          }).toList(),
-                          onChanged: onUbicacionChanged,
-                          validator: (v) {
-                            if (ubicaciones.isEmpty) return 'No hay almacenes';
-                            if (isSalida &&
-                                idProducto != null &&
-                                ubicacionesDisponibles.isEmpty) {
-                              return 'Sin stock en almacenes';
-                            }
-                            if (v == null) return 'Selecciona una ubicación';
-                            return null;
-                          },
+                    ),
+                    SizedBox(
+                      width: 320,
+                      child: DropdownButtonFormField<Ubicacion>(
+                        value: ubicValue,
+                        decoration: const InputDecoration(
+                          labelText: 'Ubicación',
+                          border: OutlineInputBorder(),
                         ),
+                        items: ubicacionesDisponibles.map((u) {
+                          final display = isSalida && idProducto != null
+                              ? '${u.nombreAlmacen} '
+                              : u.nombreAlmacen;
+                          return DropdownMenuItem(
+                            value: u,
+                            child: Text(display),
+                          );
+                        }).toList(),
+                        onChanged: onUbicacionChanged,
+                        validator: (v) {
+                          if (ubicacionesDisponibles.isEmpty) {
+                            return isSalida
+                                ? 'Sin stock en almacenes'
+                                : 'Producto sin ubicaciones afiliadas';
+                          }
+                          if (v == null) return 'Selecciona una ubicación';
+                          return null;
+                        },
                       ),
-                    ],
-                  ),
-                  if (showStock) ...[
-                    const SizedBox(height: 10),
-                    StockBanner(
-                      isSalida: isSalida,
-                      ubicacionNombre: ubicValue!.nombreAlmacen,
-                      stock: stockValue,
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    crossAxisAlignment: WrapCrossAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 200,
-                        child: TextFormField(
-                          controller: cantidadCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Cantidad',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (v) {
-                            final c = parseIntSafe(v ?? '');
-                            if (c <= 0) return 'Cantidad inválida';
-                            if (isSalida) {
-                              final st = stock.stockEnUbicacion(
-                                idProducto,
-                                ubicValue,
-                              );
-                              if (c > st) return 'Stock insuficiente ($st)';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        width: 520,
-                        child: TextFormField(
-                          controller: descripcionCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Descripción',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (v) {
-                            if ((v ?? '').trim().isEmpty)
-                              return 'Describe el movimiento';
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton.icon(
-                      onPressed: guardando ? null : onRegistrar,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Registrar'),
-                    ),
+                ),
+                if (showStock) ...[
+                  const SizedBox(height: 10),
+                  StockBanner(
+                    isSalida: isSalida,
+                    ubicacionNombre: ubicValue.nombreAlmacen,
+                    stock: stockValue,
                   ),
                 ],
-              ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: TextFormField(
+                        controller: cantidadCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Cantidad',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) {
+                          final c = parseIntSafe(v ?? '');
+                          if (c <= 0) return 'Cantidad inválida';
+                          if (isSalida) {
+                            final st = stock.stockEnUbicacion(
+                              idProducto,
+                              ubicValue,
+                            );
+                            if (c > st) return 'Stock insuficiente ($st)';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 520,
+                      child: TextFormField(
+                        controller: descripcionCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) {
+                          if ((v ?? '').trim().isEmpty)
+                            return 'Describe el movimiento';
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: guardando ? null : onRegistrar,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Registrar'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

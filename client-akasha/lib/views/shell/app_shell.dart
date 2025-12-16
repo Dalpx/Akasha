@@ -66,19 +66,19 @@ class _AppShellState extends State<AppShell> {
       index: 3,
       icon: Icons.manage_accounts,
       label: 'Usuarios',
-      requiredRoles: ["super", "administrador", "almacen"],
+      requiredRoles: ["super"],
     ),
     _NavOption(
       index: 4,
       icon: Icons.bar_chart,
       label: 'Reportes',
-      requiredRoles: ["super"],
+      requiredRoles: ["super", "administrador"],
     ),
     _NavOption(
       index: 5,
       icon: Icons.handshake,
       label: 'Clientes',
-      requiredRoles: ["super", "administrador"],
+      requiredRoles: null,
     ),
   ];
 

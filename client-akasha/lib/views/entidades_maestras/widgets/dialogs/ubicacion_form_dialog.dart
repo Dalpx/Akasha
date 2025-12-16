@@ -42,6 +42,39 @@ class _UbicacionFormDialogState extends State<UbicacionFormDialog> {
     super.dispose();
   }
 
+  String _norm(String v) =>
+      v.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+  Future<List<Ubicacion>> _fetchUbicaciones() async {
+    final svc = widget.service as dynamic;
+
+    try {
+      final res = await svc.obtenerUbicaciones();
+      return (res as List).cast<Ubicacion>();
+    } catch (_) {}
+
+    try {
+      final res = await svc.obtenerUbicacionesActivas();
+      return (res as List).cast<Ubicacion>();
+    } catch (_) {}
+
+    try {
+      final res = await svc.listarUbicaciones();
+      return (res as List).cast<Ubicacion>();
+    } catch (_) {}
+
+    throw Exception('No se pudo cargar ubicaciones para validar duplicados.');
+  }
+
+  Future<bool> _nombreUbicacionDuplicado(String nombre) async {
+    final objetivo = _norm(nombre);
+    final actual = _norm(widget.initial?.nombreAlmacen ?? '');
+    if (_isEdit && objetivo == actual) return false;
+
+    final ubicaciones = await _fetchUbicaciones();
+    return ubicaciones.any((u) => _norm(u.nombreAlmacen) == objetivo);
+  }
+
   Future<void> _save() async {
     if (_saving) return;
 
@@ -60,6 +93,15 @@ class _UbicacionFormDialogState extends State<UbicacionFormDialog> {
     setState(() => _saving = true);
 
     try {
+      final duplicado = await _nombreUbicacionDuplicado(nombre);
+      if (duplicado) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ya existe una ubicación con ese nombre.')),
+        );
+        return;
+      }
+
       if (_isEdit) {
         final ubicacion = widget.initial!;
         ubicacion.nombreAlmacen = nombre;

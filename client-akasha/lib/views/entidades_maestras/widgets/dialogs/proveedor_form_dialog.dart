@@ -46,6 +46,34 @@ class _ProveedorFormDialogState extends State<ProveedorFormDialog> {
     super.dispose();
   }
 
+  String _norm(String v) =>
+      v.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+  Future<List<Proveedor>> _fetchProveedores() async {
+    final svc = widget.service as dynamic;
+
+    try {
+      final res = await svc.obtenerProveedores();
+      return (res as List).cast<Proveedor>();
+    } catch (_) {}
+
+    try {
+      final res = await svc.listarProveedores();
+      return (res as List).cast<Proveedor>();
+    } catch (_) {}
+
+    throw Exception('No se pudo cargar proveedores para validar duplicados.');
+  }
+
+  Future<bool> _nombreProveedorDuplicado(String nombre) async {
+    final objetivo = _norm(nombre);
+    final actual = _norm(widget.initial?.nombre ?? '');
+    if (_isEdit && objetivo == actual) return false;
+
+    final proveedores = await _fetchProveedores();
+    return proveedores.any((p) => _norm(p.nombre) == objetivo);
+  }
+
   Future<void> _save() async {
     if (_saving) return;
 
@@ -64,6 +92,15 @@ class _ProveedorFormDialogState extends State<ProveedorFormDialog> {
     setState(() => _saving = true);
 
     try {
+      final duplicado = await _nombreProveedorDuplicado(nombre);
+      if (duplicado) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ya existe un proveedor con ese nombre.')),
+        );
+        return;
+      }
+
       if (_isEdit) {
         final proveedor = widget.initial!;
         proveedor.nombre = nombre;

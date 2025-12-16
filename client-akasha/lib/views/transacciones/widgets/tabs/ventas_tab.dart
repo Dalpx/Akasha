@@ -7,17 +7,20 @@ import 'package:akasha/models/ubicacion.dart';
 import 'package:akasha/models/venta.dart';
 import 'package:akasha/services/cliente_service.dart';
 import 'package:akasha/services/inventario_service.dart';
+import 'package:akasha/services/pdf_service.dart';
 import 'package:akasha/services/tipo_comprobante_service.dart';
 import 'package:akasha/services/ubicacion_service.dart';
 import 'package:akasha/services/venta_service.dart';
 import 'package:akasha/views/transacciones/widgets/common/linea_producto_editar.dart';
 import 'package:akasha/views/transacciones/widgets/common/transaccion_dropdown.dart';
+import 'package:akasha/views/transacciones/widgets/documentos/factura_report.dart';
 import 'package:akasha/views/transacciones/widgets/helpers/transaccion_detalles_helper.dart';
 import 'package:akasha/views/transacciones/widgets/helpers/transaccion_shared.dart';
 import 'package:akasha/views/transacciones/widgets/helpers/transaccion_stock_helper.dart';
 import 'package:akasha/views/transacciones/widgets/forms/linea_venta_form.dart';
 import 'package:akasha/views/transacciones/widgets/resumen/resumen_totales.dart';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 
 class VentasTab extends StatefulWidget {
   final SessionManager sessionManager;
@@ -296,7 +299,6 @@ class VentasTabState extends State<VentasTab> with AutomaticKeepAliveClientMixin
     );
 
     final linea = LineaVentaForm(
-      producto: productoInicial,
       stockDisponible: stockInicial,
       cantidadInicial: stockInicial > 0 ? 1 : 0,
     );
@@ -397,38 +399,71 @@ class VentasTabState extends State<VentasTab> with AutomaticKeepAliveClientMixin
 
       showDialog(
         context: context,
-        builder: (_) => AlertDialog(
-          title: Text('Detalle · ${v.numeroComprobante}'),
-          content: SizedBox(
-            width: 520,
-            child: detalles.isEmpty
-                ? const Text('Esta venta no tiene detalle.')
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: detalles.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final d = detalles[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text(d.nombreProducto ?? 'Producto ${d.idProducto}'),
-                        subtitle: Text(
-                          'Cant: ${d.cantidad} · P.U.: ${d.precioUnitario.toStringAsFixed(2)}',
-                        ),
-                        trailing: Text(
-                          d.subtotal.toStringAsFixed(2),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      );
-                    },
-                  ),
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 750),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF714B67),
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.print, size: 18),
+                        label: const Text("Imprimir PDF"),
+                        onPressed: () async {
+                          final pdfBytes = await PdfService()
+                              .generarFacturaVenta(v, detalles);
+
+                          final nombreLimpio = limpiarNombreArchivoWindows(
+                            v.numeroComprobante,
+                          );
+                          final nombreArchivo = 'Factura_$nombreLimpio.pdf';
+
+                          await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: nombreArchivo,
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(0),
+                    child: FacturaReport(venta: v, detallesVenta: detalles),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
-          ],
+          ),
         ),
       );
     } catch (e) {

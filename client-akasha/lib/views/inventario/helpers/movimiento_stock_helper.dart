@@ -39,4 +39,17 @@ class MovimientoStockHelper {
         .toSet();
     return todas.where((u) => names.contains(u.nombreAlmacen)).toList();
   }
+
+  List<Ubicacion> ubicacionesAfiliadasAlProducto(
+  int? idProducto,
+  List<Ubicacion> todas,
+) {
+  if (idProducto == null) return [];
+
+  return todas.where((u) {
+    final stock = stockEnUbicacion(idProducto, u);
+    return stock != 0; // o > 0 si solo quieres activas
+  }).toList();
+}
+
 }

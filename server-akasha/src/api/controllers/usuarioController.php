@@ -43,7 +43,7 @@ class usuarioController
     {
         $body = json_decode(file_get_contents('php://input'), true);
         $validator = new akashaValidator($this->DB, $body);
-        
+
         $error = $validator->usuarioIsValid();
         if ($validator->entityAlreadyExists('usuario')) {
             throw new Exception('Este usuario ya se encuentra registrado', 409);
@@ -67,7 +67,6 @@ class usuarioController
 
             $this->DB->commit();
             return true;
-
         } catch (Exception $e) {
             $this->DB->rollBack();
             throw $e;
@@ -110,7 +109,6 @@ class usuarioController
 
             $this->DB->commit();
             return true;
-
         } catch (Exception $e) {
             $this->DB->rollBack();
             throw $e;
@@ -145,8 +143,10 @@ class usuarioController
         $body = json_decode(file_get_contents('php://input'), true);
         try {
             $query = "SELECT u.id_usuario, u.activo, tu.nombre_tipo_usuario 
-                      FROM tipo_usuario as tu INNER JOIN usuario as u ON u.id_usuario = tu.id_tipo_usuario 
-                      WHERE nombre_usuario=:user AND cLave_hash=:pass";
+                  FROM usuario as u 
+                  INNER JOIN tipo_usuario as tu ON u.id_tipo_usuario = tu.id_tipo_usuario 
+                  WHERE u.nombre_usuario = :user AND u.clave_hash = :pass";
+
             $stmt = $this->DB->prepare($query);
             $stmt->execute([
                 ':user' => $body['user'],
@@ -155,6 +155,10 @@ class usuarioController
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($result) {
+
+                if ($result['activo'] != 1) {
+                    throw new Exception('Usuario inactivo', 403);
+                }
                 return $result;
             } else {
                 throw new Exception('Credenciales inválidas', 401);

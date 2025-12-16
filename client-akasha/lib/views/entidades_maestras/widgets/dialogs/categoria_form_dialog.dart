@@ -36,6 +36,34 @@ class _CategoriaFormDialogState extends State<CategoriaFormDialog> {
     super.dispose();
   }
 
+  String _norm(String v) =>
+      v.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+  Future<List<Categoria>> _fetchCategorias() async {
+    final svc = widget.service as dynamic;
+
+    try {
+      final res = await svc.obtenerCategorias();
+      return (res as List).cast<Categoria>();
+    } catch (_) {}
+
+    try {
+      final res = await svc.listarCategorias();
+      return (res as List).cast<Categoria>();
+    } catch (_) {}
+
+    throw Exception('No se pudo cargar categorías para validar duplicados.');
+  }
+
+  Future<bool> _nombreCategoriaDuplicado(String nombre) async {
+    final objetivo = _norm(nombre);
+    final actual = _norm(widget.initial?.nombreCategoria ?? '');
+    if (_isEdit && objetivo == actual) return false;
+
+    final categorias = await _fetchCategorias();
+    return categorias.any((c) => _norm(c.nombreCategoria) == objetivo);
+  }
+
   Future<void> _save() async {
     if (_saving) return;
 
@@ -51,6 +79,15 @@ class _CategoriaFormDialogState extends State<CategoriaFormDialog> {
     setState(() => _saving = true);
 
     try {
+      final duplicado = await _nombreCategoriaDuplicado(nombre);
+      if (duplicado) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ya existe una categoría con ese nombre.')),
+        );
+        return;
+      }
+
       if (_isEdit) {
         final categoria = widget.initial!;
         categoria.nombreCategoria = nombre;

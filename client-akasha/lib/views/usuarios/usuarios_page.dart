@@ -330,7 +330,8 @@ class _UsuariosPageState extends State<UsuariosPage>
             Row(
               children: [
                 SizedBox(
-                  width: 400,
+                  height: 40,
+                  width: 300,
                   child: SearchBar(
                     controller: _searchCtrl,
                     hintText: 'Buscar usuarios...',
