@@ -33,10 +33,12 @@ class MovimientoDialogs {
                   child: const Text('Limpiar'),
                 ),
                 ElevatedButton(
+                  // Vuelve al valor inicial sin cambios
                   onPressed: () => Navigator.of(context).pop(initial),
                   child: const Text('Cancelar'),
                 ),
                 ElevatedButton(
+                  // Aplica el valor 'local' (que puede ser null para 'Todos')
                   onPressed: () => Navigator.of(context).pop(local),
                   child: const Text('Aplicar'),
                 ),
@@ -47,6 +49,11 @@ class MovimientoDialogs {
       },
     );
 
-    return result ?? initial;
+    // *** CAMBIO AQUÍ: QUITAR EL '?? initial' ***
+    // Si result es null, se devuelve null (que es el valor de 'Todos').
+    // Si el diálogo se descarta (tap outside), result será null, y
+    // se devolverá null, lo que puede ser deseable si 'Todos' es el valor por defecto
+    // para un descarte.
+    return result; 
   }
 }

@@ -1,26 +1,48 @@
+// Archivo: lib/views/inventario/helpers/movimiento_historial_filter.dart
+
 import 'package:akasha/models/movimiento_inventario.dart';
 
 class MovimientoHistorialFilters {
-  int? tipoMovimiento;
+  // null = Todos, 1 = Entrada, 0 = Salida/Otros.
+  int? tipoMovimiento; 
 
   bool get hasActiveFilters => tipoMovimiento != null;
 
   List<MovimientoInventario> apply(
-    List<MovimientoInventario> movimientos, {
-    required String searchText,
+    List<MovimientoInventario> items, {
+    String? searchText,
   }) {
-    Iterable<MovimientoInventario> res = movimientos;
+    Iterable<MovimientoInventario> filtered = items;
 
+    // 1. Filtrar por texto de búsqueda (Descripción)
+    final search = searchText?.trim().toLowerCase();
+    if (search != null && search.isNotEmpty) {
+      filtered = filtered.where((m) {
+        // Busca en la descripción del movimiento
+        return m.descripcion?.toLowerCase().contains(search) ?? false;
+      });
+    }
+
+    // 2. Filtrar por tipo de movimiento (Entrada, Salida/Otros, o Todos)
     if (tipoMovimiento != null) {
-      final tipo = tipoMovimiento == 1 ? 'entrada' : 'salida';
-      res = res.where((m) => m.tipoMovimiento.toLowerCase().trim() == tipo);
+      if (tipoMovimiento == 1) {
+         // Mostrar solo 'entrada'
+         filtered = filtered.where((m) => 
+            m.tipoMovimiento.toLowerCase().trim() == 'entrada'
+         );
+      } else if (tipoMovimiento == 0) {
+         // Mostrar 'salida' y cualquier otro tipo (ajuste, transferencia, etc.)
+         // que no sea 'entrada'.
+         filtered = filtered.where((m) => 
+            m.tipoMovimiento.toLowerCase().trim() != 'entrada'
+         );
+      }
     }
+    
+    return filtered.toList();
+  }
 
-    final q = searchText.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      res = res.where((m) => (m.descripcion).toLowerCase().contains(q));
-    }
-
-    return res.toList();
+  void clear() {
+    tipoMovimiento = null;
   }
 }
